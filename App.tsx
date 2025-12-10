@@ -37,7 +37,7 @@ export default function App() {
     return <AppEntry />;
   }
 
-  // Mặc định: Landing Page tạm thời
+  // Landing Page tạm thời
   return (
     <SafeAreaView className="flex-1 bg-white items-center justify-center">
       <View className="items-center px-6">
