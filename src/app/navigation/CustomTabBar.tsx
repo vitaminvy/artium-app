@@ -53,21 +53,27 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
                   className="flex-1 items-center justify-end z-10"
                   pointerEvents="box-none"
                 >
-                  <TouchableOpacity
-                    accessibilityRole="button"
-                    onPress={onPress}
-                    activeOpacity={0.9}
-                    className="-mt-12 h-[64px] w-[64px] items-center justify-center rounded-full bg-[#0B73FF] border-[4px] border-[#f2f2f2]"
-                    style={floatingShadow}
-                  >
-                    <Ionicons name={meta.icon} size={28} color="#ffffff" />
-                  </TouchableOpacity>
-                  <Text className="text-[12px] font-semibold text-[#0B1224] mt-1">
-                    {meta.label}
-                  </Text>
-                </View>
-              );
-            }
+              <TouchableOpacity
+                accessibilityRole="button"
+                onPress={onPress}
+                activeOpacity={0.9}
+                className="-mt-12 h-[50px] w-[50px] items-center justify-center rounded-full bg-[#0B73FF]"
+                style={floatingShadow}
+              >
+                <Ionicons name={meta.icon} size={28} color="#ffffff" />
+              </TouchableOpacity>
+              <Text
+                className={`text-[12px] mt-1 ${
+                  isFocused
+                    ? "font-semibold text-[#0B73FF]"
+                    : "font-medium text-slate-400"
+                }`}
+              >
+                {meta.label}
+              </Text>
+            </View>
+          );
+        }
 
             // Render Normal Tab Item
             return (
@@ -80,7 +86,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
                 className="flex-1 items-center justify-center py-1"
               >
                 <View
-                  className={`h-[36px] w-[36px] items-center justify-center rounded-xl transition-all ${
+                  className={`h-[24px] w-[24px] items-center justify-center rounded-xl transition-all ${
                     isFocused ? "bg-[#E0F2FE]" : "bg-transparent"
                   }`}
                 >

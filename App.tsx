@@ -3,6 +3,10 @@ import { LogBox } from "react-native";
 import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, SafeAreaView } from "react-native";
 import AppEntry from "./src/app";
+import {
+  configureReanimatedLogger,
+  ReanimatedLogLevel,
+} from 'react-native-reanimated';
 
 // Ensure error handler is registered once
 LogBox.ignoreAllLogs(false);
@@ -23,6 +27,13 @@ if (typeof ErrorUtils !== "undefined") {
     throw err;
   });
 }
+
+// Tắt strict warning của Reanimated (đọc shared value trong render)
+// This is the default configuration
+configureReanimatedLogger({
+  level: ReanimatedLogLevel.warn,
+  strict: false, // Reanimated runs in strict mode by default (is true --> has set to false)
+});
 
 export default function App() {
   // Also log from component to catch render-time issues
