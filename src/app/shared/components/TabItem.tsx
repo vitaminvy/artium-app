@@ -7,6 +7,8 @@ type TabItemProps = {
   isActive: boolean;
   onPress: () => void;
   onLongPress?: () => void;
+  labelClassName?: string;
+  containerClassName?: string;
 };
 
 const activeGlowStyle = {
@@ -23,6 +25,8 @@ export default function TabItem({
   isActive,
   onPress,
   onLongPress,
+  labelClassName,
+  containerClassName,
 }: TabItemProps) {
   return (
     <Pressable
@@ -32,7 +36,7 @@ export default function TabItem({
       hitSlop={10}
       onPress={onPress}
       onLongPress={onLongPress}
-      className="flex-1 items-center justify-center py-2"
+      className={`flex-1 items-center justify-center py-2 ${containerClassName ?? ""}`}
     >
       <View
         className={`h-10 w-10 items-center justify-center rounded-full ${
@@ -43,7 +47,7 @@ export default function TabItem({
         {icon}
       </View>
       <Text
-        className={`mt-1 text-[13px] ${
+        className={`mt-1 ${labelClassName ?? "text-[13px]"} ${
           isActive ? "font-semibold text-black" : "font-medium text-[#777777]"
         }`}
       >

@@ -23,6 +23,10 @@ const quickShadow = {
   elevation: 14,
 };
 
+const LABEL_TEXT_CLASS = "text-[13px]";
+const LIQUID_BG = "rgba(255,255,255,0.92)";
+
+
 export default function CustomTabBar({
   state,
   navigation,
@@ -36,6 +40,10 @@ export default function CustomTabBar({
   const quickSellRoute =
     quickSellIndex >= 0 ? state.routes[quickSellIndex] : undefined;
   const isQuickSellFocused = quickSellIndex === state.index;
+
+  const leftRoutes = quickSellIndex >= 0 ? state.routes.slice(0, quickSellIndex) : state.routes;
+  const rightRoutes =
+    quickSellIndex >= 0 ? state.routes.slice(quickSellIndex + 1) : [];
 
   const handleQuickSellPress = () => {
     if (!quickSellRoute) return;
@@ -60,67 +68,116 @@ export default function CustomTabBar({
 
   return (
     <View
-      className="bg-transparent"
-      style={{ paddingBottom: paddingBottom + 4, paddingTop: 6 }}
+      className="bg-[#f2f2f5]"
+      style={{ paddingBottom: paddingBottom + 6, paddingTop: 10 }}
     >
       <View className="mx-3">
         <View
-          className="relative h-[90px] flex-row items-end justify-between rounded-[28px] border border-[#f1f1f1] bg-white px-5 pb-4"
-          style={containerShadow}
+          className="relative h-[98px] flex-row items-end justify-between overflow-hidden rounded-[28px] border border-white/50 px-6 pb-6"
+          style={[containerShadow, { backgroundColor: LIQUID_BG }]}
         >
-          {state.routes.map((route, index) => {
-            if (route.name === "QuickSell") {
-              return <View key={route.key} className="flex-1" />;
-            }
+          <View
+            pointerEvents="none"
+            className="absolute inset-x-0 top-0 h-[18px] bg-white/65"
+          />
 
-            const isFocused = state.index === index;
-            const iconConfig = TabIcons[route.name as TabRouteName];
-            const label = TAB_LABELS[route.name as TabRouteName];
+          <View className="flex-row items-end gap-1 flex-1">
+            {leftRoutes.map((route, index) => {
+              const isFocused = state.index === index;
+              const iconConfig = TabIcons[route.name as TabRouteName];
+              const label = TAB_LABELS[route.name as TabRouteName];
 
-            const onPress = () => {
-              const event = navigation.emit({
-                type: "tabPress",
-                target: route.key,
-                canPreventDefault: true,
-              });
+              const onPress = () => {
+                const event = navigation.emit({
+                  type: "tabPress",
+                  target: route.key,
+                  canPreventDefault: true,
+                });
 
-              if (!isFocused && !event.defaultPrevented) {
-                navigation.navigate(route.name);
-              }
-            };
+                if (!isFocused && !event.defaultPrevented) {
+                  navigation.navigate(route.name);
+                }
+              };
 
-            const onLongPress = () => {
-              navigation.emit({
-                type: "tabLongPress",
-                target: route.key,
-              });
-            };
+              const onLongPress = () => {
+                navigation.emit({
+                  type: "tabLongPress",
+                  target: route.key,
+                });
+              };
 
-            return (
-              <TabItem
-                key={route.key}
-                label={label}
-                icon={isFocused ? iconConfig.active : iconConfig.inactive}
-                isActive={isFocused}
-                onPress={onPress}
-                onLongPress={onLongPress}
-              />
-            );
-          })}
+              return (
+                <TabItem
+                  key={route.key}
+                  label={label}
+                  icon={isFocused ? iconConfig.active : iconConfig.inactive}
+                  isActive={isFocused}
+                  onPress={onPress}
+                  onLongPress={onLongPress}
+                  labelClassName={LABEL_TEXT_CLASS}
+                  containerClassName="px-3 min-w-[80px] flex-none"
+                />
+              );
+            })}
+          </View>
+
+          <View className="w-[110px]" />
+
+          <View className="flex-row items-end gap-1 flex-1 justify-end">
+            {rightRoutes.map((route, index) => {
+              const actualIndex = quickSellIndex + 1 + index;
+              const isFocused = state.index === actualIndex;
+              const iconConfig = TabIcons[route.name as TabRouteName];
+              const label = TAB_LABELS[route.name as TabRouteName];
+
+              const onPress = () => {
+                const event = navigation.emit({
+                  type: "tabPress",
+                  target: route.key,
+                  canPreventDefault: true,
+                });
+
+                if (!isFocused && !event.defaultPrevented) {
+                  navigation.navigate(route.name);
+                }
+              };
+
+              const onLongPress = () => {
+                navigation.emit({
+                  type: "tabLongPress",
+                  target: route.key,
+                });
+              };
+
+              return (
+                <TabItem
+                  key={route.key}
+                  label={label}
+                  icon={isFocused ? iconConfig.active : iconConfig.inactive}
+                  isActive={isFocused}
+                  onPress={onPress}
+                  onLongPress={onLongPress}
+                  labelClassName={LABEL_TEXT_CLASS}
+                  containerClassName="px-3 min-w-[80px] flex-none"
+                />
+              );
+            })}
+          </View>
         </View>
 
         {quickSellRoute ? (
           <View
+            pointerEvents="box-none"
             className="absolute left-0 right-0 items-center"
-            style={{ top: -16, zIndex: 10 }}
+            style={{ top: -20, zIndex: 10 }}
           >
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={TAB_LABELS.QuickSell}
               onPress={handleQuickSellPress}
               onLongPress={handleQuickSellLongPress}
-              hitSlop={12}
-              className="h-16 w-16 items-center justify-center rounded-full bg-[#347CFF]"
+              hitSlop={14}
+              className="h-[62px] w-[62px] items-center justify-center rounded-full bg-[#347CFF]"
               style={{
                 ...quickShadow,
                 transform: [{ translateY: isQuickSellFocused ? -2 : 0 }],
@@ -129,7 +186,7 @@ export default function CustomTabBar({
               {TabIcons.QuickSell.active}
             </Pressable>
             <Text
-              className={`mt-2 text-[13px] ${
+              className={`mt-2 ${LABEL_TEXT_CLASS} ${
                 isQuickSellFocused
                   ? "font-semibold text-black"
                   : "font-medium text-[#777777]"

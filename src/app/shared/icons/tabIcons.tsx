@@ -1,5 +1,6 @@
 import React from "react";
 import { Ionicons } from "@expo/vector-icons";
+import AntDesign from '@expo/vector-icons/AntDesign';
 import { TabRouteName } from "../../navigation/tabTypes";
 
 type TabIconConfig = {
@@ -12,20 +13,24 @@ const baseActive = "#111827";
 
 export const TabIcons: Record<TabRouteName, TabIconConfig> = {
   Home: {
-    active: <Ionicons name="home" size={26} color={baseActive} />,
-    inactive: <Ionicons name="home-outline" size={26} color={baseInactive} />,
+    active: <Ionicons name="home" size={20} color={baseActive} />,
+    inactive: <Ionicons name="home-outline" size={20} color={baseInactive} />,
   },
   Feed: {
-    active: <Ionicons name="globe" size={26} color={baseActive} />,
-    inactive: <Ionicons name="globe-outline" size={26} color={baseInactive} />,
+    active: <Ionicons name="globe" size={20} color={baseActive} />,
+    inactive: <Ionicons name="globe-outline" size={20} color={baseInactive} />,
+  },
+  EmptyQuickSell: {
+    active: <Ionicons name="cash-outline" size={20} color="#000000" />,
+    inactive: <Ionicons name="cash-outline" size={20} color="#0000" />,
   },
   QuickSell: {
-    active: <Ionicons name="cash-outline" size={26} color="#FFFFFF" />,
-    inactive: <Ionicons name="cash-outline" size={26} color="#347CFF" />,
+    active: <Ionicons name="cash-outline" size={20} color="#FFFFFF" />,
+    inactive: <Ionicons name="cash-outline" size={20} color="#347CFF" />,
   },
   Discover: {
-    active: <Ionicons name="search" size={26} color={baseActive} />,
-    inactive: <Ionicons name="search-outline" size={26} color={baseInactive} />,
+    active: <Ionicons name="search" size={20} color={baseActive} />,
+    inactive: <Ionicons name="search-outline" size={20} color={baseInactive} />,
   },
   Upload: {
     active: <Ionicons name="add" size={28} color={baseActive} />,

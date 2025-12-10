@@ -2,6 +2,7 @@ import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Pressable, ScrollView, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 import ArtworkDetailScreen from "../../screens/ArtworkDetailScreen";
 import LoginScreen from "../../screens/LoginScreen";
@@ -111,7 +112,28 @@ export default function RootNavigator() {
         <Stack.Screen
           name="ArtworkDetail"
           component={ArtworkDetailScreen}
-          options={{ title: "Artwork Detail" }}
+          options={({ navigation }) => ({
+            title: "Artwork Detail",
+            headerLeft: () => (
+              <Pressable
+                onPress={() => navigation.goBack()}
+                className="ml-2 flex-row items-center gap-2 rounded-full border border-slate-200 bg-white/95 px-3 py-1.5"
+                style={{
+                  shadowColor: "#000000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.08,
+                  shadowRadius: 4,
+                  elevation: 6,
+                }}
+              >
+                <Ionicons name="chevron-back" size={20} color="#111" />
+                <Text className="text-base font-semibold text-slate-900">Tabs</Text>
+              </Pressable>
+            ),
+            headerShadowVisible: false,
+            headerStyle: { backgroundColor: "#f8f8fa" },
+            headerTitleStyle: { fontWeight: "600", color: "#111" },
+          })}
         />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Upload" component={UploadScreen} />
