@@ -3,6 +3,10 @@ import { LogBox } from "react-native";
 import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, SafeAreaView } from "react-native";
 import AppEntry from "./src/app";
+import {
+  configureReanimatedLogger,
+  ReanimatedLogLevel,
+} from 'react-native-reanimated';
 
 // Ensure error handler is registered once
 LogBox.ignoreAllLogs(false);
@@ -24,6 +28,13 @@ if (typeof ErrorUtils !== "undefined") {
   });
 }
 
+// Tắt strict warning của Reanimated (đọc shared value trong render)
+// This is the default configuration
+configureReanimatedLogger({
+  level: ReanimatedLogLevel.warn,
+  strict: false, // Reanimated runs in strict mode by default (is true --> has set to false)
+});
+
 export default function App() {
   // Also log from component to catch render-time issues
   useEffect(() => {
@@ -37,7 +48,7 @@ export default function App() {
     return <AppEntry />;
   }
 
-  // Mặc định: Landing Page tạm thời
+  // Landing Page tạm thời
   return (
     <SafeAreaView className="flex-1 bg-white items-center justify-center">
       <View className="items-center px-6">

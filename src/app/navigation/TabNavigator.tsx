@@ -1,22 +1,18 @@
-// Bottom tab navigator configuration
-// src/app/navigation/TabNavigator.tsx
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+
 import DiscoverStack from "./Stack/DiscoverStack";
-import ProfileStack from "./Stack/ProfileStack";
-import ChatStack from "./Stack/ChatStack";
+import FeedStack from "./Stack/FeedStack";
 import UploadStack from "./Stack/UploadStack";
 import HomeScreen from "../../screens/HomeScreen";
 
-export type TabParamList = {
-  Home: undefined;
-  Discover: undefined;
-  Chat: undefined;
-  Upload: undefined;
-  Profile: undefined;
-};
+import CustomTabBar from "./CustomTabBar";
+import { TabParamList } from "./tabTypes";
 
 const Tab = createBottomTabNavigator<TabParamList>();
+
+// Placeholder component for the sheet trigger route
+const UploadOptionsPlaceholder = () => null;
 
 export default function TabNavigator() {
   return (
@@ -24,16 +20,18 @@ export default function TabNavigator() {
       screenOptions={{
         headerShown: false,
       }}
+      tabBar={(props) => <CustomTabBar {...props} />}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-
-      <Tab.Screen name="Discover" component={DiscoverStack} />
-
-      <Tab.Screen name="Chat" component={ChatStack} />
-
+      <Tab.Screen name="Feed" component={FeedStack} />
+      
+      {/* Center Button (Quick Sell) */}
       <Tab.Screen name="Upload" component={UploadStack} />
 
-      <Tab.Screen name="Profile" component={ProfileStack} />
+      <Tab.Screen name="Discover" component={DiscoverStack} />
+      
+      {/* Upload Action Sheet Trigger */}
+      <Tab.Screen name="UploadOptions" component={UploadOptionsPlaceholder} />
     </Tab.Navigator>
   );
 }
