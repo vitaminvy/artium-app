@@ -26,20 +26,24 @@ function DevMenu({ navigation }: any) {
   }> = [
     {
       label: "Open Tabs (Home)",
-      hint: "Home | Discover | Chat | Profile",
+      hint: "Home | My Feed | Quick Sell | Discover | Upload",
       action: () => navigation.navigate("Tabs", { screen: "Home" }),
+    },
+    {
+      label: "Open My Feed tab",
+      action: () => navigation.navigate("Tabs", { screen: "Feed" }),
+    },
+    {
+      label: "Open Quick Sell tab",
+      action: () => navigation.navigate("Tabs", { screen: "QuickSell" }),
     },
     {
       label: "Open Discover tab",
       action: () => navigation.navigate("Tabs", { screen: "Discover" }),
     },
     {
-      label: "Open Chat tab",
-      action: () => navigation.navigate("Tabs", { screen: "Chat" }),
-    },
-    {
-      label: "Open Profile tab",
-      action: () => navigation.navigate("Tabs", { screen: "Profile" }),
+      label: "Open Upload tab",
+      action: () => navigation.navigate("Tabs", { screen: "Upload" }),
     },
     {
       label: "Artwork Detail (id:123)",
