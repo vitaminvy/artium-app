@@ -1,5 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, Text, View, ViewStyle } from "react-native";
+import {
+  Dimensions,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  ViewStyle,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
@@ -12,7 +19,11 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import { SidebarChild, SidebarItem, useSidebarItems } from "../hooks/useSidebar";
+import {
+  SidebarChild,
+  SidebarItem,
+  useSidebarItems,
+} from "../hooks/useSidebar";
 
 type SidebarProps = {
   visible: boolean;
@@ -23,20 +34,27 @@ type SidebarProps = {
   items?: SidebarItem[];
 };
 
-const PANEL_WIDTH = 320;
-const DEFAULT_TOP_OFFSET = 96;
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const PANEL_WIDTH = Math.min(SCREEN_WIDTH * 0.85, 340);
 const ANIMATION_MS = 230;
-const FOOTER_HEIGHT = 44;
+const FOOTER_HEIGHT = 40;
 
 export default function Sidebar({
   visible,
   onClose,
   onSelect,
-  topOffset = DEFAULT_TOP_OFFSET,
+  topOffset,
   activeKey,
   items,
 }: SidebarProps) {
   const insets = useSafeAreaInsets();
+  const panelTop = useMemo(
+    () =>
+      typeof topOffset === "number"
+        ? topOffset
+        : Math.max(insets.top + 64, 80),
+    [insets.top, topOffset]
+  );
   const [shouldRender, setShouldRender] = useState(visible);
   const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({});
   const slide = useSharedValue(visible ? 0 : 1);
@@ -46,11 +64,15 @@ export default function Sidebar({
   useEffect(() => {
     if (visible) setShouldRender(true);
 
-    slide.value = withTiming(visible ? 0 : 1, { duration: ANIMATION_MS }, (finished) => {
-      if (finished && !visible) {
-        runOnJS(setShouldRender)(false);
+    slide.value = withTiming(
+      visible ? 0 : 1,
+      { duration: ANIMATION_MS },
+      (finished) => {
+        if (finished && !visible) {
+          runOnJS(setShouldRender)(false);
+        }
       }
-    });
+    );
     overlay.value = withTiming(visible ? 1 : 0, { duration: ANIMATION_MS });
   }, [visible, slide, overlay]);
 
@@ -65,7 +87,12 @@ export default function Sidebar({
   const animatedPanelStyle = useAnimatedStyle(() => ({
     transform: [
       {
-        translateX: interpolate(slide.value, [0, 1], [0, PANEL_WIDTH], Extrapolate.CLAMP),
+        translateX: interpolate(
+          slide.value,
+          [0, 1],
+          [0, PANEL_WIDTH],
+          Extrapolate.CLAMP
+        ),
       },
     ],
   }));
@@ -91,7 +118,7 @@ export default function Sidebar({
   return (
     <View
       className="absolute left-0 right-0 bottom-0 z-50"
-      style={{ top: topOffset }}
+      style={{ top: panelTop }}
       pointerEvents="box-none"
     >
       <Animated.View
@@ -117,7 +144,10 @@ export default function Sidebar({
         <View className="flex-1">
           <ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: FOOTER_HEIGHT + 20, gap: 8 }}
+            contentContainerStyle={{
+              paddingBottom: FOOTER_HEIGHT + 20,
+              gap: 8,
+            }}
             style={{ marginBottom: FOOTER_HEIGHT }}
           >
             {data.map((item) => {
@@ -134,7 +164,11 @@ export default function Sidebar({
                     <View className="flex-row items-center justify-between">
                       <View className="flex-row items-center gap-3 flex-1">
                         <View className="h-10 w-10 rounded-full items-center justify-center bg-slate-50">
-                          <Ionicons name={item.icon} size={22} color="#0f172a" />
+                          <Ionicons
+                            name={item.icon}
+                            size={22}
+                            color="#0f172a"
+                          />
                         </View>
                         <View className="flex-1">
                           <Text className="text-[17px] font-semibold text-slate-900">
@@ -149,7 +183,11 @@ export default function Sidebar({
                       </View>
                       {item.children?.length ? (
                         <Ionicons
-                          name={expanded ? "chevron-up-outline" : "chevron-down-outline"}
+                          name={
+                            expanded
+                              ? "chevron-up-outline"
+                              : "chevron-down-outline"
+                          }
                           size={18}
                           color="#0f172a"
                         />
@@ -198,7 +236,11 @@ export default function Sidebar({
             >
               <View className="flex-row items-center gap-3">
                 <View className="h-10 w-10 rounded-full items-center justify-center bg-slate-50">
-                  <Ionicons name="ellipsis-vertical" size={18} color="#0f172a" />
+                  <Ionicons
+                    name="ellipsis-vertical"
+                    size={18}
+                    color="#0f172a"
+                  />
                 </View>
                 <Text className="text-[17px] font-semibold text-slate-900">
                   More
@@ -234,7 +276,12 @@ function SidebarChildRow({ child, delay, expanded, onPress }: ChildRowProps) {
     opacity: value.value,
     transform: [
       {
-        translateY: interpolate(value.value, [0, 1], [10, 0], Extrapolate.CLAMP),
+        translateY: interpolate(
+          value.value,
+          [0, 1],
+          [10, 0],
+          Extrapolate.CLAMP
+        ),
       },
     ],
   }));
@@ -252,7 +299,9 @@ function SidebarChildRow({ child, delay, expanded, onPress }: ChildRowProps) {
               {child.label}
             </Text>
             {child.subtitle ? (
-              <Text className="text-xs text-slate-400 mt-0.5">{child.subtitle}</Text>
+              <Text className="text-xs text-slate-400 mt-0.5">
+                {child.subtitle}
+              </Text>
             ) : null}
           </View>
           {child.trailing === "external" ? (

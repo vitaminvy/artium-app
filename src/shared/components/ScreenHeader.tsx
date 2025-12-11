@@ -44,7 +44,7 @@ export default function ScreenHeader({
   underlineSize = { width: 130, height: 12 },
 }: ScreenHeaderProps) {
   const insets = useSafeAreaInsets();
-  const topPadding = Math.max(insets.top, 18);
+  const topPadding = Math.max(insets.top + 6, 24);
   const underlineWidth = Math.min(Math.max(title.length * 7, 46), 120);
   const lastHeight = useRef(0);
 
