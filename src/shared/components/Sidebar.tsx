@@ -231,20 +231,24 @@ export default function Sidebar({
           >
             <Pressable
               onPress={() => onSelect?.("more")}
-              className="rounded-2xl px-5 py-3 bg-white"
+              className="rounded-2xl px-3 py-3 bg-white"
               accessibilityLabel="More"
             >
-              <View className="flex-row items-center gap-3">
-                <View className="h-10 w-10 rounded-full items-center justify-center bg-slate-50">
-                  <Ionicons
-                    name="ellipsis-vertical"
-                    size={18}
-                    color="#0f172a"
-                  />
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center gap-3 flex-1">
+                  <View className="h-10 w-10 rounded-full items-center justify-center bg-slate-50">
+                    <Ionicons
+                      name="ellipsis-vertical"
+                      size={22}
+                      color="#0f172a"
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-[17px] font-semibold text-slate-900">
+                      More
+                    </Text>
+                  </View>
                 </View>
-                <Text className="text-[17px] font-semibold text-slate-900">
-                  More
-                </Text>
               </View>
             </Pressable>
           </View>
