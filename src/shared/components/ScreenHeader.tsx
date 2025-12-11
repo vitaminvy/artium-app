@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import { View, Text, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,6 +12,8 @@ type ScreenHeaderProps = {
   actionType?: HeaderAction;
   onPressAction?: () => void;
   accentColor?: string;
+  isMenuOpen?: boolean;
+  onHeightChange?: (height: number) => void;
 };
 
 const ACTION_ICON: Record<HeaderAction, keyof typeof Ionicons.glyphMap> = {
@@ -27,13 +29,30 @@ export default function ScreenHeader({
   actionType,
   onPressAction,
   accentColor = "#9BE163",
+  isMenuOpen = false,
+  onHeightChange,
 }: ScreenHeaderProps) {
   const insets = useSafeAreaInsets();
   const topPadding = Math.max(insets.top, 18);
   const underlineWidth = Math.min(Math.max(title.length * 7, 46), 120);
+  const lastHeight = useRef(0);
+
+  const resolveActionIcon = () => {
+    if (actionType === "menu" && isMenuOpen) return "close-outline";
+    return actionType ? ACTION_ICON[actionType] : undefined;
+  };
 
   return (
-    <View className="bg-white border-b border-slate-100">
+    <View
+      className="bg-white border-b border-slate-100"
+      onLayout={(e) => {
+        const h = e.nativeEvent.layout.height;
+        if (Math.abs(h - lastHeight.current) > 0.5) {
+          lastHeight.current = h;
+          onHeightChange?.(h);
+        }
+      }}
+    >
       <View className="px-5 pb-4" style={{ paddingTop: topPadding }}>
         <View className="flex-row items-center justify-between">
           <View>
@@ -66,7 +85,7 @@ export default function ScreenHeader({
                 className="h-11 w-11 items-center justify-center rounded-full"
               >
                 <Ionicons
-                  name={ACTION_ICON[actionType]}
+                  name={resolveActionIcon()}
                   size={22}
                   color="#0F172A"
                 />
