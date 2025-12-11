@@ -71,6 +71,7 @@ export default function DiscoverScreen() {
       case "topPicks":
         return (
           <FlatList
+            key="top-picks"
             data={topPicks}
             numColumns={2}
             keyExtractor={(item) => item.id}
@@ -87,6 +88,7 @@ export default function DiscoverScreen() {
       case "artworks":
         return (
           <FlatList
+            key="artworks"
             data={artworks}
             numColumns={2}
             keyExtractor={(item) => item.id}
@@ -103,6 +105,7 @@ export default function DiscoverScreen() {
       case "moments":
         return (
           <FlatList
+            key="moments"
             data={moments}
             numColumns={2}
             keyExtractor={(item) => item.id}
@@ -119,6 +122,7 @@ export default function DiscoverScreen() {
       case "profiles":
         return (
           <FlatList
+            key="profiles"
             data={profiles}
             numColumns={2}
             keyExtractor={(item) => item.id}
@@ -135,6 +139,7 @@ export default function DiscoverScreen() {
       case "events":
         return (
           <FlatList
+            key="events"
             data={events}
             keyExtractor={(item) => item.id}
             renderItem={renderEvent}
@@ -149,6 +154,7 @@ export default function DiscoverScreen() {
       case "inspiration":
         return (
           <FlatList
+            key="inspirations"
             data={inspirations}
             keyExtractor={(item) => item.id}
             renderItem={renderInspiration}
@@ -188,6 +194,7 @@ export default function DiscoverScreen() {
               onAction={() => setTab("artworks")}
             >
               <FlatList
+                key="nearby-artworks"
                 data={artworks}
                 numColumns={2}
                 keyExtractor={(item) => item.id}
@@ -208,6 +215,7 @@ export default function DiscoverScreen() {
               onAction={() => setTab("profiles")}
             >
               <FlatList
+                key="nearby-profiles"
                 data={profiles.slice(0, 4)}
                 numColumns={2}
                 keyExtractor={(item) => item.id}
@@ -228,6 +236,7 @@ export default function DiscoverScreen() {
               onAction={() => setTab("events")}
             >
               <FlatList
+                key="nearby-events"
                 data={events.slice(0, 3)}
                 keyExtractor={(item) => item.id}
                 renderItem={renderEvent}
@@ -248,24 +257,22 @@ export default function DiscoverScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white">
       <View className="flex-1">
-        <FlatList
-          data={TABS}
-          keyExtractor={(item) => item.key}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingHorizontal: 16,
-            paddingVertical: 10,
-            columnGap: 8,
-          }}
-          renderItem={({ item }) => (
-            <TabChip
-              label={item.label}
-              active={tab === item.key}
-              onPress={() => setTab(item.key)}
-            />
-          )}
-        />
+        <View className="bg-white border-b border-slate-100 pt-2 pb-3">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={tabBarContent}
+          >
+            {TABS.map((item) => (
+              <TabChip
+                key={item.key}
+                label={item.label}
+                active={tab === item.key}
+                onPress={() => setTab(item.key)}
+              />
+            ))}
+          </ScrollView>
+        </View>
 
         {renderContent()}
       </View>
@@ -283,9 +290,14 @@ function TabChip({ label, active, onPress }: TabChipProps) {
   return (
     <Pressable
       onPress={onPress}
-      className={`px-4 py-2 rounded-full border ${
-        active ? "bg-slate-900 border-slate-900" : "border-slate-200"
-      }`}
+      className="rounded-full border"
+      style={[
+        chipStyle,
+        {
+          backgroundColor: active ? "#0B1223" : "#FFFFFF",
+          borderColor: active ? "#0B1223" : "#E2E8F0",
+        },
+      ]}
     >
       <Text
         className={`text-[12px] font-semibold ${
@@ -517,6 +529,20 @@ function Badge({
     </View>
   );
 }
+
+const tabBarContent = {
+  paddingHorizontal: 16,
+  paddingVertical: 6,
+  flexDirection: "row" as const,
+  gap: 10,
+  alignItems: "center" as const,
+};
+
+const chipStyle = {
+  paddingHorizontal: 14,
+  paddingVertical: 8,
+  minHeight: 36,
+};
 
 const cardShadow = {
   shadowColor: "#000",
