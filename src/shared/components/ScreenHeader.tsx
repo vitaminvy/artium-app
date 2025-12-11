@@ -64,10 +64,10 @@ export default function ScreenHeader({
         }
       }}
     >
-      <View className="px-5 pb-4" style={{ paddingTop: topPadding }}>
+      <View className="px-8 pb-4" style={{ paddingTop: topPadding }}>
         <View className="flex-row items-center justify-between">
-          <View>
-            <Text className="text-[26px] font-extrabold tracking-[1px] text-slate-900">
+          <View style={{ marginTop: 4 }}>
+            <Text className="text-[22px] font-extrabold tracking-[0.5px] text-slate-900">
               {title.toUpperCase()}
             </Text>
             {underlineSource ? (
@@ -75,7 +75,7 @@ export default function ScreenHeader({
                 uri={Image.resolveAssetSource(underlineSource).uri}
                 width={underlineSize.width}
                 height={underlineSize.height}
-                style={{ marginTop: 4 }}
+                style={{ marginTop: -6 }}
               />
             ) : (
               <View
@@ -85,14 +85,14 @@ export default function ScreenHeader({
             )}
           </View>
 
-          <View className="flex-row items-center" style={{ columnGap: 20 }}>
+          <View className="flex-row items-center" style={{ columnGap: 14 }}>
             <Pressable
               onPress={onPressBadge}
               accessibilityRole="button"
               hitSlop={6}
-              className="px-3.5 py-2 rounded-full border border-slate-200 bg-white shadow-[0px_6px_12px_rgba(0,0,0,0.05)]"
+              className="px-5 py-2 rounded-full border border-slate-200 bg-white shadow-[0px_6px_12px_rgba(0,0,0,0.05)] flex-row items-center justify-center"
             >
-              <Text className="text-[13px] font-semibold text-slate-800">
+              <Text className="text-[14px] font-semibold text-slate-800">
                 {badgeLabel}
               </Text>
             </Pressable>
