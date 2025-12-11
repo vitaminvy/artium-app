@@ -15,6 +15,7 @@ export default function DiscoverScreen() {
         badgeLabel="Blog"
         actionType="search"
         onPressAction={() => console.log("Open search")}
+        underlineSource={require("../../assets/headers/underline-home.svg")}
       />
 
       <View className="flex-1 items-center justify-center px-6">

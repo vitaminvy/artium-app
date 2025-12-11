@@ -23,6 +23,7 @@ export default function HomeScreen() {
         isMenuOpen={sidebarOpen}
         onPressAction={() => setSidebarOpen((prev) => !prev)}
         onHeightChange={(h) => setHeaderHeight(h)}
+        underlineSource={require("../../assets/headers/underline-home.svg")}
       />
 
       <View className="flex-1 items-center justify-center px-6">

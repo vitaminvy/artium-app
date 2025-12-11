@@ -1,7 +1,14 @@
 import React, { useRef } from "react";
-import { View, Text, Pressable } from "react-native";
+import {
+  View,
+  Text,
+  Pressable,
+  Image,
+  ImageSourcePropType,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { SvgUri } from "react-native-svg";
 
 type HeaderAction = "menu" | "search" | "notifications";
 
@@ -14,6 +21,8 @@ type ScreenHeaderProps = {
   accentColor?: string;
   isMenuOpen?: boolean;
   onHeightChange?: (height: number) => void;
+  underlineSource?: ImageSourcePropType;
+  underlineSize?: { width: number; height: number };
 };
 
 const ACTION_ICON: Record<HeaderAction, keyof typeof Ionicons.glyphMap> = {
@@ -31,6 +40,8 @@ export default function ScreenHeader({
   accentColor = "#9BE163",
   isMenuOpen = false,
   onHeightChange,
+  underlineSource,
+  underlineSize = { width: 130, height: 12 },
 }: ScreenHeaderProps) {
   const insets = useSafeAreaInsets();
   const topPadding = Math.max(insets.top, 18);
@@ -59,10 +70,19 @@ export default function ScreenHeader({
             <Text className="text-[26px] font-extrabold tracking-[1px] text-slate-900">
               {title.toUpperCase()}
             </Text>
-            <View
-              className="mt-1 h-[3px] rounded-full"
-              style={{ width: underlineWidth, backgroundColor: accentColor }}
-            />
+            {underlineSource ? (
+              <SvgUri
+                uri={Image.resolveAssetSource(underlineSource).uri}
+                width={underlineSize.width}
+                height={underlineSize.height}
+                style={{ marginTop: 4 }}
+              />
+            ) : (
+              <View
+                className="mt-1 h-[3px] rounded-full"
+                style={{ width: underlineWidth, backgroundColor: accentColor }}
+              />
+            )}
           </View>
 
           <View className="flex-row items-center" style={{ columnGap: 20 }}>

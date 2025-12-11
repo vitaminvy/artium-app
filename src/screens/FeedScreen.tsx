@@ -8,10 +8,11 @@ export default function FeedScreen() {
   return (
     <View className="flex-1 bg-sky-50">
       <ScreenHeader
-        title="My Feed"
+        title="Feed"
         badgeLabel="Blog"
         actionType="notifications"
         onPressAction={() => console.log("Open notifications")}
+        underlineSource={require("../../assets/headers/underline-home.svg")}
       />
 
       <View className="flex-1 items-center justify-center px-6">
