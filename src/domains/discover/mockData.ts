@@ -96,29 +96,37 @@ const artworks: Artwork[] = [
 const moments: Artwork[] = [
   {
     id: "mo-1",
-    title: "Studio glimpse",
-    artist: "Artist Name",
+    title: "Signing bio cards at Spectrum Miami 2025",
+    artist: "Rachel Lee",
+    artistAvatar:
+      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80",
     image:
       "https://images.unsplash.com/photo-1472220625704-91e1462799b2?auto=format&fit=crop&w=1000&q=80",
   },
   {
     id: "mo-2",
     title: "Process shot",
-    artist: "Artist Name",
+    artist: "Chris Nolan",
+    artistAvatar:
+      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=200&q=80",
     image:
       "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
   },
   {
     id: "mo-3",
     title: "Gallery visit",
-    artist: "Artist Name",
+    artist: "Mara Klein",
+    artistAvatar:
+      "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=200&q=80",
     image:
       "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80",
   },
   {
     id: "mo-4",
     title: "Outdoor ride",
-    artist: "Artist Name",
+    artist: "Theo Park",
+    artistAvatar:
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80",
     image:
       "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1000&q=80",
   },
