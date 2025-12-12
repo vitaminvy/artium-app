@@ -376,20 +376,36 @@ function ArtworkCard({
   return (
     <Pressable
       onPress={onPress}
-      className="flex-1 rounded-3xl bg-white border border-slate-100 overflow-hidden"
-      style={cardShadow}
+      className="flex-1 bg-white overflow-hidden"
+      style={[cardShadow, cardContainer]}
     >
-      <Image
-        source={{ uri: item.image }}
-        className="h-48 w-full"
-        resizeMode="cover"
-      />
+      <View className="relative">
+        <Image
+          source={{ uri: item.image }}
+          className="w-full"
+          style={{ aspectRatio: 3 / 4, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
+          resizeMode="cover"
+        />
+        {item.isTrending && (
+          <View
+            className="absolute bottom-3 left-3 flex-row items-center gap-1 rounded-full px-3 py-1"
+            style={{
+              backgroundColor: "rgba(255,255,255,0.32)",
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.55)",
+            }}
+          >
+            <Ionicons name="flame" size={14} color="#EA580C" />
+            <Text className="text-[11px] font-semibold text-[#EA580C]">
+              TRENDING
+            </Text>
+          </View>
+        )}
+      </View>
 
-      <View className="px-4 py-3 gap-2">
-        {item.isTrending && <Badge label="TRENDING" color="#EA580C" />}
-
-        <View className="flex-row items-center gap-2">
-          <View className="h-6 w-6 rounded-full bg-slate-200 overflow-hidden">
+      <View className="px-4 py-4 gap-3 bg-white rounded-b-[28px]">
+        <View className="flex-row items-center gap-3">
+          <View className="h-7 w-7 rounded-full bg-slate-200 overflow-hidden">
             {item.artistAvatar ? (
               <Image
                 source={{ uri: item.artistAvatar }}
@@ -397,17 +413,19 @@ function ArtworkCard({
               />
             ) : null}
           </View>
-          <Text className="text-xs text-slate-500">{item.artist}</Text>
+          <Text className="text-sm text-slate-600 font-medium">
+            {item.artist}
+          </Text>
         </View>
 
-        <Text className="text-base font-semibold text-slate-900">
+        <Text className="text-[18px] font-bold text-slate-900">
           {item.title}
         </Text>
 
-        <View className="flex-row items-center gap-2">
-          {item.spice && <Badge label="SPICE" color="#2563EB" ghost />}
+        <View className="flex-row items-center gap-3 flex-wrap">
+          {item.price ? <Pill label={item.price} color="#2563EB" /> : null}
           {item.location ? (
-            <Text className="text-xs text-slate-400">{item.location}</Text>
+            <Text className="text-sm text-slate-400">{item.location}</Text>
           ) : null}
         </View>
       </View>
@@ -551,6 +569,22 @@ function Badge({
       <Text
         className={`text-[10px] font-semibold uppercase`}
         style={{ color: textColor }}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+function Pill({ label, color }: { label: string; color: string }) {
+  return (
+    <View
+      className="rounded-full px-3 py-1"
+      style={{ backgroundColor: `${color}1A` }}
+    >
+      <Text
+        className="text-[12px] font-semibold"
+        style={{ color }}
       >
         {label}
       </Text>
@@ -704,5 +738,12 @@ const cardShadow = {
   shadowOpacity: 0.05,
   shadowRadius: 10,
   elevation: 4,
+};
+
+const cardContainer = {
+  borderRadius: 28,
+  borderWidth: 1,
+  borderColor: "#E2E8F0",
+  overflow: "hidden" as const,
 };
     

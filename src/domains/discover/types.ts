@@ -22,7 +22,7 @@ export type Artwork = {
   artistAvatar?: string;
   image: string;
   isTrending?: boolean;
-  spice?: boolean;
+  price?: string;
   location?: string;
 };
 

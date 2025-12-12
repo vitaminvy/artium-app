@@ -12,65 +12,84 @@ const artworks: Artwork[] = [
     title: "Make it rain",
     artist: "Edward Granger",
     image:
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
     artistAvatar:
-      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80",
+      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80",
     isTrending: true,
-    spice: true,
+    price: "$1,800",
     location: "Nice, France",
   },
   {
     id: "aw-2",
     title: "Quiet Form",
-    artist: "Artist Name",
+    artist: "Aya Tan",
     image:
-      "https://images.unsplash.com/photo-1523419400524-fc1e1cc2d6c5?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1000&q=80",
+    artistAvatar:
+      "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=200&q=80",
     isTrending: true,
+    price: "$2,300",
   },
   {
     id: "aw-3",
     title: "City Lights",
-    artist: "Artist Name",
+    artist: "Liam Ortega",
     image:
-      "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=900&q=80",
-    spice: true,
+      "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1200&q=80",
+    artistAvatar:
+      "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80",
+    price: "$950",
   },
   {
     id: "aw-4",
     title: "Digital Bloom",
-    artist: "Artist Name",
+    artist: "Mara Klein",
     image:
-      "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1100&q=80",
+    artistAvatar:
+      "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=200&q=80",
+    price: "$1,150",
   },
   {
     id: "aw-5",
     title: "Blue Cluster",
-    artist: "Artist Name",
+    artist: "Theo Park",
     image:
-      "https://images.unsplash.com/photo-1520256862855-398228c41684?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
+    artistAvatar:
+      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80",
+    price: "$780",
   },
   {
     id: "aw-6",
     title: "Stop Being Poor",
-    artist: "Artist Name",
+    artist: "Isabel Lee",
     image:
-      "https://images.unsplash.com/photo-1474286631363-5d98f2b4de00?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1523419400524-fc1e1cc2d6c5?auto=format&fit=crop&w=1000&q=80",
+    artistAvatar:
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80",
     isTrending: true,
+    price: "$4,500",
   },
   {
     id: "aw-7",
     title: "Gel Ball",
-    artist: "Artist Name",
+    artist: "Noah Green",
     image:
-      "https://images.unsplash.com/photo-1512238701577-f182d9ef8af7?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=1100&q=80",
+    artistAvatar:
+      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=200&q=80",
+    price: "$620",
   },
   {
     id: "aw-8",
     title: "Mirror Geometry",
-    artist: "Artist Name",
+    artist: "Sofia Ramos",
     image:
-      "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=900&q=80",
-    spice: true,
+      "https://images.unsplash.com/photo-1512238701577-f182d9ef8af7?auto=format&fit=crop&w=1000&q=80",
+    artistAvatar:
+      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80",
+    price: "$1,050",
   },
 ];
 
@@ -80,28 +99,28 @@ const moments: Artwork[] = [
     title: "Studio glimpse",
     artist: "Artist Name",
     image:
-      "https://images.unsplash.com/photo-1523419400524-fc1e1cc2d6c5?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1472220625704-91e1462799b2?auto=format&fit=crop&w=1000&q=80",
   },
   {
     id: "mo-2",
     title: "Process shot",
     artist: "Artist Name",
     image:
-      "https://images.unsplash.com/photo-1472220625704-91e1462799b2?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
   },
   {
     id: "mo-3",
     title: "Gallery visit",
     artist: "Artist Name",
     image:
-      "https://images.unsplash.com/photo-1465311440653-ba9b1d9b0f5b?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80",
   },
   {
     id: "mo-4",
     title: "Outdoor ride",
     artist: "Artist Name",
     image:
-      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1000&q=80",
   },
 ];
 
@@ -159,7 +178,7 @@ const events: EventItem[] = [
     location: "Ho Chi Minh City, Vietnam",
     datetime: "2025-04-29T18:00:00Z",
     image:
-      "https://images.unsplash.com/photo-1523419400524-fc1e1cc2d6c5?auto=format&fit=crop&w=1000&q=80",
+      "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=1400&q=80",
     attendees: 26,
     status: "ongoing",
     rsvpLabel: "RSVP",
@@ -170,7 +189,7 @@ const events: EventItem[] = [
     location: "Kuala Lumpur, Malaysia",
     datetime: "2025-03-20T08:00:00Z",
     image:
-      "https://images.unsplash.com/photo-1529429617124-aee1f1650a5c?auto=format&fit=crop&w=1000&q=80",
+      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80",
     attendees: 6,
     status: "upcoming",
     rsvpLabel: "Invite",
@@ -181,7 +200,7 @@ const events: EventItem[] = [
     location: "Tokyo, Japan",
     datetime: "2025-04-15T09:00:00Z",
     image:
-      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1000&q=80",
+      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
     attendees: 12,
     status: "upcoming",
     rsvpLabel: "RSVP",
