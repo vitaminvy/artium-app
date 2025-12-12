@@ -12,6 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import ScreenHeader from "../shared/components/ScreenHeader";
 
 import { useDiscover } from "../domains/discover/hooks/useDiscover";
 import {
@@ -551,3 +552,28 @@ const cardShadow = {
   shadowRadius: 10,
   elevation: 4,
 };
+    <View className="flex-1 bg-green-50">
+      <ScreenHeader
+        title="Discover"
+        badgeLabel="Blog"
+        actionType="search"
+        onPressAction={() => console.log("Open search")}
+        underlineSource={require("../../assets/headers/underline-home.svg")}
+      />
+
+      <View className="flex-1 items-center justify-center px-6">
+        <Text className="text-3xl font-bold text-green-700">Discover</Text>
+        <Text className="mt-2 text-gray-700">Discover Screen</Text>
+
+        <Pressable
+          onPress={() =>
+            (navigation.navigate as any)("ArtworkDetail", { id: "123" })
+          }
+          className="mt-6 px-6 py-3 bg-green-600 rounded-xl"
+        >
+          <Text className="text-white font-semibold">Open Artwork Detail</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
