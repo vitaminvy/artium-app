@@ -1,4 +1,4 @@
-// src/screens/DiscoverScreen.tsx
+
 import React from "react";
 import {
   FlatList,
@@ -10,7 +10,6 @@ import {
   ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import ScreenHeader from "../shared/components/ScreenHeader";
 
@@ -256,28 +255,34 @@ export default function DiscoverScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <View className="flex-1">
-        <View className="bg-white border-b border-slate-100 pt-2 pb-3">
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={tabBarContent}
-          >
-            {TABS.map((item) => (
-              <TabChip
-                key={item.key}
-                label={item.label}
-                active={tab === item.key}
-                onPress={() => setTab(item.key)}
-              />
-            ))}
-          </ScrollView>
-        </View>
+    <View className="flex-1 bg-white">
+      <ScreenHeader
+        title="Discover"
+        badgeLabel="Blog"
+        actionType="search"
+        onPressAction={() => {}}
+        underlineSource={require("../../assets/headers/underline-home.svg")}
+      />
 
-        {renderContent()}
+      <View className="bg-white border-b border-slate-100 pt-2 pb-3">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={tabBarContent}
+        >
+          {TABS.map((item) => (
+            <TabChip
+              key={item.key}
+              label={item.label}
+              active={tab === item.key}
+              onPress={() => setTab(item.key)}
+            />
+          ))}
+        </ScrollView>
       </View>
-    </SafeAreaView>
+
+      {renderContent()}
+    </View>
   );
 }
 
@@ -552,28 +557,4 @@ const cardShadow = {
   shadowRadius: 10,
   elevation: 4,
 };
-    <View className="flex-1 bg-green-50">
-      <ScreenHeader
-        title="Discover"
-        badgeLabel="Blog"
-        actionType="search"
-        onPressAction={() => console.log("Open search")}
-        underlineSource={require("../../assets/headers/underline-home.svg")}
-      />
-
-      <View className="flex-1 items-center justify-center px-6">
-        <Text className="text-3xl font-bold text-green-700">Discover</Text>
-        <Text className="mt-2 text-gray-700">Discover Screen</Text>
-
-        <Pressable
-          onPress={() =>
-            (navigation.navigate as any)("ArtworkDetail", { id: "123" })
-          }
-          className="mt-6 px-6 py-3 bg-green-600 rounded-xl"
-        >
-          <Text className="text-white font-semibold">Open Artwork Detail</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
+    
