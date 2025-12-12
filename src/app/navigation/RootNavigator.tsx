@@ -1,45 +1,53 @@
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { Text } from "react-native";
 
 import ArtworkDetailScreen from "../../screens/ArtworkDetailScreen";
-import LoginScreen from "../../screens/LoginScreen";
 import QuickSellScreen from "../../screens/QuickSellScreen";
 import TabNavigator from "./TabNavigator";
+import AuthStack from "./AuthStack";
+import { AuthStatus } from "../../domains/auth/types";
 
-type RootStackParamList = {
+type AppStackParamList = {
   Tabs: { screen?: string; params?: any } | undefined;
   ArtworkDetail: { id?: string };
-  Login: undefined;
   Upload: undefined;
 };
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+type RootNavigatorProps = {
+  authStatus: AuthStatus;
+};
 
-export default function RootNavigator() {
+const Stack = createNativeStackNavigator<AppStackParamList>();
+
+function AppStack() {
+  return (
+    <Stack.Navigator
+      initialRouteName="Tabs"
+      screenOptions={{
+        headerShown: true,
+        headerTitleAlign: "center",
+      }}
+    >
+      <Stack.Screen
+        name="Tabs"
+        component={TabNavigator}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ArtworkDetail"
+        component={ArtworkDetailScreen}
+        options={{ title: "Artwork Detail" }}
+      />
+      <Stack.Screen name="Upload" component={QuickSellScreen} />
+    </Stack.Navigator>
+  );
+}
+
+export default function RootNavigator({ authStatus }: RootNavigatorProps) {
   return (
     <NavigationContainer>
-      <Stack.Navigator
-        initialRouteName="Tabs"
-        screenOptions={{
-          headerShown: true,
-          headerTitleAlign: "center",
-        }}
-      >
-        <Stack.Screen
-          name="Tabs"
-          component={TabNavigator}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="ArtworkDetail"
-          component={ArtworkDetailScreen}
-          options={{ title: "Artwork Detail" }}
-        />
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Upload" component={QuickSellScreen} />
-      </Stack.Navigator>
+      {authStatus === "authenticated" ? <AppStack /> : <AuthStack />}
     </NavigationContainer>
   );
 }

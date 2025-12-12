@@ -1,6 +1,12 @@
-import React from 'react';
-import RootNavigator from './navigation/RootNavigator';
+import React from "react";
+import RootNavigator from "./navigation/RootNavigator";
+import { useAuthBootstrap } from "../domains/auth/hooks/useAuthBootstrap";
+import Loader from "../shared/components/Loader";
 
 export default function AppEntry() {
-  return <RootNavigator />;
+  const auth = useAuthBootstrap();
+
+  if (auth.status === "loading") return <Loader />;
+
+  return <RootNavigator authStatus={auth.status} />;
 }
