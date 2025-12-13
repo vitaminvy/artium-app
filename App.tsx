@@ -7,6 +7,7 @@ import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
 } from 'react-native-reanimated';
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
 
 // Ensure error handler is registered once
 LogBox.ignoreAllLogs(false);
@@ -39,6 +40,10 @@ export default function App() {
   // Also log from component to catch render-time issues
   useEffect(() => {
     console.log("App mounted");
+    GoogleSignin.configure({
+      iosClientId: "300008030002-39obokvd8jlv0k7pklb39h9vum8outmu.apps.googleusercontent.com",
+      profileImageSize: 150,
+    });
   }, []);
   // State để kiểm tra xem user đã bấm "Enter App" chưa
   const [isAppEntered, setIsAppEntered] = useState(false);
