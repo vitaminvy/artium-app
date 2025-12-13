@@ -15,7 +15,6 @@ export default function WelcomeScreen({ navigation }: Props) {
     playerInstance.loop = true;
     playerInstance.muted = true;
     playerInstance.play();
-    
   });
 
   const content = (
