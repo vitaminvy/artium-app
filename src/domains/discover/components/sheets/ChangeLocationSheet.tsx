@@ -85,7 +85,7 @@ export default function ChangeLocationSheet({
                 placeholder="Search location"
                 value={locationText}
                 onChangeText={onChangeLocation}
-                className="flex-1 text-base text-slate-900"
+                className="flex-1 text-slate-900"
                 placeholderTextColor="#94A3B8"
               />
             </View>
