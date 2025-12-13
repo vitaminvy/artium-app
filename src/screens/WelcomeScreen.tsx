@@ -61,7 +61,7 @@ export default function WelcomeScreen({ navigation }: Props) {
           <Text style={{ textAlign: "center", fontSize: 18 }}>GET STARTED</Text>
         </Pressable>
 
-        <Pressable onPress={() => navigation.navigate("SignIn")}>
+        <Pressable onPress={() => navigation.navigate("LogIn")}>
           <Text
             style={{
               color: "white",
