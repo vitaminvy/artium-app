@@ -1,17 +1,11 @@
-
 import React, { useState } from "react";
 import {
   FlatList,
   Pressable,
   Text,
   View,
-  Image,
   ListRenderItemInfo,
   ScrollView,
-  Modal,
-  TextInput,
-  Animated,
-  Easing,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -25,6 +19,17 @@ import {
   EventItem,
   InspirationArticle,
 } from "../domains/discover/types";
+
+// UI Components
+import { TabChip, Section } from "../domains/discover/components/ui/DiscoverShared";
+import ChangeLocationSheet from "../domains/discover/components/sheets/ChangeLocationSheet";
+
+// Cards
+import ArtworkCard from "../domains/discover/components/cards/ArtworkCard";
+import ProfileCard from "../domains/discover/components/cards/ProfileCard";
+import EventCard from "../domains/discover/components/cards/EventCard";
+import MomentCard from "../domains/discover/components/cards/MomentCard";
+import InspirationCard from "../domains/discover/components/cards/InspirationCard";
 
 const TABS: { key: DiscoverTab; label: string }[] = [
   { key: "topPicks", label: "TOP PICKS" },
@@ -53,6 +58,8 @@ export default function DiscoverScreen() {
   const [radius, setRadius] = useState("10 miles");
   const [showRadiusOptions, setShowRadiusOptions] = useState(false);
 
+  // --- Render Helpers ---
+
   const renderArtwork = ({ item }: ListRenderItemInfo<Artwork>) => (
     <ArtworkCard
       item={item}
@@ -74,40 +81,40 @@ export default function DiscoverScreen() {
     item,
   }: ListRenderItemInfo<InspirationArticle>) => <InspirationCard item={item} />;
 
+  // --- Main Content Switcher ---
+
   const renderContent = () => {
+    const gridProps = {
+      numColumns: 2,
+      contentContainerStyle: {
+        paddingHorizontal: 12,
+        paddingBottom: 20,
+        rowGap: 12,
+      },
+      columnWrapperStyle: { columnGap: 12 },
+      showsVerticalScrollIndicator: false,
+    };
+
     switch (tab) {
       case "topPicks":
-        return (
-          <FlatList
-            key="top-picks"
-            data={topPicks}
-            numColumns={2}
-            keyExtractor={(item) => item.id}
-            renderItem={renderArtwork}
-            contentContainerStyle={{
-              paddingHorizontal: 12,
-              paddingBottom: 20,
-              rowGap: 12,
-            }}
-            columnWrapperStyle={{ columnGap: 12 }}
-            showsVerticalScrollIndicator={false}
-          />
-        );
       case "artworks":
         return (
           <FlatList
-            key="artworks"
-            data={artworks}
-            numColumns={2}
+            key={tab} // Force re-render when switching between similar lists
+            data={tab === "topPicks" ? topPicks : artworks}
             keyExtractor={(item) => item.id}
             renderItem={renderArtwork}
-            contentContainerStyle={{
-              paddingHorizontal: 12,
-              paddingBottom: 20,
-              rowGap: 12,
-            }}
-            columnWrapperStyle={{ columnGap: 12 }}
-            showsVerticalScrollIndicator={false}
+            {...gridProps}
+          />
+        );
+      case "profiles":
+        return (
+          <FlatList
+            key="profiles"
+            data={profiles}
+            keyExtractor={(item) => item.id}
+            renderItem={renderProfile}
+            {...gridProps}
           />
         );
       case "moments":
@@ -129,23 +136,6 @@ export default function DiscoverScreen() {
               paddingBottom: 20,
               rowGap: 16,
             }}
-            showsVerticalScrollIndicator={false}
-          />
-        );
-      case "profiles":
-        return (
-          <FlatList
-            key="profiles"
-            data={profiles}
-            numColumns={2}
-            keyExtractor={(item) => item.id}
-            renderItem={renderProfile}
-            contentContainerStyle={{
-              paddingHorizontal: 12,
-              paddingBottom: 20,
-              rowGap: 12,
-            }}
-            columnWrapperStyle={{ columnGap: 12 }}
             showsVerticalScrollIndicator={false}
           />
         );
@@ -272,12 +262,14 @@ export default function DiscoverScreen() {
 
   return (
     <View className="flex-1 bg-white">
+      {/* TODO: Fix SVG import or use ScreenHeader properly */}
       <ScreenHeader
         title="Discover"
         badgeLabel="Blog"
         actionType="search"
         onPressAction={() => {}}
-        underlineSource={require("../../assets/headers/underline-home.svg")}
+        // Temporarily commented out until SVG loader is fixed or asset is available
+        // underlineSource={require("../../assets/headers/underline-home.svg")}
       />
 
       <View className="bg-white border-b border-slate-100 pt-2 pb-3">
@@ -298,6 +290,7 @@ export default function DiscoverScreen() {
       </View>
 
       {renderContent()}
+
       <ChangeLocationSheet
         visible={showLocationSheet}
         locationText={locationText}
@@ -313,483 +306,6 @@ export default function DiscoverScreen() {
   );
 }
 
-type TabChipProps = {
-  label: string;
-  active?: boolean;
-  onPress?: () => void;
-};
-
-function TabChip({ label, active, onPress }: TabChipProps) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className="rounded-full border"
-      style={[
-        chipStyle,
-        {
-          backgroundColor: active ? "#0B1223" : "#FFFFFF",
-          borderColor: active ? "#0B1223" : "#E2E8F0",
-        },
-      ]}
-    >
-      <Text
-        className={`text-[12px] font-semibold ${
-          active ? "text-white" : "text-slate-700"
-        }`}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
-function Section({
-  title,
-  actionLabel,
-  onAction,
-  children,
-}: {
-  title: string;
-  actionLabel?: string;
-  onAction?: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <View className="py-3">
-      <View className="px-4 mb-2 flex-row items-center justify-between">
-        <Text className="text-base font-semibold text-slate-900">{title}</Text>
-        {actionLabel ? (
-          <Pressable onPress={onAction}>
-            <Text className="text-xs font-semibold text-slate-500">
-              {actionLabel}
-            </Text>
-          </Pressable>
-        ) : null}
-      </View>
-      {children}
-    </View>
-  );
-}
-
-function ArtworkCard({
-  item,
-  onPress,
-}: {
-  item: Artwork;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className="flex-1 bg-white overflow-hidden"
-      style={[cardShadow, cardContainer]}
-    >
-      <View className="relative">
-        <Image
-          source={{ uri: item.image }}
-          className="w-full"
-          style={{ aspectRatio: 3 / 4, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
-          resizeMode="cover"
-        />
-        {item.isTrending && (
-          <View
-            className="absolute bottom-3 left-3 flex-row items-center gap-1 rounded-full px-3 py-1"
-            style={{
-              backgroundColor: "rgba(255,255,255,0.32)",
-              borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.55)",
-            }}
-          >
-            <Ionicons name="flame" size={14} color="#EA580C" />
-            <Text className="text-[11px] font-semibold text-[#EA580C]">
-              TRENDING
-            </Text>
-          </View>
-        )}
-      </View>
-
-      <View className="px-4 py-4 gap-3 bg-white rounded-b-[28px]">
-        <View className="flex-row items-center gap-3">
-          <View className="h-7 w-7 rounded-full bg-slate-200 overflow-hidden">
-            {item.artistAvatar ? (
-              <Image
-                source={{ uri: item.artistAvatar }}
-                className="h-full w-full"
-              />
-            ) : null}
-          </View>
-          <Text className="text-sm text-slate-600 font-medium">
-            {item.artist}
-          </Text>
-        </View>
-
-        <Text className="text-[18px] font-bold text-slate-900">
-          {item.title}
-        </Text>
-
-        <View className="flex-row items-center gap-3 flex-wrap">
-          {item.price ? <Pill label={item.price} color="#2563EB" /> : null}
-          {item.location ? (
-            <Text className="text-sm text-slate-400">{item.location}</Text>
-          ) : null}
-        </View>
-      </View>
-    </Pressable>
-  );
-}
-
-function ProfileCard({ item }: { item: ArtistProfile }) {
-  return (
-    <View
-      className="flex-1 rounded-3xl bg-white border border-slate-100 px-4 py-5 items-center"
-      style={cardShadow}
-    >
-      <View className="h-20 w-20 rounded-full overflow-hidden bg-slate-200">
-        <Image source={{ uri: item.avatar }} className="h-full w-full" />
-      </View>
-      <Text className="mt-3 text-base font-semibold text-slate-900 text-center">
-        {item.name}
-      </Text>
-      <View className="flex-row items-center gap-1">
-        {item.verified && (
-          <Ionicons name="checkmark-circle" size={14} color="#22C55E" />
-        )}
-        {item.title ? (
-          <Text className="text-xs text-slate-500">{item.title}</Text>
-        ) : null}
-      </View>
-
-      <Pressable className="mt-4 px-4 py-2 rounded-full bg-slate-900 active:opacity-90">
-        <Text className="text-xs font-semibold text-white">Follow</Text>
-      </Pressable>
-    </View>
-  );
-}
-
-function EventCard({ item }: { item: EventItem }) {
-  const date = new Date(item.datetime);
-  const month = date.toLocaleString("en-US", { month: "short" }).toUpperCase();
-  const day = date.getDate();
-  const [rsvp, setRsvp] = useState<"none" | "going" | "maybe" | "notGoing">(
-    "none"
-  );
-  const [showMenu, setShowMenu] = useState(false);
-  const [showShare, setShowShare] = useState(false);
-
-  const RSVP_META: Record<
-    typeof rsvp,
-    { label: string; color: string; bg: string; icon: keyof typeof Ionicons.glyphMap }
-  > = {
-    none: {
-      label: item.rsvpLabel ?? "RSVP",
-      color: "#0F172A",
-      bg: "#FFFFFF",
-      icon: "ellipse-outline",
-    },
-    going: {
-      label: "Going",
-      color: "#1D4ED8",
-      bg: "#DBEAFE",
-      icon: "checkmark-circle-outline",
-    },
-    maybe: {
-      label: "Maybe",
-      color: "#854D0E",
-      bg: "#FEF3C7",
-      icon: "help-circle-outline",
-    },
-    notGoing: {
-      label: "Not Going",
-      color: "#B91C1C",
-      bg: "#FEE2E2",
-      icon: "close-circle-outline",
-    },
-  };
-
-  return (
-    <View
-      className="rounded-3xl bg-white border border-slate-100 overflow-hidden"
-      style={[cardShadow, { position: "relative" as const }]}
-    >
-      <View className="relative">
-        <Image
-          source={{ uri: item.image }}
-          className="h-40 w-full"
-          resizeMode="cover"
-        />
-        <View className="absolute top-3 right-3 bg-white rounded-2xl px-3 py-2 items-center shadow-sm">
-          <Text className="text-[11px] font-semibold text-[#0B73FF]">
-            {month}
-          </Text>
-          <Text className="text-lg font-extrabold text-[#0B1223] leading-5">
-            {day}
-          </Text>
-        </View>
-      </View>
-
-      <View className="px-4 py-4 gap-2">
-        <View className="flex-row items-center gap-2">
-          {item.status ? (
-            <Badge
-              label={item.status === "ongoing" ? "ONGOING" : "UPCOMING"}
-              color={item.status === "ongoing" ? "#22C55E" : "#2563EB"}
-              ghost
-            />
-          ) : null}
-          {item.attendees ? (
-            <Text className="text-xs text-slate-500">
-              {item.attendees} attendees
-            </Text>
-          ) : null}
-        </View>
-
-        <Text className="text-base font-semibold text-slate-900">
-          {item.title}
-        </Text>
-        <Text className="text-xs text-slate-500">{item.location}</Text>
-
-        <View className="flex-row items-center gap-2 mt-2">
-          <Pressable
-            className="flex-1 flex-row items-center justify-center gap-2 px-4 py-3 rounded-full border active:opacity-90"
-            style={{
-              backgroundColor: RSVP_META[rsvp].bg,
-              borderColor: rsvp === "none" ? "#E2E8F0" : RSVP_META[rsvp].bg,
-            }}
-            onPress={() => setShowMenu((prev) => !prev)}
-          >
-            {rsvp !== "none" ? (
-              <Ionicons
-                name={RSVP_META[rsvp].icon}
-                size={16}
-                color={RSVP_META[rsvp].color}
-              />
-            ) : null}
-            <Text
-              className="text-xs font-semibold"
-              style={{ color: RSVP_META[rsvp].color }}
-            >
-              {RSVP_META[rsvp].label}
-            </Text>
-            <Ionicons
-              name="chevron-down-outline"
-              size={14}
-              color={RSVP_META[rsvp].color}
-            />
-          </Pressable>
-          <Pressable className="h-11 w-11 rounded-full border border-slate-200 items-center justify-center active:opacity-90">
-            <Ionicons name="mail-outline" size={18} color="#0F172A" />
-          </Pressable>
-          <Pressable
-            className="h-11 w-11 rounded-full border border-slate-200 items-center justify-center active:opacity-90"
-            onPress={() => setShowShare(true)}
-          >
-            <Ionicons name="share-outline" size={18} color="#0F172A" />
-          </Pressable>
-        </View>
-
-        {showMenu ? (
-          <View
-            className="mt-2 bg-white rounded-2xl border border-slate-200 shadow-lg"
-            style={{ zIndex: 10 }}
-          >
-            {[
-              { key: "going", label: "Going" },
-              { key: "maybe", label: "Maybe" },
-              { key: "notGoing", label: "Not Going" },
-            ].map((opt, idx) => (
-              <Pressable
-                key={opt.key}
-                className={`px-4 py-3 flex-row items-center gap-2 ${
-                  idx < 2 ? "border-b border-slate-100" : ""
-                }`}
-                onPress={() => {
-                  setRsvp(opt.key as any);
-                  setShowMenu(false);
-                }}
-              >
-                <Ionicons
-                  name={RSVP_META[opt.key as keyof typeof RSVP_META].icon}
-                  size={18}
-                  color={RSVP_META[opt.key as keyof typeof RSVP_META].color}
-                />
-                <Text className="text-sm font-semibold text-slate-900">
-                  {opt.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
-
-        {showShare ? (
-          <Modal transparent animationType="fade" onRequestClose={() => setShowShare(false)}>
-            <View className="flex-1 bg-black/35 justify-center items-center px-4">
-              <Pressable className="absolute inset-0" onPress={() => setShowShare(false)} />
-              <View className="w-full rounded-3xl bg-white p-4 gap-4 shadow-2xl">
-                <View className="flex-row justify-between">
-                  {[
-                    { icon: "logo-whatsapp" as const, color: "#25D366" },
-                    { icon: "logo-facebook" as const, color: "#1877F2" },
-                    { icon: "logo-twitter" as const, color: "#000000" },
-                    { icon: "logo-linkedin" as const, color: "#0A66C2" },
-                    { icon: "paper-plane-outline" as const, color: "#0EA5E9" },
-                  ].map((opt, idx) => (
-                    <View
-                      key={idx}
-                      className="h-14 w-14 rounded-full bg-slate-100 items-center justify-center"
-                    >
-                      <Ionicons name={opt.icon} size={22} color={opt.color} />
-                    </View>
-                  ))}
-                </View>
-                <View className="flex-row items-center rounded-2xl border border-slate-200 px-3 py-3">
-                  <Text className="flex-1 text-sm text-slate-800">
-                    https://www.cohart.com/event/{item.id ?? "link"}
-                  </Text>
-                  <Pressable onPress={() => setShowShare(false)}>
-                    <Text className="text-sm font-semibold text-[#0B73FF]">
-                      Copy Link
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
-            </View>
-          </Modal>
-        ) : null}
-      </View>
-    </View>
-  );
-}
-
-function MomentCard({
-  item,
-  onPress,
-}: {
-  item: Artwork;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className="rounded-3xl bg-white border border-slate-100 overflow-hidden"
-      style={cardShadow}
-    >
-      <Image
-        source={{ uri: item.image }}
-        className="w-full"
-        style={{ aspectRatio: 3 / 4 }}
-        resizeMode="cover"
-      />
-      <View className="px-4 py-4 gap-2">
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-2">
-            <View className="h-8 w-8 rounded-full bg-slate-200 overflow-hidden">
-              {item.artistAvatar ? (
-                <Image
-                  source={{ uri: item.artistAvatar }}
-                  className="h-full w-full"
-                />
-              ) : null}
-            </View>
-            <View className="flex-row items-center gap-1">
-              <Text className="text-sm font-semibold text-slate-800">
-                {item.artist}
-              </Text>
-              <Ionicons name="checkmark-circle" size={14} color="#22C55E" />
-            </View>
-          </View>
-          <View className="flex-row items-center gap-3">
-            <Pressable className="flex-row items-center gap-1 active:opacity-80">
-              <Ionicons name="heart-outline" size={18} color="#0F172A" />
-              <Text className="text-xs font-semibold text-slate-700">120</Text>
-            </Pressable>
-            <Pressable className="flex-row items-center gap-1 active:opacity-80">
-              <Ionicons name="chatbubble-outline" size={18} color="#0F172A" />
-              <Text className="text-xs font-semibold text-slate-700">32</Text>
-            </Pressable>
-          </View>
-        </View>
-        <Text className="text-sm text-slate-600">{item.title}</Text>
-      </View>
-    </Pressable>
-  );
-}
-
-function InspirationCard({ item }: { item: InspirationArticle }) {
-  const date = new Date(item.publishedAt);
-  const dateLabel = date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-
-  return (
-    <View
-      className="rounded-3xl bg-white border border-slate-100 overflow-hidden"
-      style={cardShadow}
-    >
-      <Image
-        source={{ uri: item.image }}
-        className="h-44 w-full"
-        resizeMode="cover"
-      />
-      <View className="px-4 py-4 gap-2">
-        <Text className="text-xs font-semibold text-slate-500">
-          {item.category}
-        </Text>
-        <Text className="text-base font-semibold text-slate-900">
-          {item.title}
-        </Text>
-        <Text className="text-xs text-slate-500">
-          {item.author} • {dateLabel} • {item.readTime}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function Badge({
-  label,
-  color,
-  ghost,
-}: {
-  label: string;
-  color: string;
-  ghost?: boolean;
-}) {
-  const backgroundColor = ghost ? `${color}15` : color;
-  const textColor = ghost ? color : "#FFFFFF";
-
-  return (
-    <View
-      className="self-start rounded-full px-2.5 py-1"
-      style={{ backgroundColor }}
-    >
-      <Text
-        className={`text-[10px] font-semibold uppercase`}
-        style={{ color: textColor }}
-      >
-        {label}
-      </Text>
-    </View>
-  );
-}
-
-function Pill({ label, color }: { label: string; color: string }) {
-  return (
-    <View
-      className="rounded-full px-3 py-1"
-      style={{ backgroundColor: `${color}1A` }}
-    >
-      <Text
-        className="text-[12px] font-semibold"
-        style={{ color }}
-      >
-        {label}
-      </Text>
-    </View>
-  );
-}
-
 const tabBarContent = {
   paddingHorizontal: 16,
   paddingVertical: 6,
@@ -797,151 +313,3 @@ const tabBarContent = {
   gap: 10,
   alignItems: "center" as const,
 };
-
-const chipStyle = {
-  paddingHorizontal: 14,
-  paddingVertical: 8,
-  minHeight: 36,
-};
-
-type ChangeLocationSheetProps = {
-  visible: boolean;
-  locationText: string;
-  radius: string;
-  onChangeLocation: (value: string) => void;
-  onChangeRadius: (value: string) => void;
-  showRadiusOptions: boolean;
-  setShowRadiusOptions: (v: boolean) => void;
-  onClose: () => void;
-  onApply: () => void;
-};
-
-function ChangeLocationSheet({
-  visible,
-  locationText,
-  radius,
-  onChangeLocation,
-  onChangeRadius,
-  showRadiusOptions,
-  setShowRadiusOptions,
-  onClose,
-  onApply,
-}: ChangeLocationSheetProps) {
-  if (!visible) return null;
-
-  const slide = new Animated.Value(1);
-  Animated.timing(slide, {
-    toValue: 0,
-    duration: 220,
-    easing: Easing.out(Easing.ease),
-    useNativeDriver: true,
-  }).start();
-
-  const translateY = slide.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 60],
-  });
-
-  return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <View className="flex-1 bg-black/35 justify-end">
-        <Pressable className="flex-1" onPress={onClose} />
-        <Animated.View
-          className="bg-white rounded-t-[28px] px-5 pt-4 pb-6"
-          style={{
-            transform: [{ translateY }],
-          }}
-        >
-          <View className="items-center mb-4">
-            <View className="w-16 h-1.5 rounded-full bg-slate-200" />
-          </View>
-
-          <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-[18px] font-semibold text-slate-900">
-              Change Location
-            </Text>
-            <Pressable onPress={onClose} hitSlop={8}>
-              <Ionicons name="close-outline" size={26} color="#0F172A" />
-            </Pressable>
-          </View>
-
-          <View className="mb-3">
-            <Text className="text-xs font-semibold text-slate-600 mb-2">
-              LOCATION
-            </Text>
-            <View className="flex-row items-center gap-3 rounded-2xl border border-slate-200 px-3 py-3 bg-white">
-              <Ionicons name="location-outline" size={18} color="#0F172A"/>
-              <TextInput
-                placeholder="Search location"
-                value={locationText}
-                onChangeText={onChangeLocation}
-                className="flex-1 text-slate-900 "
-                placeholderTextColor="#94A3B8"
-              />
-            </View>
-          </View>
-
-          <View className="mb-5">
-            <Text className="text-xs font-semibold text-slate-600 mb-2">
-              RADIUS
-            </Text>
-            <Pressable
-              className="flex-row items-center justify-between rounded-2xl border border-slate-200 px-4 py-3 bg-white"
-              onPress={() => setShowRadiusOptions(!showRadiusOptions)}
-            >
-              <Text className="text-base text-slate-900">{radius}</Text>
-              <Ionicons name="chevron-down-outline" size={18} color="#0F172A" />
-            </Pressable>
-            {showRadiusOptions ? (
-              <View className="mt-2 rounded-2xl border border-slate-200 bg-white overflow-hidden">
-                {["1 mile", "5 miles", "10 miles", "25 miles"].map((opt) => (
-                  <Pressable
-                    key={opt}
-                    className="px-4 py-3 active:bg-slate-50"
-                    onPress={() => {
-                      onChangeRadius(opt);
-                      setShowRadiusOptions(false);
-                    }}
-                  >
-                    <Text
-                      className={`text-base ${
-                        radius === opt
-                          ? "text-slate-900 font-semibold"
-                          : "text-slate-700"
-                      }`}
-                    >
-                      {opt}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            ) : null}
-          </View>
-
-          <Pressable
-            onPress={onApply}
-            className="mt-auto rounded-full bg-[#0B73FF] py-4 items-center"
-          >
-            <Text className="text-base font-semibold text-white">Apply</Text>
-          </Pressable>
-        </Animated.View>
-      </View>
-    </Modal>
-  );
-}
-
-const cardShadow = {
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.05,
-  shadowRadius: 10,
-  elevation: 4,
-};
-
-const cardContainer = {
-  borderRadius: 28,
-  borderWidth: 1,
-  borderColor: "#E2E8F0",
-  overflow: "hidden" as const,
-};
-    
