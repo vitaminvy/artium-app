@@ -33,19 +33,21 @@ export default function ChangeLocationSheet({
   onClose,
   onApply,
 }: ChangeLocationSheetProps) {
-  if (!visible) return null;
-
-  // FIX: Using useRef to persist animated value across re-renders
   const slide = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    Animated.timing(slide, {
-      toValue: 0,
-      duration: 220,
-      easing: Easing.out(Easing.ease),
-      useNativeDriver: true,
-    }).start();
-  }, [visible]); // Only run when visibility changes
+    if (visible) {
+      slide.setValue(1);
+      Animated.timing(slide, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }).start();
+    } else {
+      slide.setValue(1);
+    }
+  }, [visible, slide]);
 
   const translateY = slide.interpolate({
     inputRange: [0, 1],
@@ -53,7 +55,7 @@ export default function ChangeLocationSheet({
   });
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/35 justify-end">
         <Pressable className="flex-1" onPress={onClose} />
         <Animated.View
