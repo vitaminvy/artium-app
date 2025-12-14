@@ -45,7 +45,14 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
         ]
       );
     } catch (error: any) {
-      setErrorMsg(error?.message || "Failed to send reset email.");
+      const code = error?.code;
+      if (code === "auth/invalid-email") {
+        setErrorMsg("Please enter a valid email address.");
+      } else if (code === "auth/user-not-found") {
+        setErrorMsg("No account found for this email.");
+      } else {
+        setErrorMsg("Failed to send reset email. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
