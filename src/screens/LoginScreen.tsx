@@ -83,9 +83,7 @@ export default function LoginScreen({ navigation }: Props) {
       const signInResult = await GoogleSignin.signIn();
 
       if (signInResult.type !== "success" || !signInResult.data?.idToken) {
-        throw new Error(
-          "Could not get idToken from Google or sign-in was not successful."
-        );
+        throw new Error("Google sign-in did not complete. Please try again.");
       }
       const idToken = signInResult.data.idToken;
       const googleUser = signInResult.data.user; // Get the user info from the data object
@@ -113,15 +111,15 @@ export default function LoginScreen({ navigation }: Props) {
       // No reload or manual token management is needed.
     } catch (error: any) {
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        setErrorMsg("Đăng nhập Google bị hủy.");
+        setErrorMsg("Google sign-in was cancelled.");
       } else if (error.code === statusCodes.IN_PROGRESS) {
-        setErrorMsg("Đăng nhập Google đang trong tiến trình.");
+        setErrorMsg("Google sign-in is already in progress.");
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        setErrorMsg("Google Play Services không khả dụng.");
+        setErrorMsg("Google Play Services not available.");
       } else {
         console.error("Lỗi đăng nhập Google:", error);
         setErrorMsg(
-          `Đăng nhập Google thất bại: ${error.message || "Không xác định"}`
+          `Google sign-in failed: ${error.message || "Unknown error"}`
         );
       }
     } finally {
