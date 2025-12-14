@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { View, Text, Image, Pressable, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
 import { EventItem } from "../../types";
 import { Badge } from "../ui/DiscoverShared";
+import { openShareLink } from "../../../../shared/utils/share";
 
 const cardShadow = {
   shadowColor: "#000",
@@ -21,6 +23,7 @@ export default function EventCard({ item }: { item: EventItem }) {
   );
   const [showMenu, setShowMenu] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const RSVP_META: Record<
     typeof rsvp,
@@ -185,27 +188,41 @@ export default function EventCard({ item }: { item: EventItem }) {
               <View className="w-full rounded-3xl bg-white p-4 gap-4 shadow-2xl">
                 <View className="flex-row justify-between">
                   {[
-                    { icon: "logo-whatsapp" as const, color: "#25D366" },
-                    { icon: "logo-facebook" as const, color: "#1877F2" },
-                    { icon: "logo-twitter" as const, color: "#000000" },
-                    { icon: "logo-linkedin" as const, color: "#0A66C2" },
-                    { icon: "paper-plane-outline" as const, color: "#0EA5E9" },
+                    { icon: "logo-whatsapp" as const, color: "#25D366", key: "whatsapp" },
+                    { icon: "logo-facebook" as const, color: "#1877F2", key: "facebook" },
+                    { icon: "logo-twitter" as const, color: "#000000", key: "twitter" },
+                    { icon: "logo-linkedin" as const, color: "#0A66C2", key: "linkedin" },
+                    { icon: "paper-plane-outline" as const, color: "#0EA5E9", key: "telegram" },
                   ].map((opt, idx) => (
-                    <View
+                    <Pressable
                       key={idx}
-                      className="h-14 w-14 rounded-full bg-slate-100 items-center justify-center"
+                      className="h-14 w-14 rounded-full bg-slate-100 items-center justify-center active:opacity-80"
+                      onPress={() =>
+                        openShareLink(
+                          opt.key as any,
+                          `https://www.artium.com/event/${item.id ?? "link"}`,
+                          item.title
+                        )
+                      }
                     >
                       <Ionicons name={opt.icon} size={22} color={opt.color} />
-                    </View>
+                    </Pressable>
                   ))}
                 </View>
                 <View className="flex-row items-center rounded-2xl border border-slate-200 px-3 py-3">
                   <Text className="flex-1 text-sm text-slate-800">
-                    https://www.cohart.com/event/{item.id ?? "link"}
+                    https://www.artium.com/event/{item.id ?? "link"}
                   </Text>
-                  <Pressable onPress={() => setShowShare(false)}>
+                  <Pressable
+                    onPress={async () => {
+                      const url = `https://www.artium.com/event/${item.id ?? "link"}`;
+                      await Clipboard.setStringAsync(url);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 1500);
+                    }}
+                  >
                     <Text className="text-sm font-semibold text-[#0B73FF]">
-                      Copy Link
+                      {copied ? "Copied" : "Copy"}
                     </Text>
                   </Pressable>
                 </View>
