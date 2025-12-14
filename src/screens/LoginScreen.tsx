@@ -150,6 +150,14 @@ export default function LoginScreen({ navigation }: Props) {
         value={password}
       />
 
+      <Pressable
+        style={{ alignSelf: "flex-end", marginBottom: 8 }}
+        onPress={() => navigation.navigate("ForgotPassword")}
+        disabled={loading}
+      >
+        <Text style={{ color: "#111", fontWeight: "600" }}>Quên mật khẩu?</Text>
+      </Pressable>
+
       {errorMsg ? (
         <Text className="text-red-500 text-sm mb-3">{errorMsg}</Text>
       ) : null}
