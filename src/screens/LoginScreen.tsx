@@ -6,6 +6,7 @@ import {
   Pressable,
   ActivityIndicator,
   Platform,
+  ImageBackground,
 } from "react-native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
@@ -34,6 +35,7 @@ export default function LoginScreen({ navigation }: Props) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   // The GoogleSignin.configure call has been moved to src/app/index.tsx
   // to ensure it only runs once when the app starts.
@@ -46,18 +48,18 @@ export default function LoginScreen({ navigation }: Props) {
       await doSignInWithEmailAndPassword(email.trim(), password);
       // AuthContext's onAuthStateChanged will handle navigation when user is authenticated
     } catch (err: any) {
-      let msg = "Đăng nhập thất bại";
+      let msg = "Sign-in failed";
 
       switch (err.code) {
         case "auth/user-not-found":
-          msg = "Tài khoản không tồn tại";
+          msg = "Account not found";
           break;
         case "auth/wrong-password":
         case "auth/invalid-credential":
-          msg = "Email hoặc mật khẩu không đúng";
+          msg = "Incorrect email or password";
           break;
         case "auth/invalid-email":
-          msg = "Email không hợp lệ";
+          msg = "Invalid email format";
           break;
         default:
           msg = err.message || msg;
@@ -128,73 +130,124 @@ export default function LoginScreen({ navigation }: Props) {
   }
 
   return (
-    <View className="flex-1 bg-white px-6 justify-center">
-      <Text className="text-3xl font-bold mb-8 text-center">Sign In</Text>
-
-      <TextInput
-        className="border border-gray-300 rounded-xl px-4 py-3 text-base mb-4"
-        placeholder="Email"
-        placeholderTextColor="#999"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        onChangeText={setEmail}
-        value={email}
-      />
-
-      <TextInput
-        className="border border-gray-300 rounded-xl px-4 py-3 text-base mb-2"
-        placeholder="Password"
-        placeholderTextColor="#999"
-        secureTextEntry
-        onChangeText={setPassword}
-        value={password}
-      />
-
-      <Pressable
-        style={{ alignSelf: "flex-end", marginBottom: 8 }}
-        onPress={() => navigation.navigate("ForgotPassword")}
-        disabled={loading}
+    <View className="flex-1 bg-white">
+      <ImageBackground
+        source={require("../../assets/auth-decor.jpg")}
+        resizeMode="cover"
+        className="h-[260px] w-full"
       >
-        <Text style={{ color: "#111", fontWeight: "600" }}>Quên mật khẩu?</Text>
-      </Pressable>
+        <View className="absolute inset-0 bg-black/35" />
+        <View className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/30 to-transparent" />
+        <View className="flex-1 justify-end pb-12 px-6">
+          <Text className="text-white text-4xl font-extrabold">
+            Welcome Back!
+          </Text>
+        </View>
+      </ImageBackground>
 
-      {errorMsg ? (
-        <Text className="text-red-500 text-sm mb-3">{errorMsg}</Text>
-      ) : null}
-
-      <Pressable
-        className="bg-black py-4 rounded-xl items-center mt-2"
-        onPress={handleLogin}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="white" />
-        ) : (
-          <Text className="text-white text-lg font-semibold">Login</Text>
-        )}
-      </Pressable>
-
-      <View className="flex-row items-center my-4">
-        <View className="flex-1 h-px bg-gray-200" />
-        <Text className="mx-3 text-gray-400 text-sm">or</Text>
-        <View className="flex-1 h-px bg-gray-200" />
-      </View>
-
-      <Pressable
-        onPress={onGoogleButtonPress}
-        disabled={loading}
-        className="flex-row items-center justify-center gap-3 border border-gray-300 rounded-xl py-3 mb-3"
-      >
-        <Ionicons name="logo-google" size={20} color="#DB4437" />
-        <Text className="text-base font-semibold">Continue with Google</Text>
-      </Pressable>
-
-      <Pressable className="mt-5" onPress={() => navigation.navigate("SignUp")}>
-        <Text className="text-gray-600 text-center">
-          Don't have an account?{" "}
-          <Text className="text-black font-semibold">Sign up now</Text>
+      <View className="-mt-6 rounded-t-3xl bg-white px-6 pb-10 pt-8">
+        <Text className="text-center text-base text-gray-700 font-semibold mb-5">
+          Sign in with
         </Text>
-      </Pressable>
+
+        <Pressable
+          onPress={onGoogleButtonPress}
+          disabled={loading}
+          className="flex-row items-center justify-center gap-3 border border-gray-300 rounded-full py-3 px-4 bg-white shadow-sm"
+        >
+          <Ionicons name="logo-google" size={20} color="#DB4437" />
+          <Text className="text-base font-semibold text-gray-900">
+            Continue with Google
+          </Text>
+        </Pressable>
+
+        <View className="flex-row items-center my-6">
+          <View className="flex-1 h-px bg-gray-200" />
+          <Text className="mx-3 text-gray-400 text-sm uppercase tracking-[0.2em]">
+            OR
+          </Text>
+          <View className="flex-1 h-px bg-gray-200" />
+        </View>
+
+        <View className="gap-4">
+          <View>
+            <Text className="text-xs font-semibold text-gray-600">
+              EMAIL ADDRESS <Text className="text-red-500">*</Text>
+            </Text>
+            <TextInput
+              className="mt-2 h-12 rounded-xl border border-gray-200 px-4 text-base text-gray-900 bg-white"
+              placeholder="Enter email address"
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              onChangeText={setEmail}
+              value={email}
+              editable={!loading}
+            />
+          </View>
+
+          <View>
+            <Text className="text-xs font-semibold text-gray-600">
+              PASSWORD <Text className="text-red-500">*</Text>
+            </Text>
+            <View className="mt-2 h-12 rounded-xl border border-gray-200 px-4 flex-row items-center bg-white">
+              <TextInput
+                className="flex-1 text-base text-gray-900"
+                placeholder="Enter password"
+                placeholderTextColor="#9CA3AF"
+                secureTextEntry={!showPassword}
+                onChangeText={setPassword}
+                value={password}
+                editable={!loading}
+              />
+              <Pressable onPress={() => setShowPassword((prev) => !prev)}>
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={20}
+                  color="#6B7280"
+                />
+              </Pressable>
+            </View>
+          </View>
+        </View>
+
+        <Pressable
+          className="mt-3 self-end"
+          onPress={() => navigation.navigate("ForgotPassword")}
+          disabled={loading}
+        >
+          <Text className="text-sm font-semibold text-gray-800">
+            Forgot password?
+          </Text>
+        </Pressable>
+
+        {errorMsg ? (
+          <Text className="text-red-500 text-sm mt-2">{errorMsg}</Text>
+        ) : null}
+
+        <Pressable
+          className="mt-5 h-12 rounded-full bg-[#1a73e8] items-center justify-center shadow-sm active:bg-[#125bc0]"
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text className="text-white text-base font-semibold">Sign in</Text>
+          )}
+        </Pressable>
+
+        <Pressable
+          className="mt-5 items-center"
+          onPress={() => navigation.navigate("SignUp")}
+          disabled={loading}
+        >
+          <Text className="text-sm text-gray-700">
+            Not yet on Artium?{" "}
+            <Text className="font-semibold text-[#1a73e8]">Sign up</Text>
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
