@@ -28,7 +28,8 @@ export default function DiscoverArtworksTab({ data }: Props) {
       renderItem={renderItem}
       contentContainerStyle={{
         paddingHorizontal: 12,
-        paddingBottom: 20,
+        paddingTop: 12,
+        paddingBottom: 120,
         rowGap: 12,
       }}
       columnWrapperStyle={{ columnGap: 12 }}

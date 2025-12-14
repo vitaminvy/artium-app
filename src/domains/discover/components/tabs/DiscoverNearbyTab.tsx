@@ -50,7 +50,7 @@ export default function DiscoverNearbyTab({
   return (
     <ScrollView
       className="flex-1"
-      contentContainerStyle={{ paddingBottom: 24 }}
+      contentContainerStyle={{ paddingTop: 8, paddingBottom: 120 }}
       showsVerticalScrollIndicator={false}
     >
       <View className="px-4 py-3 flex-row items-center justify-between">

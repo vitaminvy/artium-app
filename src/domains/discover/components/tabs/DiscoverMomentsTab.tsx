@@ -25,7 +25,8 @@ export default function DiscoverMomentsTab({ data }: Props) {
       )}
       contentContainerStyle={{
         paddingHorizontal: 12,
-        paddingBottom: 20,
+        paddingTop: 12,
+        paddingBottom: 120,
         rowGap: 16,
       }}
       showsVerticalScrollIndicator={false}

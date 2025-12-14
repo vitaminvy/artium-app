@@ -13,7 +13,7 @@ type RootStackParamList = {
   ArtworkDetail: { id?: string };
   Login: undefined;
   Upload: undefined;
-};
+  };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 

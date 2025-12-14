@@ -19,7 +19,8 @@ export default function DiscoverInspirationTab({ data }: Props) {
       renderItem={renderItem}
       contentContainerStyle={{
         paddingHorizontal: 12,
-        paddingBottom: 24,
+        paddingTop: 12,
+        paddingBottom: 120,
         rowGap: 12,
       }}
       showsVerticalScrollIndicator={false}
