@@ -1,48 +1,80 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { auth } from '../../../configs/firebase';
-import { User, onAuthStateChanged } from 'firebase/auth';
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { onAuthStateChanged, User } from "firebase/auth";
 
-// Define the shape of the context's value
-interface AuthContextType {
-  user: User | null;
-  status: 'loading' | 'authenticated' | 'unauthenticated';
-}
+import { auth } from "@/configs/firebase";
+import { AuthStatus } from "@/domains/auth/types";
 
-// Create the context with a default value
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  status: 'loading',
-});
+type AuthContextType = {
+  currentUser: User | null;
+  userLoggedIn: boolean;
+  isEmailUser: boolean;
+  isGoogleUser: boolean;
+  loading: boolean;
+  status: AuthStatus;
+  setCurrentUser: (user: User | null) => void;
+};
 
-// Create a provider component
+const defaultValue: AuthContextType = {
+  currentUser: null,
+  userLoggedIn: false,
+  isEmailUser: false,
+  isGoogleUser: false,
+  loading: true,
+  status: "loading",
+  setCurrentUser: () => {},
+};
+
+const AuthContext = createContext<AuthContextType>(defaultValue);
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [authData, setAuthData] = useState<AuthContextType>({
-    user: null,
-    status: 'loading',
-  });
+  const [state, setState] = useState<AuthContextType>(defaultValue);
 
   useEffect(() => {
-    // onAuthStateChanged returns an unsubscriber
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser) {
-        // User is signed in
-        setAuthData({ user: firebaseUser, status: 'authenticated' });
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const isEmail = user.providerData.some(
+          (provider) => provider.providerId === "password"
+        );
+        const isGoogle = user.providerData.some(
+          (provider) => provider.providerId === "google.com"
+        );
+
+        setState((prev) => ({
+          ...prev,
+          currentUser: { ...user },
+          userLoggedIn: true,
+          isEmailUser: isEmail,
+          isGoogleUser: isGoogle,
+          loading: false,
+          status: "authenticated",
+        }));
       } else {
-        // User is signed out
-        setAuthData({ user: null, status: 'unauthenticated' });
+        setState((prev) => ({
+          ...prev,
+          currentUser: null,
+          userLoggedIn: false,
+          isEmailUser: false,
+          isGoogleUser: false,
+          loading: false,
+          status: "unauthenticated",
+        }));
       }
     });
 
-    // Cleanup subscription on unmount
-    return () => unsubscribe();
+    return unsubscribe;
   }, []);
 
+  const value: AuthContextType = {
+    ...state,
+    setCurrentUser: (user: User | null) =>
+      setState((prev) => ({ ...prev, currentUser: user })),
+  };
+
   return (
-    <AuthContext.Provider value={authData}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={value}>
+      {!state.loading && children}
+    </AuthContext.Provider>
   );
 }
 
-// Create a custom hook to use the auth context
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
+export const useAuth = () => useContext(AuthContext);

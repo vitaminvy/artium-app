@@ -5,29 +5,29 @@ import {
   TextInput,
   Pressable,
   ActivityIndicator,
-  DevSettings,
   Platform,
 } from "react-native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
 
-
-import { tokenStorage } from "../domains/auth/services/tokenStorage";
 import { AuthStackParamList } from "../app/navigation/AuthStack";
 
-import { GoogleSignin, GoogleSigninButton, statusCodes } from "@react-native-google-signin/google-signin";
+import {
+  GoogleSignin,
+  GoogleSigninButton,
+  statusCodes,
+} from "@react-native-google-signin/google-signin";
 import { auth, firestore } from "../configs/firebase";
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
+import { doSignInWithEmailAndPassword } from "@/domains/auth/services/firebaseAuth";
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, "LogIn">;
 };
 
 WebBrowser.maybeCompleteAuthSession();
-
-
 
 export default function LoginScreen({ navigation }: Props) {
   const [email, setEmail] = useState("");
@@ -43,21 +43,21 @@ export default function LoginScreen({ navigation }: Props) {
     setErrorMsg("");
 
     try {
-      // Điều này cần được thay thế bằng logic đăng nhập bằng email/password thực tế của Firebase
-      await tokenStorage.set("demo-token");
-      DevSettings.reload();
+      await doSignInWithEmailAndPassword(email.trim(), password);
+      // AuthContext's onAuthStateChanged will handle navigation when user is authenticated
     } catch (err: any) {
-      let msg = "Login failed";
+      let msg = "Đăng nhập thất bại";
 
       switch (err.code) {
         case "auth/user-not-found":
-          msg = "Account not found";
+          msg = "Tài khoản không tồn tại";
           break;
         case "auth/wrong-password":
-          msg = "Wrong password";
+        case "auth/invalid-credential":
+          msg = "Email hoặc mật khẩu không đúng";
           break;
         case "auth/invalid-email":
-          msg = "Invalid email";
+          msg = "Email không hợp lệ";
           break;
         default:
           msg = err.message || msg;
@@ -74,12 +74,16 @@ export default function LoginScreen({ navigation }: Props) {
     setLoading(true);
     setErrorMsg("");
     try {
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      
+      await GoogleSignin.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
+      });
+
       const signInResult = await GoogleSignin.signIn();
 
       if (signInResult.type !== "success" || !signInResult.data?.idToken) {
-        throw new Error("Could not get idToken from Google or sign-in was not successful.");
+        throw new Error(
+          "Could not get idToken from Google or sign-in was not successful."
+        );
       }
       const idToken = signInResult.data.idToken;
       const googleUser = signInResult.data.user; // Get the user info from the data object
@@ -89,19 +93,22 @@ export default function LoginScreen({ navigation }: Props) {
       const userCredential = await signInWithCredential(auth, googleCredential);
       const firebaseUser = userCredential.user;
 
-      await setDoc(doc(firestore, "users", firebaseUser.uid), {
-        uid: firebaseUser.uid,
-        email: firebaseUser.email || googleUser.email, // Use Firebase user email, fallback to googleUser if null
-        displayName: firebaseUser.displayName || googleUser.name, // Use Firebase user display name, fallback to googleUser
-        photoURL: firebaseUser.photoURL || googleUser.photo, // Use Firebase user photo, fallback to googleUser
-        createdAt: firebaseUser.metadata.creationTime,
-        lastLoginAt: firebaseUser.metadata.lastSignInTime,
-      }, { merge: true });
+      await setDoc(
+        doc(firestore, "users", firebaseUser.uid),
+        {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || googleUser.email, // Use Firebase user email, fallback to googleUser if null
+          displayName: firebaseUser.displayName || googleUser.name, // Use Firebase user display name, fallback to googleUser
+          photoURL: firebaseUser.photoURL || googleUser.photo, // Use Firebase user photo, fallback to googleUser
+          createdAt: firebaseUser.metadata.creationTime,
+          lastLoginAt: firebaseUser.metadata.lastSignInTime,
+        },
+        { merge: true }
+      );
 
       // Login is now handled by the onAuthStateChanged listener in AuthContext.
       // The RootNavigator will automatically switch to the main app screen.
       // No reload or manual token management is needed.
-
     } catch (error: any) {
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
         setErrorMsg("Đăng nhập Google bị hủy.");
@@ -111,7 +118,9 @@ export default function LoginScreen({ navigation }: Props) {
         setErrorMsg("Google Play Services không khả dụng.");
       } else {
         console.error("Lỗi đăng nhập Google:", error);
-        setErrorMsg(`Đăng nhập Google thất bại: ${error.message || "Không xác định"}`);
+        setErrorMsg(
+          `Đăng nhập Google thất bại: ${error.message || "Không xác định"}`
+        );
       }
     } finally {
       setLoading(false); // Make sure to turn off loading here
@@ -171,16 +180,6 @@ export default function LoginScreen({ navigation }: Props) {
         <Ionicons name="logo-google" size={20} color="#DB4437" />
         <Text className="text-base font-semibold">Continue with Google</Text>
       </Pressable>
-
-      {Platform.OS === "ios" ? (
-        <Pressable
-          disabled={loading}
-          className="flex-row items-center justify-center gap-3 border border-gray-300 rounded-xl py-3"
-        >
-          <Ionicons name="logo-apple" size={20} color="#000" />
-          <Text className="text-base font-semibold">Continue with Apple</Text>
-        </Pressable>
-      ) : null}
 
       <Pressable className="mt-5" onPress={() => navigation.navigate("SignUp")}>
         <Text className="text-gray-600 text-center">
