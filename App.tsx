@@ -1,7 +1,13 @@
 import "./global.css";
 import { LogBox } from "react-native";
 import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, SafeAreaView } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  SafeAreaView,
+  Image,
+} from "react-native";
 import AppEntry from "./src/app";
 import {
   configureReanimatedLogger,
@@ -52,7 +58,11 @@ export default function App() {
   return (
     <SafeAreaView className="flex-1 bg-white items-center justify-center">
       <View className="items-center px-6">
-        <Text className="text-4xl font-bold text-slate-800 mb-2">ARTIUM</Text>
+        <Image
+          source={require("./assets/logos/logo-full-text-light-mode.png")}
+          resizeMode="contain"
+          style={{ width: 240, height: 90, marginBottom: 12 }}
+        />
         <Text className="text-center text-gray-500 mb-8">
           Landing Page Placeholder
         </Text>
