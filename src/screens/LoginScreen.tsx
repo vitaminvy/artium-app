@@ -41,6 +41,15 @@ export default function LoginScreen({ navigation }: Props) {
   // to ensure it only runs once when the app starts.
 
   async function handleLogin() {
+    if (!email.trim()) {
+      setErrorMsg("Please enter your email.");
+      return;
+    }
+    if (!password) {
+      setErrorMsg("Please enter your password.");
+      return;
+    }
+
     setLoading(true);
     setErrorMsg("");
 
@@ -60,6 +69,9 @@ export default function LoginScreen({ navigation }: Props) {
           break;
         case "auth/invalid-email":
           msg = "Invalid email format";
+          break;
+        case "auth/missing-password":
+          msg = "Please enter your password.";
           break;
         default:
           msg = err.message || msg;
