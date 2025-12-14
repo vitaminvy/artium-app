@@ -1,12 +1,31 @@
-import React from "react";
+import React, { useEffect } from "react";
 import RootNavigator from "./navigation/RootNavigator";
-import { useAuthBootstrap } from "../domains/auth/hooks/useAuthBootstrap";
+import { useAuth, AuthProvider } from "../domains/auth/contexts/AuthContext";
 import Loader from "../shared/components/Loader";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
 
-export default function AppEntry() {
-  const auth = useAuthBootstrap();
+function NavigationWrapper() {
+  const auth = useAuth();
 
-  if (auth.status === "loading") return <Loader />;
+  useEffect(() => {
+    // Configure Google Sign-In once when the app's navigation is ready.
+    GoogleSignin.configure({
+      webClientId: "300008030002-ri1epn1lmsvsvnuerdutcvilei6ifrd6.apps.googleusercontent.com",
+      offlineAccess: false,
+    });
+  }, []);
+
+  if (auth.status === "loading") {
+    return <Loader />;
+  }
 
   return <RootNavigator authStatus={auth.status} />;
+}
+
+export default function AppEntry() {
+  return (
+    <AuthProvider>
+      <NavigationWrapper />
+    </AuthProvider>
+  );
 }
