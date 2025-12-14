@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, ScrollView } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import ScreenHeader from "../shared/components/ScreenHeader";
+import UnderlineHome from "../../assets/headers/underline-home.svg";
 
 import { useDiscover } from "../domains/discover/hooks/useDiscover";
 import { DiscoverTab } from "../domains/discover/types";
@@ -81,7 +82,7 @@ export default function DiscoverScreen() {
         badgeLabel="Blog"
         actionType="search"
         onPressAction={() => {}}
-        underlineSource={require("../../assets/headers/underline-home.svg")}
+        underlineSource={UnderlineHome}
       />
 
       <View className="bg-white border-b border-slate-100 pt-2 pb-3">

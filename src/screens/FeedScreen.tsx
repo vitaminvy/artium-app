@@ -3,6 +3,7 @@
 import React from "react";
 import { View, Text } from "react-native";
 import ScreenHeader from "../shared/components/ScreenHeader";
+import UnderlineHome from "../../assets/headers/underline-home.svg";
 
 export default function FeedScreen() {
   return (
@@ -12,7 +13,7 @@ export default function FeedScreen() {
         badgeLabel="Blog"
         actionType="notifications"
         onPressAction={() => console.log("Open notifications")}
-        underlineSource={require("../../assets/headers/underline-home.svg")}
+        underlineSource={UnderlineHome}
       />
 
       <View className="flex-1 items-center justify-center px-6">
