@@ -30,7 +30,7 @@ export default function ReshareSheet({
   const colorScheme = useColorScheme();
   const sheetRef = useRef<BottomSheetModal>(null);
   const [note, setNote] = useState("");
-  const snapPoints = useMemo(() => ["60%"], []);
+  const snapPoints = useMemo(() => ["90%"], []);
 
   // Handle sheet visibility
   useEffect(() => {

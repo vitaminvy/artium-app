@@ -1,5 +1,11 @@
 import React, { useEffect, useMemo, useRef, useCallback, useState } from "react";
-import { View, Pressable, Text, TextInput, useColorScheme } from "react-native";
+import {
+  View,
+  Pressable,
+  Text,
+  useColorScheme,
+  useWindowDimensions,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
@@ -7,9 +13,14 @@ import {
   BottomSheetBackdrop,
   BottomSheetFlatList,
   BottomSheetModal,
+  BottomSheetFooter,
+  BottomSheetTextInput,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
-import type { BottomSheetBackdropProps } from "@gorhom/bottom-sheet";
+import type {
+  BottomSheetBackdropProps,
+  BottomSheetFooterProps,
+} from "@gorhom/bottom-sheet";
 import { FeedComment, FeedPost } from "../../types";
 import { CURRENT_USER, FEED_STRINGS } from "../../constants";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,6 +33,86 @@ type Props = {
   onClose: () => void;
 };
 
+type FooterExtraProps = {
+  bottomInset: number;
+  colorScheme: "light" | "dark" | null | undefined;
+  onSubmit: (text: string) => void;
+  resetKey: string;
+};
+
+function CommentsFooter({
+  bottomInset,
+  colorScheme,
+  onSubmit,
+  resetKey,
+  ...props
+}: BottomSheetFooterProps & FooterExtraProps) {
+  const [text, setText] = useState("");
+
+  useEffect(() => {
+    setText("");
+  }, [resetKey]);
+
+  const handleSubmit = useCallback(() => {
+    const v = text.trim();
+    if (!v) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onSubmit(v);
+    setText("");
+  }, [text, onSubmit]);
+
+  const canPost = text.trim().length > 0;
+
+  return (
+    <BottomSheetFooter {...props} bottomInset={bottomInset}>
+      <View className="px-4 pt-3 bg-white border-t border-slate-100">
+        <View className="flex-row items-center rounded-full border border-slate-200 px-3 py-2 bg-slate-50">
+          {CURRENT_USER.avatar ? (
+            <View className="h-8 w-8 rounded-full overflow-hidden mr-2">
+              <Animated.Image
+                source={{ uri: CURRENT_USER.avatar }}
+                className="h-full w-full"
+              />
+            </View>
+          ) : (
+            <View className="h-8 w-8 rounded-full bg-emerald-500 items-center justify-center mr-2">
+              <Text className="text-white text-xs font-semibold">
+                {CURRENT_USER.name?.[0] || "You"}
+              </Text>
+            </View>
+          )}
+
+          <BottomSheetTextInput
+            className="flex-1 text-base text-slate-900"
+            placeholder={FEED_STRINGS.COMMENTS_PLACEHOLDER}
+            placeholderTextColor="#94A3B8"
+            value={text}
+            onChangeText={setText}
+            multiline
+            maxLength={500}
+            keyboardAppearance={colorScheme === "dark" ? "dark" : "light"}
+          />
+
+          <Pressable
+            onPress={handleSubmit}
+            hitSlop={8}
+            disabled={!canPost}
+            className="active:opacity-70"
+          >
+            <Text
+              className={`text-base font-semibold ${canPost ? "text-[#0B73FF]" : "text-slate-300"
+                }`}
+            >
+              {FEED_STRINGS.COMMENTS_POST}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </BottomSheetFooter>
+  );
+}
+
 export default function CommentsSheet({
   visible,
   target,
@@ -32,14 +123,17 @@ export default function CommentsSheet({
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const sheetRef = useRef<BottomSheetModal>(null);
-  const [text, setText] = useState("");
-  const snapPoints = useMemo(() => ["65%", "90%"], []);
+  const { height } = useWindowDimensions();
+  const bottomInset = Math.max(insets.bottom, 14);
+  const snapPoints = useMemo(
+    () => [height * 0.4, height * 0.55],
+    [height]
+  );
 
-  // Handle sheet visibility
   useEffect(() => {
     if (visible) {
       sheetRef.current?.present();
-      setText("");
+      sheetRef.current?.snapToIndex(0);
     } else {
       sheetRef.current?.dismiss();
     }
@@ -53,14 +147,6 @@ export default function CommentsSheet({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     sheetRef.current?.dismiss();
   }, []);
-
-  const handleSubmit = useCallback(() => {
-    if (text.trim()) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      onSubmit(text.trim());
-      setText("");
-    }
-  }, [text, onSubmit]);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -112,6 +198,22 @@ export default function CommentsSheet({
     </View>
   ), []);
 
+  const resetKey = `${visible ? "1" : "0"}:${target?.id ?? "none"}`;
+  const footerHeight = bottomInset + 88;
+
+  const footerComponent = useCallback(
+    (props: BottomSheetFooterProps) => (
+      <CommentsFooter
+        {...props}
+        bottomInset={bottomInset}
+        colorScheme={colorScheme}
+        onSubmit={onSubmit}
+        resetKey={resetKey}
+      />
+    ),
+    [bottomInset, colorScheme, onSubmit, resetKey]
+  );
+
   return (
     <BottomSheetModal
       ref={sheetRef}
@@ -124,81 +226,36 @@ export default function CommentsSheet({
       enablePanDownToClose
       keyboardBehavior="interactive"
       keyboardBlurBehavior="restore"
-      android_keyboardInputMode="adjustResize"
+      footerComponent={footerComponent}
     >
-      <BottomSheetView className="flex-1">
-        {/* Header */}
-        <View className="px-4 pb-3 flex-row items-center justify-between border-b border-slate-100">
-          <Text className="text-xl font-bold text-slate-900">
-            {FEED_STRINGS.COMMENTS_TITLE}
-          </Text>
-          <Pressable
-            onPress={handleClose}
-            hitSlop={8}
-            className="active:opacity-60"
-          >
-            <Ionicons name="close-outline" size={26} color="#0F172A" />
-          </Pressable>
-        </View>
-
-        {/* Comments List */}
-        <BottomSheetFlatList
-          data={comments}
-          keyExtractor={(item : any) => item.id}
-          renderItem={renderItem}
-          ListEmptyComponent={ListEmptyComponent}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ 
-            paddingBottom: 100,
-            flexGrow: 1 
-          }}
-        />
-
-        {/* Input Field - Fixed at bottom */}
-        <View 
-          className="px-4 py-3 bg-white border-t border-slate-100"
-          style={{ paddingBottom: Math.max(insets.bottom, 12) + 12 }}
-        >
-          <View className="flex-row items-center rounded-full border border-slate-200 px-3 py-2 bg-slate-50">
-            {CURRENT_USER.avatar ? (
-              <View className="h-8 w-8 rounded-full overflow-hidden mr-2">
-                <Animated.Image
-                  source={{ uri: CURRENT_USER.avatar }}
-                  className="h-full w-full"
-                />
-              </View>
-            ) : (
-              <View className="h-8 w-8 rounded-full bg-emerald-500 items-center justify-center mr-2">
-                <Text className="text-white text-xs font-semibold">
-                  {CURRENT_USER.name?.[0] || "You"}
-                </Text>
-              </View>
-            )}
-          <TextInput
-            className="flex-1 text-base text-slate-900"
-            placeholder={FEED_STRINGS.COMMENTS_PLACEHOLDER}
-            placeholderTextColor="#94A3B8"
-            value={text}
-            onChangeText={setText}
-            multiline
-            maxLength={500}
-            keyboardAppearance={colorScheme === "dark" ? "dark" : "light"}
-          />
-          <Pressable
-            onPress={handleSubmit}
-            hitSlop={8}
-            disabled={!text.trim()}
-            className="active:opacity-70"
-          >
-            <Text
-              className={`text-base font-semibold ${
-                text.trim() ? "text-[#0B73FF]" : "text-slate-300"
-              }`}
+      <BottomSheetView style={{ flex: 1 }}>
+        <View style={{ flex: 1 }}>
+          <View className="px-4 pb-3 flex-row items-center justify-between border-b border-slate-100">
+            <Text className="text-xl font-bold text-slate-900">
+              {FEED_STRINGS.COMMENTS_TITLE}
+            </Text>
+            <Pressable
+              onPress={handleClose}
+              hitSlop={8}
+              className="active:opacity-60"
             >
-                {FEED_STRINGS.COMMENTS_POST}
-              </Text>
+              <Ionicons name="close-outline" size={26} color="#0F172A" />
             </Pressable>
           </View>
+
+          <BottomSheetFlatList
+            style={{ flex: 1 }}
+            data={comments}
+            keyExtractor={(item: any) => item.id}
+            renderItem={renderItem}
+            ListEmptyComponent={ListEmptyComponent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{
+              paddingBottom: footerHeight,
+              paddingTop: 8,
+            }}
+          />
         </View>
       </BottomSheetView>
     </BottomSheetModal>
