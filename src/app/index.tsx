@@ -1,11 +1,10 @@
-import { useAuthBootstrap } from "../domains/auth/hooks/useAuthBootstrap";
 import RootNavigator from "./navigation/RootNavigator";
-import Loader from "../shared/components/Loader";
+import { AuthStatus } from "../domains/auth/types";
 
-export default function AppEntry() {
-  const auth = useAuthBootstrap();
+type AppEntryProps = {
+  authStatus: AuthStatus;
+};
 
-  if (auth.status === "loading") return <Loader />;
-
-  return <RootNavigator authStatus={auth.status} />;
+export default function AppEntry({ authStatus }: AppEntryProps) {
+  return <RootNavigator authStatus={authStatus} />;
 }
