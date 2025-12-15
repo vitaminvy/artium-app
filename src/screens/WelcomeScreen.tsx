@@ -17,52 +17,14 @@ export default function WelcomeScreen({ navigation }: Props) {
     playerInstance.play();
   });
 
-  const content = (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "flex-end",
-        padding: 30,
-      }}
-    >
-      <Text style={{ color: "white", textAlign: "center", fontSize: 32 }}>
-        Welcome
-      </Text>
-
-      <Pressable
-        onPress={() => navigation.navigate("SignUp")}
-        style={{
-          backgroundColor: "white",
-          padding: 15,
-          borderRadius: 30,
-          marginTop: 30,
-        }}
-      >
-        <Text style={{ textAlign: "center", fontSize: 18 }}>GET STARTED</Text>
-      </Pressable>
-
-      <Pressable onPress={() => navigation.navigate("SignIn")}>
-        <Text
-          style={{
-            color: "white",
-            textAlign: "center",
-            marginTop: 20,
-            fontSize: 16,
-          }}
-        >
-          SIGN IN
-        </Text>
-      </Pressable>
-    </View>
-  );
-
   return (
-    <View style={{ flex: 1 }}>
+    <View className="flex-1">
       {/* Background video (muted, looped) */}
       <VideoView
-        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+        style={StyleSheet.absoluteFill}
         player={player}
         contentFit="cover"
+        nativeControls={false} // tắt toàn bộ UI điều khiển của player
         allowsFullscreen={false}
         allowsPictureInPicture={false}
       />
@@ -70,13 +32,23 @@ export default function WelcomeScreen({ navigation }: Props) {
       {/* Optional overlay for readability */}
       <View
         pointerEvents="none"
-        style={{
-          ...StyleSheet.absoluteFillObject,
-          backgroundColor: "rgba(0,0,0,0.35)",
-        }}
+        style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.35)" }]}
       />
 
-      {content}
+      <View className="flex-1 justify-end px-8 pb-12">
+        <Text className="text-white text-center text-3xl">Welcome</Text>
+
+        <Pressable
+          onPress={() => navigation.navigate("SignUp")}
+          className="bg-white py-4 px-6 rounded-full mt-8"
+        >
+          <Text className="text-center text-lg">GET STARTED</Text>
+        </Pressable>
+
+        <Pressable onPress={() => navigation.navigate("SignIn")}>
+          <Text className="text-white text-center mt-6 text-base">SIGN IN</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
