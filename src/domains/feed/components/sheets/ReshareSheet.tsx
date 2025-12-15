@@ -1,16 +1,17 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  View,
-  Pressable,
-  Text,
-  TextInput,
-  Animated,
-  Easing,
-  StyleSheet,
-} from "react-native";
+import React, { useEffect, useMemo, useRef, useCallback } from "react";
+import { View, Pressable, Text, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import Animated from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetScrollView,
+} from "@gorhom/bottom-sheet";
+import type { BottomSheetBackdropProps } from "@gorhom/bottom-sheet";
 import { FeedPost } from "../../types";
 import { CURRENT_USER, FEED_STRINGS } from "../../constants";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = {
   visible: boolean;
@@ -21,7 +22,6 @@ type Props = {
   onSubmit: () => void;
 };
 
-// Render overlay tuyệt đối thay vì Modal để tránh khựng do unmount
 export default function ReshareSheet({
   visible,
   target,
@@ -30,79 +30,69 @@ export default function ReshareSheet({
   onClose,
   onSubmit,
 }: Props) {
-  const slide = useRef(new Animated.Value(1)).current;
-  const [rendered, setRendered] = useState(visible);
+  const insets = useSafeAreaInsets();
+  const sheetRef = useRef<BottomSheetModal>(null);
+  const snapPoints = useMemo(() => ["60%"], []);
 
-  // Khi mở: mount + animate lên
+  // Handle sheet visibility
   useEffect(() => {
     if (visible) {
-      setRendered(true);
-      slide.setValue(1);
-      Animated.timing(slide, {
-        toValue: -0.02, // tránh chạm đúng 0
-        duration: 200,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start();
+      sheetRef.current?.present();
+    } else {
+      sheetRef.current?.dismiss();
     }
-  }, [visible, slide]);
+  }, [visible]);
 
-  const translateY = useMemo(
-    () =>
-      slide.interpolate({
-        inputRange: [-0.05, 1],
-        outputRange: [-1, 40],
-        extrapolate: "clamp",
-      }),
-    [slide]
+  const handleSheetDismiss = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  const handleClose = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    sheetRef.current?.dismiss();
+  }, []);
+
+  const handleSubmit = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onSubmit();
+  }, [onSubmit]);
+
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...props}
+        pressBehavior="close"
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        opacity={0.4}
+      />
+    ),
+    []
   );
-
-  const overlayOpacity = useMemo(
-    () =>
-      slide.interpolate({
-        inputRange: [-0.05, 1],
-        outputRange: [0.4, 0],
-        extrapolate: "clamp",
-      }),
-    [slide]
-  );
-
-  const runClose = () => {
-    Animated.timing(slide, {
-      toValue: 1.05, // overshoot nhẹ để tránh snap
-      duration: 180,
-      easing: Easing.in(Easing.cubic),
-      useNativeDriver: true,
-    }).start(() => {
-      slide.setValue(1);
-      setRendered(false);
-      onClose();
-    });
-  };
-
-  if (!rendered && !visible) return null;
 
   return (
-    <View
-      style={[
-        StyleSheet.absoluteFillObject,
-        { justifyContent: "flex-end", zIndex: 50, elevation: 50 },
-      ]}
-      pointerEvents={rendered ? "auto" : "none"}
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={snapPoints}
+      onDismiss={handleSheetDismiss}
+      index={0}
+      backdropComponent={renderBackdrop}
+      handleIndicatorStyle={{ backgroundColor: "#CBD5E1" }}
+      backgroundStyle={{ backgroundColor: "white" }}
+      enablePanDownToClose
+      keyboardBehavior="interactive"
+      keyboardBlurBehavior="restore"
+      android_keyboardInputMode="adjustResize"
     >
-      <Animated.View
-        style={[
-          StyleSheet.absoluteFillObject,
-          { backgroundColor: "rgba(0,0,0,0.4)", opacity: overlayOpacity },
-        ]}
+      <BottomSheetScrollView
+        contentContainerStyle={{ 
+          paddingBottom: Math.max(insets.bottom, 12) + 12,
+          paddingHorizontal: 20,
+          paddingTop: 8
+        }}
+        keyboardShouldPersistTaps="handled"
       >
-        <Pressable style={StyleSheet.absoluteFill} onPress={runClose} />
-      </Animated.View>
-
-      <Animated.View
-        className="bg-white rounded-t-[28px] px-5 pt-4 pb-6"
-        style={{ transform: [{ translateY }] }}
-      >
+        {/* Header */}
         <View className="flex-row justify-between items-center mb-3">
           <View className="flex-row items-center gap-2">
             {CURRENT_USER.avatar ? (
@@ -114,7 +104,9 @@ export default function ReshareSheet({
               </View>
             ) : (
               <View className="h-10 w-10 rounded-full bg-emerald-500 items-center justify-center">
-                <Text className="text-white font-bold">YOU</Text>
+                <Text className="text-white text-xs font-bold">
+                  {CURRENT_USER.name?.[0] || "YOU"}
+                </Text>
               </View>
             )}
             <View>
@@ -126,25 +118,46 @@ export default function ReshareSheet({
               </Text>
             </View>
           </View>
-          <Pressable onPress={runClose} hitSlop={8}>
+          <Pressable
+            onPress={handleClose}
+            hitSlop={8}
+            className="active:opacity-60"
+          >
             <Ionicons name="close-outline" size={26} color="#0F172A" />
           </Pressable>
         </View>
 
+        {/* Text Input */}
         <TextInput
           placeholder={FEED_STRINGS.RESHARE_TITLE}
           value={note}
           onChangeText={onChangeNote}
-          className="text-base text-slate-900 mb-4"
+          className="text-base text-slate-900 mb-4 min-h-[60px]"
           placeholderTextColor="#94A3B8"
           multiline
+          maxLength={280}
+          autoFocus
         />
 
+        {/* Target Post Preview */}
         {target ? (
-          <View className="border border-slate-200 rounded-2xl p-3 mb-4">
+          <View className="border border-slate-200 rounded-2xl p-3 mb-4 bg-slate-50">
             <View className="flex-row items-center gap-2 mb-2">
-              <View className="h-8 w-8 rounded-full bg-slate-200" />
-              <View>
+              {target.author.avatar ? (
+                <View className="h-8 w-8 rounded-full overflow-hidden bg-slate-200">
+                  <Animated.Image
+                    source={{ uri: target.author.avatar }}
+                    className="h-full w-full"
+                  />
+                </View>
+              ) : (
+                <View className="h-8 w-8 rounded-full bg-slate-300 items-center justify-center">
+                  <Text className="text-xs font-semibold text-slate-700">
+                    {target.author.name[0]}
+                  </Text>
+                </View>
+              )}
+              <View className="flex-1">
                 <Text className="text-sm font-semibold text-slate-900">
                   {target.author.name}
                 </Text>
@@ -153,7 +166,7 @@ export default function ReshareSheet({
                 </Text>
               </View>
             </View>
-            <Text className="text-[13px] text-slate-800 mb-2">
+            <Text className="text-[13px] text-slate-800 mb-2 leading-5">
               {target.content}
             </Text>
             {target.media ? (
@@ -168,19 +181,21 @@ export default function ReshareSheet({
           </View>
         ) : null}
 
+        {/* Helper Text */}
         <Text className="text-[12px] text-slate-500 mb-4">
           {FEED_STRINGS.RESHARE_NOTE}
         </Text>
 
+        {/* Submit Button */}
         <Pressable
-          onPress={onSubmit}
+          onPress={handleSubmit}
           className="rounded-full bg-[#0B73FF] py-4 items-center active:opacity-90"
         >
           <Text className="text-base font-semibold text-white">
             {FEED_STRINGS.RESHARE_BUTTON}
           </Text>
         </Pressable>
-      </Animated.View>
-    </View>
+      </BottomSheetScrollView>
+    </BottomSheetModal>
   );
 }

@@ -1,21 +1,18 @@
-import React, { useEffect, useRef } from "react";
-import {
-  Modal,
-  View,
-  Pressable,
-  Text,
-  TextInput,
-  Animated,
-  Easing,
-  FlatList,
-  ListRenderItemInfo,
-  Platform,
-} from "react-native";
+import React, { useEffect, useMemo, useRef, useCallback } from "react";
+import { View, Pressable, Text, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import Animated from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
+import {
+  BottomSheetBackdrop,
+  BottomSheetFlatList,
+  BottomSheetModal,
+  BottomSheetView,
+} from "@gorhom/bottom-sheet";
+import type { BottomSheetBackdropProps } from "@gorhom/bottom-sheet";
 import { FeedComment, FeedPost } from "../../types";
 import { CURRENT_USER, FEED_STRINGS } from "../../constants";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { KeyboardAvoidingView } from "react-native";
 
 type Props = {
   visible: boolean;
@@ -37,28 +34,48 @@ export default function CommentsSheet({
   onSubmit,
 }: Props) {
   const insets = useSafeAreaInsets();
-  const slide = useRef(new Animated.Value(1)).current;
+  const sheetRef = useRef<BottomSheetModal>(null);
+  const snapPoints = useMemo(() => ["65%", "90%"], []);
 
+  // Handle sheet visibility
   useEffect(() => {
     if (visible) {
-      slide.setValue(1);
-      Animated.timing(slide, {
-        toValue: 0,
-        duration: 220,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      }).start();
+      sheetRef.current?.present();
     } else {
-      slide.setValue(1);
+      sheetRef.current?.dismiss();
     }
-  }, [visible, slide]);
+  }, [visible]);
 
-  const translateY = slide.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 60],
-  });
+  const handleSheetDismiss = useCallback(() => {
+    onClose();
+  }, [onClose]);
 
-  const renderItem = ({ item }: ListRenderItemInfo<FeedComment>) => (
+  const handleClose = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    sheetRef.current?.dismiss();
+  }, []);
+
+  const handleSubmit = useCallback(() => {
+    if (input.trim()) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      onSubmit();
+    }
+  }, [input, onSubmit]);
+
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...props}
+        pressBehavior="close"
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        opacity={0.45}
+      />
+    ),
+    []
+  );
+
+  const renderItem = useCallback(({ item }: { item: FeedComment }) => (
     <View className="flex-row gap-3 px-4 py-3">
       <View className="h-9 w-9 rounded-full bg-slate-200 overflow-hidden items-center justify-center">
         {item.author.avatar ? (
@@ -85,87 +102,104 @@ export default function CommentsSheet({
         </Text>
       </View>
     </View>
-  );
+  ), []);
+
+  const ListEmptyComponent = useCallback(() => (
+    <View className="px-4 py-8">
+      <Text className="text-sm text-slate-600 text-center">
+        {FEED_STRINGS.COMMENTS_EMPTY}
+      </Text>
+    </View>
+  ), []);
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={snapPoints}
+      onDismiss={handleSheetDismiss}
+      index={0}
+      backdropComponent={renderBackdrop}
+      handleIndicatorStyle={{ backgroundColor: "#CBD5E1" }}
+      backgroundStyle={{ backgroundColor: "white" }}
+      enablePanDownToClose
+      keyboardBehavior="interactive"
+      keyboardBlurBehavior="restore"
+      android_keyboardInputMode="adjustResize"
     >
-      <View className="flex-1 bg-black/45 justify-end">
-        <Pressable className="flex-1" onPress={onClose} />
-
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={0}
-          style={{ width: "100%", justifyContent: "flex-end" }}
-        >
-          <Animated.View
-            className="bg-white rounded-t-[28px] pt-3"
-            style={{
-              transform: [{ translateY }],
-              paddingBottom: insets.bottom + 10,
-            }}
+      <BottomSheetView className="flex-1">
+        {/* Header */}
+        <View className="px-4 pb-3 flex-row items-center justify-between border-b border-slate-100">
+          <Text className="text-xl font-bold text-slate-900">
+            {FEED_STRINGS.COMMENTS_TITLE}
+          </Text>
+          <Pressable
+            onPress={handleClose}
+            hitSlop={8}
+            className="active:opacity-60"
           >
-            <View className="px-4 pb-3 flex-row items-center justify-between">
-              <Text className="text-xl font-bold text-slate-900">
-                {FEED_STRINGS.COMMENTS_TITLE}
-              </Text>
-              <Pressable onPress={onClose} hitSlop={8}>
-                <Ionicons name="close-outline" size={26} color="#0F172A" />
-              </Pressable>
-            </View>
+            <Ionicons name="close-outline" size={26} color="#0F172A" />
+          </Pressable>
+        </View>
 
-            {comments.length === 0 ? (
-              <View className="px-4 py-3">
-                <Text className="text-sm text-slate-600">
-                  {FEED_STRINGS.COMMENTS_EMPTY}
-                </Text>
+        {/* Comments List */}
+        <BottomSheetFlatList
+          data={comments}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          ListEmptyComponent={ListEmptyComponent}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ 
+            paddingBottom: 100,
+            flexGrow: 1 
+          }}
+        />
+
+        {/* Input Field - Fixed at bottom */}
+        <View 
+          className="px-4 py-3 bg-white border-t border-slate-100"
+          style={{ paddingBottom: Math.max(insets.bottom, 12) + 12 }}
+        >
+          <View className="flex-row items-center rounded-full border border-slate-200 px-3 py-2 bg-slate-50">
+            {CURRENT_USER.avatar ? (
+              <View className="h-8 w-8 rounded-full overflow-hidden mr-2">
+                <Animated.Image
+                  source={{ uri: CURRENT_USER.avatar }}
+                  className="h-full w-full"
+                />
               </View>
             ) : (
-              <FlatList
-                data={comments}
-                keyExtractor={(item) => item.id}
-                renderItem={renderItem}
-                style={{ maxHeight: 420 }}
-                showsVerticalScrollIndicator={false}
-              />
-            )}
-
-            <View className="px-4 pt-4">
-              <View className="flex-row items-center rounded-full border border-slate-200 px-3 py-2 bg-white">
-                {CURRENT_USER.avatar ? (
-                  <View className="h-8 w-8 rounded-full overflow-hidden mr-2">
-                    <Animated.Image
-                      source={{ uri: CURRENT_USER.avatar }}
-                      className="h-full w-full"
-                    />
-                  </View>
-                ) : (
-                  <View className="h-8 w-8 rounded-full bg-emerald-500 items-center justify-center mr-2">
-                    <Text className="text-white font-semibold">You</Text>
-                  </View>
-                )}
-                <TextInput
-                  className="flex-1 text-base text-slate-900"
-                  placeholder={FEED_STRINGS.COMMENTS_PLACEHOLDER}
-                  placeholderTextColor="#94A3B8"
-                  value={input}
-                  onChangeText={onChangeInput}
-                  multiline
-                />
-                <Pressable onPress={onSubmit} hitSlop={8}>
-                  <Text className="text-base font-semibold text-[#0B73FF]">
-                    {FEED_STRINGS.COMMENTS_POST}
-                  </Text>
-                </Pressable>
+              <View className="h-8 w-8 rounded-full bg-emerald-500 items-center justify-center mr-2">
+                <Text className="text-white text-xs font-semibold">
+                  {CURRENT_USER.name?.[0] || "You"}
+                </Text>
               </View>
-            </View>
-          </Animated.View>
-        </KeyboardAvoidingView>
-      </View>
-    </Modal>
+            )}
+            <TextInput
+              className="flex-1 text-base text-slate-900"
+              placeholder={FEED_STRINGS.COMMENTS_PLACEHOLDER}
+              placeholderTextColor="#94A3B8"
+              value={input}
+              onChangeText={onChangeInput}
+              multiline
+              maxLength={500}
+            />
+            <Pressable
+              onPress={handleSubmit}
+              hitSlop={8}
+              disabled={!input.trim()}
+              className="active:opacity-70"
+            >
+              <Text
+                className={`text-base font-semibold ${
+                  input.trim() ? "text-[#0B73FF]" : "text-slate-300"
+                }`}
+              >
+                {FEED_STRINGS.COMMENTS_POST}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </BottomSheetView>
+    </BottomSheetModal>
   );
 }
