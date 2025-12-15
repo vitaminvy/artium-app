@@ -3,6 +3,7 @@ import { View, Text, Pressable, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { FeedPost } from "../../types";
 import { FEED_COLORS } from "../../constants";
+import { shareArtwork } from "../../../../shared/utils/shareArtwork";
 
 type Props = {
   post: FeedPost;
@@ -178,7 +179,18 @@ export default function FeedPostCard({
           </Text>
         </Pressable>
 
-        <Pressable className="flex-row items-center gap-2" hitSlop={6}>
+        <Pressable
+          className="flex-row items-center gap-2"
+          hitSlop={6}
+          onPress={() =>
+            shareArtwork({
+              title: post.content,
+              artistName: post.author.name,
+              marketing: "Khám phá tác phẩm này",
+              deepLink: `https://www.artium.com/post/${post.id}`,
+            })
+          }
+        >
           <Ionicons name="share-outline" size={22} color={FEED_COLORS.ICON} />
         </Pressable>
       </View>

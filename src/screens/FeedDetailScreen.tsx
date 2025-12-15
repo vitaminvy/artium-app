@@ -7,6 +7,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -68,6 +69,7 @@ export default function FeedDetailScreen() {
       metrics: { ...prev.metrics, comments: prev.metrics.comments + 1 },
     }));
     setInput("");
+    Keyboard.dismiss();
   };
 
   // Hide tab bar while on detail
@@ -83,6 +85,7 @@ export default function FeedDetailScreen() {
     <KeyboardAvoidingView
       className="flex-1 bg-white"
       behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={0}
     >
       <View
         className="flex-row items-center px-4 py-3 border-b border-slate-100"
@@ -97,7 +100,7 @@ export default function FeedDetailScreen() {
         className="flex-1"
         contentContainerStyle={{
           padding: 16,
-          paddingBottom: Math.max(insets.bottom + 120, 140),
+          paddingBottom: 32,
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -129,10 +132,11 @@ export default function FeedDetailScreen() {
       </ScrollView>
 
       <View
-        className="absolute left-0 right-0"
+        className="bg-white"
         style={{
-          bottom: Math.max(insets.bottom, 12),
           paddingHorizontal: 12,
+          paddingBottom: Math.max(insets.bottom, 8),
+          paddingTop: 8,
         }}
       >
         <View className="flex-row items-center rounded-full border border-slate-200 px-3 py-2 bg-white shadow-sm">

@@ -1,7 +1,7 @@
 // Feed Screen
 // src/screens/FeedScreen.tsx
 import React from "react";
-import { View, Pressable, Text } from "react-native";
+import { View, Pressable, Text, Keyboard } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -84,6 +84,7 @@ export default function FeedScreen() {
     if (!commentTarget) return;
     addComment(commentTarget.id, commentInput);
     setCommentInput("");
+    Keyboard.dismiss();
   };
 
   const handleScroll = (y: number) => {
