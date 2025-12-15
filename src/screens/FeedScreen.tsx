@@ -2,6 +2,8 @@
 // src/screens/FeedScreen.tsx
 import React from "react";
 import { View, Pressable, Text } from "react-native";
+import ScreenHeader from "../shared/components/ScreenHeader";
+import UnderlineHome from "../../assets/headers/underline-home.svg";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";

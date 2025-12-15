@@ -17,6 +17,7 @@ const UploadOptionsPlaceholder = () => null;
 export default function TabNavigator() {
   return (
     <Tab.Navigator
+      initialRouteName="Discover"
       screenOptions={{
         headerShown: false,
       }}

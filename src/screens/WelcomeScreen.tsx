@@ -32,14 +32,17 @@ export default function WelcomeScreen({ navigation }: Props) {
       {/* Optional overlay for readability */}
       <View
         pointerEvents="none"
-        style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.35)" }]}
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: "rgba(0,0,0,0.35)" },
+        ]}
       />
 
       <View className="flex-1 justify-end px-8 pb-12">
         <Text className="text-white text-center text-3xl">Welcome</Text>
 
         <Pressable
-          onPress={() => navigation.navigate("SignUp")}
+          onPress={() => navigation.navigate("Tabs")}
           className="bg-white py-4 px-6 rounded-full mt-8"
         >
           <Text className="text-center text-lg">GET STARTED</Text>

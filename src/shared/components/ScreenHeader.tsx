@@ -1,14 +1,8 @@
 import React, { useRef } from "react";
-import {
-  View,
-  Text,
-  Pressable,
-  Image,
-  ImageSourcePropType,
-} from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { SvgUri } from "react-native-svg";
+import type { SvgProps } from "react-native-svg";
 
 type HeaderAction = "menu" | "search" | "notifications";
 
@@ -21,7 +15,7 @@ type ScreenHeaderProps = {
   accentColor?: string;
   isMenuOpen?: boolean;
   onHeightChange?: (height: number) => void;
-  underlineSource?: ImageSourcePropType;
+  underlineSource?: React.ComponentType<SvgProps>;
   underlineSize?: { width: number; height: number };
 };
 
@@ -52,6 +46,7 @@ export default function ScreenHeader({
     if (actionType === "menu" && isMenuOpen) return "close-outline";
     return actionType ? ACTION_ICON[actionType] : undefined;
   };
+  const Underline = underlineSource;
 
   return (
     <View
@@ -70,9 +65,8 @@ export default function ScreenHeader({
             <Text className="text-[22px] font-extrabold tracking-[0.5px] text-slate-900">
               {title.toUpperCase()}
             </Text>
-            {underlineSource ? (
-              <SvgUri
-                uri={Image.resolveAssetSource(underlineSource).uri}
+            {Underline ? (
+              <Underline
                 width={underlineSize.width}
                 height={underlineSize.height}
                 style={{ marginTop: -6 }}
