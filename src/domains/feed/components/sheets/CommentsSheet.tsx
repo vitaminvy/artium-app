@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useCallback } from "react";
-import { View, Pressable, Text, TextInput } from "react-native";
+import React, { useEffect, useMemo, useRef, useCallback, useState } from "react";
+import { View, Pressable, Text, TextInput, useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
@@ -18,33 +18,32 @@ type Props = {
   visible: boolean;
   target?: FeedPost;
   comments: FeedComment[];
-  input: string;
-  onChangeInput: (v: string) => void;
+  onSubmit: (text: string) => void;
   onClose: () => void;
-  onSubmit: () => void;
 };
 
 export default function CommentsSheet({
   visible,
   target,
   comments,
-  input,
-  onChangeInput,
   onClose,
   onSubmit,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
   const sheetRef = useRef<BottomSheetModal>(null);
+  const [text, setText] = useState("");
   const snapPoints = useMemo(() => ["65%", "90%"], []);
 
   // Handle sheet visibility
   useEffect(() => {
     if (visible) {
       sheetRef.current?.present();
+      setText("");
     } else {
       sheetRef.current?.dismiss();
     }
-  }, [visible]);
+  }, [visible, target]);
 
   const handleSheetDismiss = useCallback(() => {
     onClose();
@@ -56,11 +55,12 @@ export default function CommentsSheet({
   }, []);
 
   const handleSubmit = useCallback(() => {
-    if (input.trim()) {
+    if (text.trim()) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      onSubmit();
+      onSubmit(text.trim());
+      setText("");
     }
-  }, [input, onSubmit]);
+  }, [text, onSubmit]);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -174,26 +174,27 @@ export default function CommentsSheet({
                 </Text>
               </View>
             )}
-            <TextInput
-              className="flex-1 text-base text-slate-900"
-              placeholder={FEED_STRINGS.COMMENTS_PLACEHOLDER}
-              placeholderTextColor="#94A3B8"
-              value={input}
-              onChangeText={onChangeInput}
-              multiline
-              maxLength={500}
-            />
-            <Pressable
-              onPress={handleSubmit}
-              hitSlop={8}
-              disabled={!input.trim()}
-              className="active:opacity-70"
+          <TextInput
+            className="flex-1 text-base text-slate-900"
+            placeholder={FEED_STRINGS.COMMENTS_PLACEHOLDER}
+            placeholderTextColor="#94A3B8"
+            value={text}
+            onChangeText={setText}
+            multiline
+            maxLength={500}
+            keyboardAppearance={colorScheme === "dark" ? "dark" : "light"}
+          />
+          <Pressable
+            onPress={handleSubmit}
+            hitSlop={8}
+            disabled={!text.trim()}
+            className="active:opacity-70"
+          >
+            <Text
+              className={`text-base font-semibold ${
+                text.trim() ? "text-[#0B73FF]" : "text-slate-300"
+              }`}
             >
-              <Text
-                className={`text-base font-semibold ${
-                  input.trim() ? "text-[#0B73FF]" : "text-slate-300"
-                }`}
-              >
                 {FEED_STRINGS.COMMENTS_POST}
               </Text>
             </Pressable>

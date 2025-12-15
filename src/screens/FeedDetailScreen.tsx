@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
+  useColorScheme,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -27,6 +28,7 @@ export default function FeedDetailScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<FeedStackParamList>>();
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
   const originalPost = route.params?.post;
 
   const [post, setPost] = useState<FeedPost>(originalPost);
@@ -35,7 +37,6 @@ export default function FeedDetailScreen() {
     { id: string; author: { name: string; handle: string }; content: string }[]
   >([]);
   const [showReshare, setShowReshare] = useState(false);
-  const [reshareNote, setReshareNote] = useState("");
 
   const toggleLike = () => {
     setPost((prev) => ({
@@ -50,10 +51,9 @@ export default function FeedDetailScreen() {
 
   const openReshare = () => {
     setShowReshare(true);
-    setReshareNote("");
   };
 
-  const submitReshare = () => {
+  const submitReshare = (_note: string) => {
     setPost((prev) => ({
       ...prev,
       reshared: true,
@@ -163,6 +163,7 @@ export default function FeedDetailScreen() {
             value={input}
             onChangeText={setInput}
             multiline
+            keyboardAppearance={colorScheme === "dark" ? "dark" : "light"}
           />
           <Pressable onPress={addComment} hitSlop={8}>
             <Text className="text-base font-semibold text-[#0B73FF]">
@@ -174,8 +175,6 @@ export default function FeedDetailScreen() {
       <ReshareSheet
         visible={showReshare}
         target={post}
-        note={reshareNote}
-        onChangeNote={setReshareNote}
         onClose={() => setShowReshare(false)}
         onSubmit={submitReshare}
       />

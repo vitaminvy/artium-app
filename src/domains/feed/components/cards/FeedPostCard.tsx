@@ -14,7 +14,7 @@ type Props = {
   onPressCard?: (post: FeedPost) => void;
 };
 
-export default function FeedPostCard({
+function FeedPostCard({
   post,
   onPressLike,
   onPressReshare,
@@ -246,3 +246,12 @@ const cardShadow = {
   shadowRadius: 8,
   elevation: 6,
 };
+
+const areEqual = (prev: Props, next: Props) =>
+  prev.post === next.post &&
+  prev.onPressLike === next.onPressLike &&
+  prev.onPressReshare === next.onPressReshare &&
+  prev.onPressComment === next.onPressComment &&
+  prev.onPressCard === next.onPressCard;
+
+export default React.memo(FeedPostCard, areEqual);

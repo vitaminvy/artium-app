@@ -42,51 +42,44 @@ export default function FeedScreen() {
   const [selectedPost, setSelectedPost] = React.useState<
     FeedPost | undefined
   >();
-  const [reshareNote, setReshareNote] = React.useState("");
   const [commentTarget, setCommentTarget] = React.useState<
     FeedPost | undefined
   >();
-  const [commentInput, setCommentInput] = React.useState("");
   const TAB_HEIGHT = 52;
   const tabsAnim = useSharedValue(1);
   const lastOffset = useSharedValue(0);
 
-  const openReshare = (post: FeedPost) => {
+  const openReshare = React.useCallback((post: FeedPost) => {
     setSelectedPost(post);
-    setReshareNote("");
-  };
+  }, []);
 
-  const closeReshare = () => {
+  const closeReshare = React.useCallback(() => {
     setSelectedPost(undefined);
-    setReshareNote("");
-  };
+  }, []);
 
-  const submitReshare = () => {
+  const submitReshare = React.useCallback((note: string) => {
     if (!selectedPost) return;
-    createReshare(selectedPost.id, reshareNote);
+    createReshare(selectedPost.id, note);
     closeReshare();
-  };
+  }, [closeReshare, createReshare, selectedPost]);
 
-  const openDetail = (post: FeedPost) => {
+  const openDetail = React.useCallback((post: FeedPost) => {
     navigation.navigate("FeedDetail", { post });
-  };
+  }, [navigation]);
 
-  const openComments = (post: FeedPost) => {
+  const openComments = React.useCallback((post: FeedPost) => {
     setCommentTarget(post);
-    setCommentInput("");
-  };
+  }, []);
 
-  const closeComments = () => {
+  const closeComments = React.useCallback(() => {
     setCommentTarget(undefined);
-    setCommentInput("");
-  };
+  }, []);
 
-  const submitComment = () => {
+  const submitComment = React.useCallback((text: string) => {
     if (!commentTarget) return;
-    addComment(commentTarget.id, commentInput);
-    setCommentInput("");
+    addComment(commentTarget.id, text);
     Keyboard.dismiss();
-  };
+  }, [addComment, commentTarget]);
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -151,8 +144,6 @@ export default function FeedScreen() {
       <ReshareSheet
         visible={!!selectedPost}
         target={selectedPost}
-        note={reshareNote}
-        onChangeNote={setReshareNote}
         onClose={closeReshare}
         onSubmit={submitReshare}
       />
@@ -161,8 +152,6 @@ export default function FeedScreen() {
         visible={!!commentTarget}
         target={commentTarget}
         comments={commentTarget ? (commentsByPost[commentTarget.id] ?? []) : []}
-        input={commentInput}
-        onChangeInput={setCommentInput}
         onClose={closeComments}
         onSubmit={submitComment}
       />

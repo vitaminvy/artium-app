@@ -8,7 +8,7 @@ type Props = {
   onChange: (tab: FeedTab) => void;
 };
 
-export default function FeedTabs({ tab, onChange }: Props) {
+function FeedTabs({ tab, onChange }: Props) {
   return (
     <View className="flex-row items-center justify-center gap-8 py-2">
       {([
@@ -40,3 +40,8 @@ export default function FeedTabs({ tab, onChange }: Props) {
     </View>
   );
 }
+
+const areEqual = (prev: Props, next: Props) =>
+  prev.tab === next.tab && prev.onChange === next.onChange;
+
+export default React.memo(FeedTabs, areEqual);

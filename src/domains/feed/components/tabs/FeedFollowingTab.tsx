@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import { ListRenderItemInfo, View, Text } from "react-native";
 import Animated from "react-native-reanimated";
 import { FeedPost } from "../../types";
@@ -21,17 +21,23 @@ export default function FeedFollowingTab({
   onPressCard,
   scrollHandler,
 }: Props) {
-  const renderItem = ({ item }: ListRenderItemInfo<FeedPost>) => (
-    <FeedPostCard
-      post={item}
-      onPressLike={onToggleLike}
-      onPressReshare={onToggleReshare}
-      onPressComment={onPressComment}
-      onPressCard={onPressCard}
-    />
+  const renderItem = useCallback(
+    ({ item }: ListRenderItemInfo<FeedPost>) => (
+      <FeedPostCard
+        post={item}
+        onPressLike={onToggleLike}
+        onPressReshare={onToggleReshare}
+        onPressComment={onPressComment}
+        onPressCard={onPressCard}
+      />
+    ),
+    [onToggleLike, onToggleReshare, onPressComment, onPressCard]
   );
 
-  const AnimatedFlatList = Animated.FlatList as unknown as typeof Animated.FlatList<FeedPost>;
+  const AnimatedFlatList = useMemo(
+    () => Animated.FlatList as unknown as typeof Animated.FlatList<FeedPost>,
+    []
+  );
 
   return (
     <AnimatedFlatList

@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useCallback } from "react";
-import { View, Pressable, Text, TextInput } from "react-native";
+import React, { useEffect, useMemo, useRef, useCallback, useState } from "react";
+import { View, Pressable, Text, TextInput, useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
@@ -16,32 +16,31 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 type Props = {
   visible: boolean;
   target?: FeedPost;
-  note: string;
-  onChangeNote: (text: string) => void;
   onClose: () => void;
-  onSubmit: () => void;
+  onSubmit: (text: string) => void;
 };
 
 export default function ReshareSheet({
   visible,
   target,
-  note,
-  onChangeNote,
   onClose,
   onSubmit,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
   const sheetRef = useRef<BottomSheetModal>(null);
+  const [note, setNote] = useState("");
   const snapPoints = useMemo(() => ["60%"], []);
 
   // Handle sheet visibility
   useEffect(() => {
     if (visible) {
       sheetRef.current?.present();
+      setNote("");
     } else {
       sheetRef.current?.dismiss();
     }
-  }, [visible]);
+  }, [visible, target]);
 
   const handleSheetDismiss = useCallback(() => {
     onClose();
@@ -54,8 +53,9 @@ export default function ReshareSheet({
 
   const handleSubmit = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onSubmit();
-  }, [onSubmit]);
+    onSubmit(note.trim());
+    setNote("");
+  }, [note, onSubmit]);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -131,12 +131,13 @@ export default function ReshareSheet({
         <TextInput
           placeholder={FEED_STRINGS.RESHARE_TITLE}
           value={note}
-          onChangeText={onChangeNote}
+          onChangeText={setNote}
           className="text-base text-slate-900 mb-4 min-h-[60px]"
           placeholderTextColor="#94A3B8"
           multiline
           maxLength={280}
           autoFocus
+          keyboardAppearance={colorScheme === "dark" ? "dark" : "light"}
         />
 
         {/* Target Post Preview */}
