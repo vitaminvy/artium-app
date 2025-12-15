@@ -1,6 +1,10 @@
-import React from 'react';
-import RootNavigator from './navigation/RootNavigator';
+import RootNavigator from "./navigation/RootNavigator";
+import { AuthStatus } from "../domains/auth/types";
 
-export default function AppEntry() {
-  return <RootNavigator />;
+type AppEntryProps = {
+  authStatus: AuthStatus;
+};
+
+export default function AppEntry({ authStatus }: AppEntryProps) {
+  return <RootNavigator authStatus={authStatus} />;
 }

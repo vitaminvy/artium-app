@@ -1,8 +1,10 @@
 import "./global.css";
-import { LogBox } from "react-native";
-import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, SafeAreaView } from "react-native";
+import { LogBox, Image, Animated, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import React, { useEffect, useRef, useState } from "react";
+
 import AppEntry from "./src/app";
+import { useAuthBootstrap } from "./src/domains/auth/hooks/useAuthBootstrap";
 import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
@@ -40,36 +42,64 @@ export default function App() {
   useEffect(() => {
     console.log("App mounted");
   }, []);
-  // State để kiểm tra xem user đã bấm "Enter App" chưa
-  const [isAppEntered, setIsAppEntered] = useState(false);
+  const auth = useAuthBootstrap();
+  const [splashTimerDone, setSplashTimerDone] = useState(false);
+  const [splashVisible, setSplashVisible] = useState(true);
+  const fade = useRef(new Animated.Value(1)).current;
+  const slideUp = useRef(new Animated.Value(0)).current;
 
-  // Nếu đã vào app, render code từ folder src/
-  if (isAppEntered) {
-    return <AppEntry />;
-  }
+  useEffect(() => {
+    const timer = setTimeout(() => setSplashTimerDone(true), 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
-  // Landing Page tạm thời
+  // Khi hết timer và auth đã xong, animate splash ra và bỏ khỏi cây
+  useEffect(() => {
+    if (!splashTimerDone || auth.status === "loading") return;
+
+    Animated.parallel([
+      Animated.timing(fade, { toValue: 0, duration: 350, useNativeDriver: true }),
+      Animated.timing(slideUp, {
+        toValue: -40,
+        duration: 350,
+        useNativeDriver: true,
+      }),
+    ]).start(() => setSplashVisible(false));
+  }, [splashTimerDone, auth.status, fade, slideUp]);
+
   return (
-    <SafeAreaView className="flex-1 bg-white items-center justify-center">
-      <View className="items-center px-6">
-        <Text className="text-4xl font-bold text-slate-800 mb-2">ARTIUM</Text>
-        <Text className="text-center text-gray-500 mb-8">
-          Landing Page Placeholder
-        </Text>
+    <>
+      <AppEntry authStatus={auth.status} />
 
-        <TouchableOpacity
-          onPress={() => setIsAppEntered(true)}
-          className="bg-black py-4 px-8 rounded-full shadow-lg active:opacity-80"
+      {splashVisible && (
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFillObject,
+            {
+              backgroundColor: "white",
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: fade,
+              transform: [{ translateY: slideUp }],
+            },
+          ]}
         >
-          <Text className="text-white font-bold text-lg">
-            Go to Development App →
-          </Text>
-        </TouchableOpacity>
-
-        <Text className="mt-10 text-xs text-gray-400">
-          Click above to test components in src/
-        </Text>
-      </View>
-    </SafeAreaView>
+          <SafeAreaView
+            style={{
+              flex: 1,
+              width: "100%",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Image
+              source={require("./assets/logos/logo-full-text-light-mode.png")}
+              resizeMode="contain"
+              style={{ width: 240, height: 90 }}
+            />
+          </SafeAreaView>
+        </Animated.View>
+      )}
+    </>
   );
 }
