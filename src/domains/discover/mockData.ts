@@ -226,45 +226,11 @@ const events: EventItem[] = [
   },
 ];
 
-const inspirations: InspirationArticle[] = [
-  {
-    id: "in-1",
-    title: "4 Reasons Looking at Art is Good for Your Brain",
-    category: "Blog",
-    author: "Susan Washington",
-    publishedAt: "2025-08-21T00:00:00Z",
-    readTime: "5 mins read",
-    image:
-      "https://images.unsplash.com/photo-1529429617124-aee1f1650a5c?auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    id: "in-2",
-    title: "See “Perfectly Imperfect” by Bermano",
-    category: "Spotlight",
-    author: "Kendal Watson",
-    publishedAt: "2025-08-21T00:00:00Z",
-    readTime: "5 mins read",
-    image:
-      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    id: "in-3",
-    title: "Discover Art Tailored to Your Taste",
-    category: "Blog",
-    author: "Susan Washington",
-    publishedAt: "2025-08-20T00:00:00Z",
-    readTime: "4 mins read",
-    image:
-      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
-  },
-];
-
 export const discoverMockData: DiscoverData = {
   artworks,
   profiles,
   moments,
   events,
-  inspirations,
 };
 
 export const defaultDiscoverTab = "topPicks" as const;

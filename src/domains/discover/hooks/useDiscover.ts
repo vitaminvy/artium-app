@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import {
   DiscoverTab,
   EventItem,
-  InspirationArticle,
   ArtistProfile,
   Artwork,
 } from "../types";
@@ -17,7 +16,6 @@ type UseDiscoverResult = {
   profiles: ArtistProfile[];
   moments: Artwork[];
   events: EventItem[];
-  inspirations: InspirationArticle[];
 };
 
 export function useDiscover(): UseDiscoverResult {
@@ -36,8 +34,6 @@ export function useDiscover(): UseDiscoverResult {
 
   const events = useMemo(() => discoverMockData.events, []);
 
-  const inspirations = useMemo(() => discoverMockData.inspirations, []);
-
   return {
     tab,
     setTab,
@@ -46,6 +42,5 @@ export function useDiscover(): UseDiscoverResult {
     profiles,
     moments,
     events,
-    inspirations,
   };
 }

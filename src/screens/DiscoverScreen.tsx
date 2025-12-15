@@ -14,7 +14,6 @@ import DiscoverArtworksTab from "../domains/discover/components/tabs/DiscoverArt
 import DiscoverProfilesTab from "../domains/discover/components/tabs/DiscoverProfilesTab";
 import DiscoverEventsTab from "../domains/discover/components/tabs/DiscoverEventsTab";
 import DiscoverMomentsTab from "../domains/discover/components/tabs/DiscoverMomentsTab";
-import DiscoverInspirationTab from "../domains/discover/components/tabs/DiscoverInspirationTab";
 import DiscoverNearbyTab from "../domains/discover/components/tabs/DiscoverNearbyTab";
 
 const TABS: { key: DiscoverTab; label: string }[] = [
@@ -24,7 +23,6 @@ const TABS: { key: DiscoverTab; label: string }[] = [
   { key: "profiles", label: "PROFILES" },
   { key: "moments", label: "MOMENTS" },
   { key: "events", label: "EVENTS" },
-  { key: "inspiration", label: "GET INSPIRED" },
 ];
 
 export default function DiscoverScreen() {
@@ -36,7 +34,6 @@ export default function DiscoverScreen() {
     profiles,
     moments,
     events,
-    inspirations,
   } = useDiscover();
 
   const [showLocationSheet, setShowLocationSheet] = useState(false);
@@ -56,8 +53,6 @@ export default function DiscoverScreen() {
         return <DiscoverEventsTab data={events} />;
       case "moments":
         return <DiscoverMomentsTab data={moments} />;
-      case "inspiration":
-        return <DiscoverInspirationTab data={inspirations} />;
       case "nearby":
         return (
           <DiscoverNearbyTab

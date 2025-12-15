@@ -6,8 +6,7 @@ export type DiscoverTab =
   | "artworks"
   | "profiles"
   | "moments"
-  | "events"
-  | "inspiration";
+  | "events";
 
 export type Badge = {
   label: string;
@@ -66,5 +65,4 @@ export type DiscoverData = {
   profiles: ArtistProfile[];
   moments: Artwork[];
   events: EventItem[];
-  inspirations: InspirationArticle[];
 };
