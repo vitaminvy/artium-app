@@ -1,13 +1,8 @@
 import "./global.css";
-import { LogBox } from "react-native";
+import { LogBox, View, Text, TouchableOpacity, Image } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  SafeAreaView,
-  Image,
-} from "react-native";
+
 import AppEntry from "./src/app";
 import {
   configureReanimatedLogger,

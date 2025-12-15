@@ -10,6 +10,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
+  type AnimatedStyle,
   Extrapolate,
   interpolate,
   runOnJS,
@@ -38,6 +39,10 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const PANEL_WIDTH = Math.min(SCREEN_WIDTH * 0.85, 340);
 const ANIMATION_MS = 230;
 const FOOTER_HEIGHT = 40;
+// Static base style to avoid recreating the object every render
+const BASE_PANEL_STYLE: AnimatedStyle<ViewStyle> = {
+  transform: [{ translateX: 0 }],
+};
 
 export default function Sidebar({
   visible,
@@ -47,20 +52,21 @@ export default function Sidebar({
   activeKey,
   items,
 }: SidebarProps) {
+  // slide controls horizontal translation; overlay controls backdrop opacity
   const insets = useSafeAreaInsets();
   const panelTop = useMemo(
     () =>
-      typeof topOffset === "number"
-        ? topOffset
-        : Math.max(insets.top + 64, 80),
+      typeof topOffset === "number" ? topOffset : Math.max(insets.top + 64, 80),
     [insets.top, topOffset]
   );
+  // render flag avoids keeping the panel in the tree when fully hidden
   const [shouldRender, setShouldRender] = useState(visible);
   const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({});
   const slide = useSharedValue(visible ? 0 : 1);
   const overlay = useSharedValue(visible ? 1 : 0);
   const data = items ?? useSidebarItems();
 
+  // Keep render state in sync with visibility, and drive animations
   useEffect(() => {
     if (visible) setShouldRender(true);
 
@@ -75,14 +81,6 @@ export default function Sidebar({
     );
     overlay.value = withTiming(visible ? 1 : 0, { duration: ANIMATION_MS });
   }, [visible, slide, overlay]);
-
-  const panelStyle = useMemo<Animated.WithAnimatedObject<ViewStyle>>(
-    () =>
-      ({
-        transform: [{ translateX: 0 }],
-      }) as Animated.WithAnimatedObject<ViewStyle>,
-    []
-  );
 
   const animatedPanelStyle = useAnimatedStyle(() => ({
     transform: [
@@ -101,10 +99,12 @@ export default function Sidebar({
     opacity: interpolate(overlay.value, [0, 1], [0, 0.25], Extrapolate.CLAMP),
   }));
 
+  // Expand/collapse a parent item
   const toggleExpand = (key: string) => {
     setExpandedKeys((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  // Handle tap on an item: expand if it has children, otherwise fire onSelect
   const handlePress = (item: SidebarItem) => {
     if (item.children?.length) {
       toggleExpand(item.key);
@@ -135,6 +135,7 @@ export default function Sidebar({
 
       <Animated.View
         style={[
+          BASE_PANEL_STYLE,
           animatedPanelStyle,
           { width: PANEL_WIDTH, paddingBottom: insets.bottom + FOOTER_HEIGHT },
           panelShadow,
