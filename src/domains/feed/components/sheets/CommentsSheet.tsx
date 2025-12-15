@@ -85,7 +85,8 @@ function CommentsFooter({
           )}
 
           <BottomSheetTextInput
-            className="flex-1 text-base text-slate-900"
+            className="flex-1 text-slate-900"
+            style={{ paddingVertical: 0, textAlignVertical: "center" }}
             placeholder={FEED_STRINGS.COMMENTS_PLACEHOLDER}
             placeholderTextColor="#94A3B8"
             value={text}

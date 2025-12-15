@@ -117,7 +117,7 @@ export default function FeedDetailScreen() {
           post={post}
           onPressLike={() => toggleLike()}
           onPressReshare={() => openReshare()}
-          onPressComment={() => {}}
+          onPressComment={() => { }}
         />
 
         <View className="mt-6 px-2">
@@ -157,7 +157,8 @@ export default function FeedDetailScreen() {
             </View>
           )}
           <TextInput
-            className="flex-1 text-base text-slate-900"
+            className="flex-1 text-slate-900"
+            style={{ paddingVertical: 0, textAlignVertical: "center" }}
             placeholder={FEED_STRINGS.COMMENTS_PLACEHOLDER}
             placeholderTextColor="#94A3B8"
             value={input}
