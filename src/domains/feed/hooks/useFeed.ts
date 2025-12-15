@@ -64,20 +64,21 @@ export function useFeed(): UseFeedResult {
   }, [posts]);
 
   const toggleLike = useCallback((id: string) => {
-    setPosts((prev) =>
-      prev.map((post) =>
-        post.id === id
-          ? {
-              ...post,
-              liked: !post.liked,
-              metrics: {
-                ...post.metrics,
-                likes: post.metrics.likes + (post.liked ? -1 : 1),
-              },
-            }
-          : post
-      )
-    );
+    setPosts((prev) => {
+      const idx = prev.findIndex((p) => p.id === id);
+      if (idx === -1) return prev;
+      const next = [...prev];
+      const target = prev[idx];
+      next[idx] = {
+        ...target,
+        liked: !target.liked,
+        metrics: {
+          ...target.metrics,
+          likes: target.metrics.likes + (target.liked ? -1 : 1),
+        },
+      };
+      return next;
+    });
   }, []);
 
   const addComment = useCallback(

@@ -144,7 +144,7 @@ export default function CommentsSheet({
         {/* Comments List */}
         <BottomSheetFlatList
           data={comments}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item : any) => item.id}
           renderItem={renderItem}
           ListEmptyComponent={ListEmptyComponent}
           showsVerticalScrollIndicator={false}

@@ -121,25 +121,28 @@ export default function FeedScreen() {
         <FeedTabs tab={tab} onChange={setTab} />
       </Animated.View>
 
-      {tab === "explore" ? (
-        <FeedExploreTab
-          data={explorePosts}
-          onToggleLike={toggleLike}
-          onToggleReshare={openReshare}
-          onPressComment={openComments}
-          onPressCard={openDetail}
-          scrollHandler={scrollHandler}
-        />
-      ) : (
-        <FeedFollowingTab
-          data={followingPosts}
-          onToggleLike={toggleLike}
-          onToggleReshare={openReshare}
-          onPressComment={openComments}
-          onPressCard={openDetail}
-          scrollHandler={scrollHandler}
-        />
-      )}
+      <View className="flex-1">
+        <View style={{ flex: 1, display: tab === "explore" ? "flex" : "none" }}>
+          <FeedExploreTab
+            data={explorePosts}
+            onToggleLike={toggleLike}
+            onToggleReshare={openReshare}
+            onPressComment={openComments}
+            onPressCard={openDetail}
+            scrollHandler={scrollHandler}
+          />
+        </View>
+        <View style={{ flex: 1, display: tab === "following" ? "flex" : "none" }}>
+          <FeedFollowingTab
+            data={followingPosts}
+            onToggleLike={toggleLike}
+            onToggleReshare={openReshare}
+            onPressComment={openComments}
+            onPressCard={openDetail}
+            scrollHandler={scrollHandler}
+          />
+        </View>
+      </View>
 
       <ReshareSheet
         visible={!!selectedPost}
