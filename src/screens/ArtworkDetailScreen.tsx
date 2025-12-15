@@ -29,6 +29,7 @@ import { Artwork } from "../domains/discover/types";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import ReshareSheet from "../domains/feed/components/sheets/ReshareSheet";
 import { FeedPost } from "../domains/feed/types";
+import SaveSheet from "../domains/artwork/components/SaveSheet";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -112,11 +113,14 @@ export default function ArtworkDetailScreen() {
   const { hidden, setHidden, height: tabHeight } = useTabBarVisibility();
   const scrollY = useRef(0);
   const [liked, setLiked] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [savedBoardId, setSavedBoardId] = useState<string | null>(null);
+  const saved = !!savedBoardId;
+  const [reshared, setReshared] = useState(false);
   const actionBottom = useRef(new RNAnimated.Value(tabHeight + 12)).current;
   const [showDimensionConvert, setShowDimensionConvert] = useState(false);
   const [showWeightConvert, setShowWeightConvert] = useState(false);
   const [showReshareSheet, setShowReshareSheet] = useState(false);
+  const [showSaveSheet, setShowSaveSheet] = useState(false);
 
   const currentArtwork: Artwork | undefined = useMemo(() => {
     const all = [
@@ -420,13 +424,17 @@ export default function ArtworkDetailScreen() {
           />
           <IconButton
             icon="repeat-outline"
-            color="#0B73FF"
-            bg="rgba(11,115,255,0.08)"
+            color={reshared ? "#0B73FF" : "#0F172A"}
+            bg={reshared ? "rgba(11,115,255,0.08)" : undefined}
             onPress={() => setShowReshareSheet(true)}
           />
           <IconButton
             icon={saved ? "bookmark" : "bookmark-outline"}
-            onPress={() => setSaved((prev) => !prev)}
+            color={saved ? "#ffffff" : "#0F172A"}
+            bg={saved ? "#0B73FF" : undefined}
+            onPress={() => {
+              setShowSaveSheet(true);
+            }}
           />
         </View>
         <Pressable className="bg-[#0B73FF] px-5 py-3 rounded-full flex-row items-center gap-2 active:opacity-90">
@@ -442,6 +450,17 @@ export default function ArtworkDetailScreen() {
         onSubmit={(text) => {
           setShowReshareSheet(false);
           console.log("Reshare from artwork detail", detail.id, text);
+          setReshared(true);
+        }}
+      />
+
+      <SaveSheet
+        visible={showSaveSheet}
+        onClose={() => setShowSaveSheet(false)}
+        initialSelectedId={savedBoardId}
+        onSelect={(id) => {
+          setSavedBoardId(id);
+          setShowSaveSheet(false);
         }}
       />
     </View>
