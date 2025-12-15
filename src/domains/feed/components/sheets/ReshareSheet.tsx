@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useCallback, useState } from "react";
-import { View, Pressable, Text, TextInput, useColorScheme } from "react-native";
+import { View, Pressable, Text, TextInput, useColorScheme, Keyboard } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
@@ -38,6 +38,7 @@ export default function ReshareSheet({
       sheetRef.current?.present();
       setNote("");
     } else {
+      Keyboard.dismiss();
       sheetRef.current?.dismiss();
     }
   }, [visible, target]);
@@ -48,6 +49,7 @@ export default function ReshareSheet({
 
   const handleClose = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Keyboard.dismiss();
     sheetRef.current?.dismiss();
   }, []);
 

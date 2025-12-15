@@ -5,6 +5,7 @@ import {
   Text,
   useColorScheme,
   useWindowDimensions,
+  Keyboard,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated from "react-native-reanimated";
@@ -135,6 +136,7 @@ export default function CommentsSheet({
       sheetRef.current?.present();
       sheetRef.current?.snapToIndex(0);
     } else {
+      Keyboard.dismiss();
       sheetRef.current?.dismiss();
     }
   }, [visible, target]);
@@ -145,6 +147,7 @@ export default function CommentsSheet({
 
   const handleClose = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Keyboard.dismiss();
     sheetRef.current?.dismiss();
   }, []);
 
