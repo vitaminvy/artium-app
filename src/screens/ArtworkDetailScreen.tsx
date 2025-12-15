@@ -21,6 +21,7 @@ import Animated, {
   interpolate,
   useAnimatedStyle,
   useSharedValue,
+  type SharedValue,
 } from "react-native-reanimated";
 
 import { discoverMockData } from "../domains/discover/mockData";
@@ -457,9 +458,6 @@ function ArtworkCarousel({ images }: { images: string[] }) {
           loop={images.length > 1}
           autoPlay={false}
           scrollAnimationDuration={400}
-          panGestureHandlerProps={{
-            activeOffsetX: [-10, 10],
-          }}
           onProgressChange={(_, absoluteProgress) => {
             progress.value = absoluteProgress;
           }}
@@ -494,7 +492,7 @@ function CarouselItem({
 }: {
   item: string;
   index: number;
-  progress: Animated.SharedValue<number>;
+  progress: SharedValue<number>;
   width: number;
   height: number;
 }) {
@@ -560,7 +558,7 @@ function PaginationDot({
   progress,
 }: {
   index: number;
-  progress: Animated.SharedValue<number>;
+  progress: SharedValue<number>;
 }) {
   const animatedStyle = useAnimatedStyle(() => {
     const distance = Math.abs(progress.value - index);
