@@ -47,7 +47,7 @@ export default function FeedScreen() {
   >();
   const [commentInput, setCommentInput] = React.useState("");
   const [tabsVisible, setTabsVisible] = React.useState(true);
-  const tabsAnim = useSharedValue(1); // 1 = hiện, 0 = ẩn
+  const tabsAnim = useSharedValue(1);
   const lastOffset = React.useRef(0);
 
   const openReshare = (post: FeedPost) => {
@@ -156,7 +156,7 @@ export default function FeedScreen() {
       <CommentsSheet
         visible={!!commentTarget}
         target={commentTarget}
-        comments={commentTarget ? commentsByPost[commentTarget.id] ?? [] : []}
+        comments={commentTarget ? (commentsByPost[commentTarget.id] ?? []) : []}
         input={commentInput}
         onChangeInput={setCommentInput}
         onClose={closeComments}
