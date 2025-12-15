@@ -112,6 +112,8 @@ export default function ArtworkDetailScreen() {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const actionBottom = useRef(new RNAnimated.Value(tabHeight + 12)).current;
+  const [showDimensionConvert, setShowDimensionConvert] = useState(false);
+  const [showWeightConvert, setShowWeightConvert] = useState(false);
 
   const currentArtwork: Artwork | undefined = useMemo(() => {
     const all = [
@@ -149,11 +151,15 @@ export default function ArtworkDetailScreen() {
         .slice(0, 6),
     [detail.id]
   );
+  const dimensionInLabel = `${detail.dimension.h.toFixed(2)} × ${detail.dimension.w.toFixed(2)} × ${detail.dimension.d.toFixed(2)} in`;
+  const dimensionCmLabel = `${(detail.dimension.h * 2.54).toFixed(2)} × ${(detail.dimension.w * 2.54).toFixed(2)} × ${(detail.dimension.d * 2.54).toFixed(2)} cm`;
+  const weightLbLabel = detail.weight;
+  const weightKgLabel = `${(parseFloat(detail.weight) * 0.45359237).toFixed(2)} kg`;
 
   useEffect(() => {
     const targetBottom = hidden
-      ? Math.max(insets.bottom + 12, 12)
-      : tabHeight + 12;
+      ? Math.max(insets.bottom + 6, 6) // Khi tab ẩn: dính sát mép dưới/safe area
+      : tabHeight + 4; // Khi tab hiện: nằm ngay trên tab
 
     RNAnimated.spring(actionBottom, {
       toValue: targetBottom,
@@ -211,7 +217,7 @@ export default function ArtworkDetailScreen() {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingBottom: Math.max(insets.bottom + tabHeight + 160, 220),
+          paddingBottom: Math.max(insets.bottom + tabHeight + 10, 80),
         }}
       >
         <View className="px-4 pt-4">
@@ -265,13 +271,6 @@ export default function ArtworkDetailScreen() {
               {detail.price}
             </Text>
           </View>
-          <Pressable className="flex-row items-center gap-2">
-            <Ionicons name="information-circle-outline" size={16} color="#0B73FF" />
-            <Text className="text-sm font-semibold text-[#0B73FF]">
-              View Price Graph
-            </Text>
-            <Ionicons name="chevron-forward" size={14} color="#0B73FF" />
-          </Pressable>
           {detail.availabilityNote ? (
             <Text className="text-base italic text-slate-600 mt-1">
               {detail.availabilityNote}
@@ -320,11 +319,22 @@ export default function ArtworkDetailScreen() {
 
         <View className="px-4 py-6">
           <View className="flex-row gap-6">
-            <InfoBlock
+            <InfoBlockWithConvert
               label="Dimension: (H X W X D)"
-              value={`${detail.dimension.h.toFixed(2)} × ${detail.dimension.w.toFixed(2)} × ${detail.dimension.d.toFixed(2)} ${detail.dimension.unit}`}
+              value={`${dimensionInLabel}`}
+              convertLabel="This is equivalent to:"
+              convertValue={dimensionCmLabel}
+              visible={showDimensionConvert}
+              onToggle={() => setShowDimensionConvert((prev) => !prev)}
             />
-            <InfoBlock label="Weight:" value={detail.weight} />
+            <InfoBlockWithConvert
+              label="Weight:"
+              value={weightLbLabel}
+              convertLabel="This is equivalent to:"
+              convertValue={weightKgLabel}
+              visible={showWeightConvert}
+              onToggle={() => setShowWeightConvert((prev) => !prev)}
+            />
           </View>
           <View className="flex-row gap-6 mt-5">
             <InfoBlock
@@ -356,7 +366,7 @@ export default function ArtworkDetailScreen() {
               <SimilarCard
                 item={item}
                 onPress={() =>
-                  (navigation.navigate as any)("ArtworkDetail", { id: item.id })
+                  (navigation as any).push("ArtworkDetail", { id: item.id })
                 }
               />
             )}
@@ -366,12 +376,12 @@ export default function ArtworkDetailScreen() {
       </ScrollView>
 
       <RNAnimated.View
-        className="absolute left-4 right-4 rounded-full bg-white border border-slate-200 flex-row items-center px-3"
+        className="absolute left-3 right-3 rounded-full bg-white border border-slate-200 flex-row items-center px-3"
         style={[
           actionBarShadow,
           {
             bottom: actionBottom,
-            paddingVertical: 10,
+            paddingVertical: 7,
           },
         ]}
         pointerEvents="box-none"
@@ -384,7 +394,7 @@ export default function ArtworkDetailScreen() {
           />
           <IconButton
             icon="swap-horizontal-outline"
-            onPress={() => {}}
+            onPress={() => { }}
           />
           <IconButton
             icon={saved ? "bookmark" : "bookmark-outline"}
@@ -409,6 +419,63 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
       <Text className="text-base font-semibold text-slate-900 mt-1">
         {value}
       </Text>
+    </View>
+  );
+}
+
+function InfoBlockWithConvert({
+  label,
+  value,
+  convertLabel,
+  convertValue,
+  visible,
+  onToggle,
+}: {
+  label: string;
+  value: string;
+  convertLabel: string;
+  convertValue: string;
+  visible: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <View className="flex-1 relative">
+      <View className="flex-row items-center gap-2">
+        <Text className="text-xs font-semibold text-slate-500 uppercase">
+          {label}
+        </Text>
+        <Pressable hitSlop={6} onPress={onToggle}>
+          <Ionicons name="information-circle-outline" size={16} color="#0F172A" />
+        </Pressable>
+      </View>
+      <Text className="text-base font-semibold text-slate-900 mt-1">
+        {value}
+      </Text>
+
+      {visible ? (
+        <View
+          className="absolute top-8 right-0 left-0 bg-white rounded-2xl px-4 py-3"
+          style={[
+            cardShadow,
+            {
+              zIndex: 30,
+              elevation: 8,
+            },
+          ]}
+        >
+          <View className="flex-row items-center justify-between mb-2">
+            <Text className="text-xs font-semibold text-slate-500">
+              {convertLabel}
+            </Text>
+            <Pressable onPress={onToggle} hitSlop={8}>
+              <Ionicons name="close" size={16} color="#0F172A" />
+            </Pressable>
+          </View>
+          <Text className="text-lg font-semibold text-slate-900">
+            {convertValue}
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -462,9 +529,9 @@ function ArtworkCarousel({ images }: { images: string[] }) {
             progress.value = absoluteProgress;
           }}
           renderItem={({ item, index }) => (
-            <CarouselItem 
-              item={item} 
-              index={index} 
+            <CarouselItem
+              item={item}
+              index={index}
               progress={progress}
               width={ITEM_WIDTH}
               height={CAROUSEL_HEIGHT}
