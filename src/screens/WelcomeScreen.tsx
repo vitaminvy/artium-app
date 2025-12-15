@@ -32,7 +32,10 @@ export default function WelcomeScreen({ navigation }: Props) {
       {/* Optional overlay for readability */}
       <View
         pointerEvents="none"
-        style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.35)" }]}
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: "rgba(0,0,0,0.35)" },
+        ]}
       />
 
       <View className="flex-1 justify-end px-8 pb-12">

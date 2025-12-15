@@ -23,6 +23,14 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
     }).start();
   }, [hidden, translateY, height]);
 
+  const focusedOptions = descriptors[state.routes[state.index].key]?.options;
+  if (
+    focusedOptions?.tabBarStyle &&
+    (focusedOptions.tabBarStyle as any)?.display === "none"
+  ) {
+    return null;
+  }
+
   return (
     <>
       <Animated.View

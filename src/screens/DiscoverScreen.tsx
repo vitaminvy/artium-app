@@ -26,15 +26,8 @@ const TABS: { key: DiscoverTab; label: string }[] = [
 ];
 
 export default function DiscoverScreen() {
-  const {
-    tab,
-    setTab,
-    topPicks,
-    artworks,
-    profiles,
-    moments,
-    events,
-  } = useDiscover();
+  const { tab, setTab, topPicks, artworks, profiles, moments, events } =
+    useDiscover();
 
   const [showLocationSheet, setShowLocationSheet] = useState(false);
   const [locationText, setLocationText] = useState("Albuquerque, NM, USA");
