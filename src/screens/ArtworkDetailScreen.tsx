@@ -27,6 +27,8 @@ import Animated, {
 import { discoverMockData } from "../domains/discover/mockData";
 import { Artwork } from "../domains/discover/types";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
+import ReshareSheet from "../domains/feed/components/sheets/ReshareSheet";
+import { FeedPost } from "../domains/feed/types";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -114,6 +116,7 @@ export default function ArtworkDetailScreen() {
   const actionBottom = useRef(new RNAnimated.Value(tabHeight + 12)).current;
   const [showDimensionConvert, setShowDimensionConvert] = useState(false);
   const [showWeightConvert, setShowWeightConvert] = useState(false);
+  const [showReshareSheet, setShowReshareSheet] = useState(false);
 
   const currentArtwork: Artwork | undefined = useMemo(() => {
     const all = [
@@ -155,6 +158,28 @@ export default function ArtworkDetailScreen() {
   const dimensionCmLabel = `${(detail.dimension.h * 2.54).toFixed(2)} × ${(detail.dimension.w * 2.54).toFixed(2)} × ${(detail.dimension.d * 2.54).toFixed(2)} cm`;
   const weightLbLabel = detail.weight;
   const weightKgLabel = `${(parseFloat(detail.weight) * 0.45359237).toFixed(2)} kg`;
+  const reshareTarget: FeedPost = useMemo(
+    () => ({
+      id: detail.id,
+      author: {
+        id: detail.artist.name,
+        name: detail.artist.name,
+        handle: detail.artist.name.replace(/\s+/g, "").toLowerCase(),
+        avatar: detail.artist.avatar,
+        verified: detail.artist.verified,
+      },
+      content: `${detail.title} · ${detail.price}`,
+      createdAt: Date.now(),
+      relativeTime: "Just now",
+      media: {
+        url: detail.images[0],
+        aspectRatio: 3 / 3,
+        placeholderColor: "#CBD5E1",
+      },
+      metrics: { likes: 0, comments: 0, shares: 0 },
+    }),
+    [detail]
+  );
 
   useEffect(() => {
     const targetBottom = hidden
@@ -366,7 +391,8 @@ export default function ArtworkDetailScreen() {
               <SimilarCard
                 item={item}
                 onPress={() =>
-                  (navigation as any).push("ArtworkDetail", { id: item.id })
+                  // @ts-ignore
+                  navigation.navigate("ArtworkDetail" as never, { id: item.id } as never)
                 }
               />
             )}
@@ -393,8 +419,10 @@ export default function ArtworkDetailScreen() {
             onPress={() => setLiked((prev) => !prev)}
           />
           <IconButton
-            icon="swap-horizontal-outline"
-            onPress={() => { }}
+            icon="repeat-outline"
+            color="#0B73FF"
+            bg="rgba(11,115,255,0.08)"
+            onPress={() => setShowReshareSheet(true)}
           />
           <IconButton
             icon={saved ? "bookmark" : "bookmark-outline"}
@@ -406,6 +434,16 @@ export default function ArtworkDetailScreen() {
           <Text className="text-white font-semibold">Buy now</Text>
         </Pressable>
       </RNAnimated.View>
+
+      <ReshareSheet
+        visible={showReshareSheet}
+        target={reshareTarget}
+        onClose={() => setShowReshareSheet(false)}
+        onSubmit={(text) => {
+          setShowReshareSheet(false);
+          console.log("Reshare from artwork detail", detail.id, text);
+        }}
+      />
     </View>
   );
 }
@@ -484,15 +522,18 @@ function IconButton({
   icon,
   onPress,
   color = "#0F172A",
+  bg,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   onPress: () => void;
   color?: string;
+  bg?: string;
 }) {
   return (
     <Pressable
       onPress={onPress}
       className="h-10 w-10 rounded-full items-center justify-center active:opacity-80"
+      style={bg ? { backgroundColor: bg } : undefined}
     >
       <Ionicons name={icon} size={22} color={color} />
     </Pressable>
