@@ -1,20 +1,14 @@
 import "./global.css";
-<<<<<<< HEAD
-import { LogBox, View, Text, TouchableOpacity } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import React, { useEffect } from "react";
-=======
 import { LogBox, Image, Animated, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useEffect, useRef, useState } from "react";
 
->>>>>>> ca78682331af3f11ff985550b016613db98f7c5d
 import AppEntry from "./src/app";
 import { useAuthBootstrap } from "./src/domains/auth/hooks/useAuthBootstrap";
 import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
-} from 'react-native-reanimated';
+} from "react-native-reanimated";
 
 // Ensure error handler is registered once
 LogBox.ignoreAllLogs(false);
@@ -48,10 +42,6 @@ export default function App() {
   useEffect(() => {
     console.log("App mounted");
   }, []);
-<<<<<<< HEAD
-  // Luôn vào app chính (Welcome/Auth) ngay từ đầu
-  return <AppEntry />;
-=======
   const auth = useAuthBootstrap();
   const [splashTimerDone, setSplashTimerDone] = useState(false);
   const [splashVisible, setSplashVisible] = useState(true);
@@ -68,7 +58,11 @@ export default function App() {
     if (!splashTimerDone || auth.status === "loading") return;
 
     Animated.parallel([
-      Animated.timing(fade, { toValue: 0, duration: 350, useNativeDriver: true }),
+      Animated.timing(fade, {
+        toValue: 0,
+        duration: 350,
+        useNativeDriver: true,
+      }),
       Animated.timing(slideUp, {
         toValue: -40,
         duration: 350,
@@ -112,5 +106,4 @@ export default function App() {
       )}
     </>
   );
->>>>>>> ca78682331af3f11ff985550b016613db98f7c5d
 }
