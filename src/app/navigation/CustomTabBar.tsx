@@ -12,6 +12,14 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
   const insets = useSafeAreaInsets();
   const [showUploadSheet, setShowUploadSheet] = useState(false);
 
+  const focusedOptions = descriptors[state.routes[state.index].key]?.options;
+  if (
+    focusedOptions?.tabBarStyle &&
+    (focusedOptions.tabBarStyle as any)?.display === "none"
+  ) {
+    return null;
+  }
+
   return (
     <>
       <View className="bg-transparent absolute bottom-0 w-full">
