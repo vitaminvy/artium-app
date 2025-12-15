@@ -15,6 +15,14 @@ import ReshareSheet from "../domains/feed/components/sheets/ReshareSheet";
 import CommentsSheet from "../domains/feed/components/sheets/CommentsSheet";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { FeedStackParamList } from "../app/navigation/Stack/FeedStack";
+import ScreenHeader from "../shared/components/ScreenHeader";
+import UnderlineHome from "../../assets/headers/underline-home.svg";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  interpolate,
+} from "react-native-reanimated";
 
 export default function FeedScreen() {
   const insets = useSafeAreaInsets();
@@ -30,12 +38,17 @@ export default function FeedScreen() {
     commentsByPost,
     addComment,
   } = useFeed();
-  const [selectedPost, setSelectedPost] = React.useState<FeedPost | undefined>();
+  const [selectedPost, setSelectedPost] = React.useState<
+    FeedPost | undefined
+  >();
   const [reshareNote, setReshareNote] = React.useState("");
   const [commentTarget, setCommentTarget] = React.useState<
     FeedPost | undefined
   >();
   const [commentInput, setCommentInput] = React.useState("");
+  const [tabsVisible, setTabsVisible] = React.useState(true);
+  const tabsAnim = useSharedValue(1); // 1 = hiện, 0 = ẩn
+  const lastOffset = React.useRef(0);
 
   const openReshare = (post: FeedPost) => {
     setSelectedPost(post);
@@ -73,29 +86,43 @@ export default function FeedScreen() {
     setCommentInput("");
   };
 
-  return (
-    <View
-      className="flex-1 bg-white"
-      style={{ paddingTop: Math.max(insets.top, 12) }}
-    >
-      <View className="px-4 pb-2 flex-row items-center justify-between">
-        <View className="flex-row items-center gap-1">
-          <Text className="text-xl font-bold text-slate-900 uppercase">
-            {FEED_STRINGS.HEADER_TITLE}
-          </Text>
-          <Ionicons name="star-outline" size={18} color="#16A34A" />
-        </View>
-        <View className="flex-row items-center gap-3">
-          <Pressable hitSlop={8}>
-            <Ionicons name="search-outline" size={22} color="#0F172A" />
-          </Pressable>
-          <Pressable hitSlop={8}>
-            <Ionicons name="notifications-outline" size={22} color="#0F172A" />
-          </Pressable>
-        </View>
-      </View>
+  const handleScroll = (y: number) => {
+    const diff = y - lastOffset.current;
+    if (diff > 8 && y > 24) {
+      setTabsVisible(false);
+    } else if (diff < -8) {
+      setTabsVisible(true);
+    }
+    lastOffset.current = y;
+  };
 
-      <FeedTabs tab={tab} onChange={setTab} />
+  React.useEffect(() => {
+    tabsAnim.value = withTiming(tabsVisible ? 1 : 0, { duration: 180 });
+  }, [tabsVisible, tabsAnim]);
+
+  const tabAnimatedStyle = useAnimatedStyle(() => ({
+    height: interpolate(tabsAnim.value, [0, 1], [0, 52]),
+    opacity: tabsAnim.value,
+    transform: [
+      {
+        translateY: interpolate(tabsAnim.value, [0, 1], [-10, 0]),
+      },
+    ],
+  }));
+
+  return (
+    <View className="flex-1 bg-white">
+      <ScreenHeader
+        title={FEED_STRINGS.HEADER_TITLE}
+        badgeLabel="Blog"
+        actionType="notifications"
+        onPressAction={() => console.log("Open notifications")}
+        underlineSource={UnderlineHome}
+      />
+
+      <Animated.View style={[{ overflow: "hidden" }, tabAnimatedStyle]}>
+        <FeedTabs tab={tab} onChange={setTab} />
+      </Animated.View>
 
       {tab === "explore" ? (
         <FeedExploreTab
@@ -104,6 +131,7 @@ export default function FeedScreen() {
           onToggleReshare={openReshare}
           onPressComment={openComments}
           onPressCard={openDetail}
+          onScrollY={handleScroll}
         />
       ) : (
         <FeedFollowingTab
@@ -112,6 +140,7 @@ export default function FeedScreen() {
           onToggleReshare={openReshare}
           onPressComment={openComments}
           onPressCard={openDetail}
+          onScrollY={handleScroll}
         />
       )}
 

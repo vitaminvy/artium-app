@@ -9,6 +9,7 @@ type Props = {
   onToggleReshare: (post: FeedPost) => void;
   onPressComment: (post: FeedPost) => void;
   onPressCard?: (post: FeedPost) => void;
+  onScrollY?: (offsetY: number) => void;
 };
 
 export default function FeedExploreTab({
@@ -17,6 +18,7 @@ export default function FeedExploreTab({
   onToggleReshare,
   onPressComment,
   onPressCard,
+  onScrollY,
 }: Props) {
   const renderItem = ({ item }: ListRenderItemInfo<FeedPost>) => (
     <FeedPostCard
@@ -40,6 +42,8 @@ export default function FeedExploreTab({
       }}
       ItemSeparatorComponent={() => <View style={{ height: 4 }} />}
       showsVerticalScrollIndicator={false}
+      onScroll={(e) => onScrollY?.(e.nativeEvent.contentOffset.y)}
+      scrollEventThrottle={16}
     />
   );
 }
