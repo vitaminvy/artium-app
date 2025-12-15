@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Modal,
   View,
@@ -7,6 +7,7 @@ import {
   TextInput,
   Animated,
   Easing,
+  StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { FeedPost } from "../../types";
@@ -21,6 +22,7 @@ type Props = {
   onSubmit: () => void;
 };
 
+// Chiến lược: giữ Modal render cho đến khi animation đóng xong, tránh khựng
 export default function ReshareSheet({
   visible,
   target,
@@ -30,41 +32,72 @@ export default function ReshareSheet({
   onSubmit,
 }: Props) {
   const slide = useRef(new Animated.Value(1)).current;
+  const [rendered, setRendered] = useState(visible);
 
+  // Khi prop visible = true => mount + animate mở
   useEffect(() => {
     if (visible) {
+      setRendered(true);
       slide.setValue(1);
       Animated.timing(slide, {
-        toValue: 0,
-        duration: 220,
-        easing: Easing.out(Easing.ease),
+        toValue: -0.02, // tránh chạm đúng 0 để không bị snap frame cuối
+        duration: 200,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
-    } else {
-      slide.setValue(1);
     }
   }, [visible, slide]);
 
-  const translateY = slide.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 60],
-  });
+  const translateY = useMemo(
+    () =>
+      slide.interpolate({
+        inputRange: [-0.05, 1],
+        outputRange: [-2, 40],
+        extrapolate: "clamp",
+      }),
+    [slide]
+  );
+
+  const overlayOpacity = useMemo(
+    () =>
+      slide.interpolate({
+        inputRange: [-0.05, 1],
+        outputRange: [0.4, 0],
+        extrapolate: "clamp",
+      }),
+    [slide]
+  );
+
+  const runClose = () => {
+    Animated.timing(slide, {
+      toValue: 1.05, // overshoot nhẹ để tránh snap
+      duration: 180,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(() => {
+      slide.setValue(1); // reset giá trị cuối để tránh frame dư
+      setRendered(false);
+      onClose();
+    });
+  };
+
+  if (!rendered && !visible) return null;
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <View className="flex-1 bg-black/40 justify-end">
-        <Pressable className="flex-1" onPress={onClose} />
+    <Modal visible transparent animationType="none" onRequestClose={runClose}>
+      <View className="flex-1 justify-end">
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFillObject,
+            { backgroundColor: "rgba(0,0,0,0.4)", opacity: overlayOpacity },
+          ]}
+        >
+          <Pressable style={StyleSheet.absoluteFill} onPress={runClose} />
+        </Animated.View>
 
         <Animated.View
           className="bg-white rounded-t-[28px] px-5 pt-4 pb-6"
-          style={{
-            transform: [{ translateY }],
-          }}
+          style={{ transform: [{ translateY }] }}
         >
           <View className="flex-row justify-between items-center mb-3">
             <View className="flex-row items-center gap-2">
@@ -89,7 +122,7 @@ export default function ReshareSheet({
                 </Text>
               </View>
             </View>
-            <Pressable onPress={onClose} hitSlop={8}>
+            <Pressable onPress={runClose} hitSlop={8}>
               <Ionicons name="close-outline" size={26} color="#0F172A" />
             </Pressable>
           </View>

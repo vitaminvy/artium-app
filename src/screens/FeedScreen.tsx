@@ -22,6 +22,7 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   interpolate,
+  useAnimatedScrollHandler,
 } from "react-native-reanimated";
 
 export default function FeedScreen() {
@@ -46,9 +47,9 @@ export default function FeedScreen() {
     FeedPost | undefined
   >();
   const [commentInput, setCommentInput] = React.useState("");
-  const [tabsVisible, setTabsVisible] = React.useState(true);
+  const TAB_HEIGHT = 52;
   const tabsAnim = useSharedValue(1);
-  const lastOffset = React.useRef(0);
+  const lastOffset = useSharedValue(0);
 
   const openReshare = (post: FeedPost) => {
     setSelectedPost(post);
@@ -87,28 +88,30 @@ export default function FeedScreen() {
     Keyboard.dismiss();
   };
 
-  const handleScroll = (y: number) => {
-    const diff = y - lastOffset.current;
-    if (diff > 8 && y > 24) {
-      setTabsVisible(false);
-    } else if (diff < -8) {
-      setTabsVisible(true);
-    }
-    lastOffset.current = y;
-  };
-
-  React.useEffect(() => {
-    tabsAnim.value = withTiming(tabsVisible ? 1 : 0, { duration: 180 });
-  }, [tabsVisible, tabsAnim]);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      const y = event.contentOffset.y;
+      const diff = y - lastOffset.value;
+      // Nhạy hơn cho cuộn chậm: ngưỡng nhỏ và auto-ẩn khi đã vượt xa
+      if ((diff > 6 && y > 16) || y > 120) {
+        tabsAnim.value = withTiming(0, { duration: 140 });
+      } else if (diff < -6) {
+        tabsAnim.value = withTiming(1, { duration: 140 });
+      }
+      lastOffset.value = y;
+    },
+  });
 
   const tabAnimatedStyle = useAnimatedStyle(() => ({
-    height: interpolate(tabsAnim.value, [0, 1], [0, 52]),
+    height: interpolate(tabsAnim.value, [0, 1], [0, TAB_HEIGHT]),
     opacity: tabsAnim.value,
+    overflow: "hidden",
     transform: [
       {
-        translateY: interpolate(tabsAnim.value, [0, 1], [-10, 0]),
+        translateY: interpolate(tabsAnim.value, [0, 1], [-TAB_HEIGHT / 2, 0]),
       },
     ],
+    pointerEvents: tabsAnim.value === 0 ? "none" : "auto",
   }));
 
   return (
@@ -132,7 +135,7 @@ export default function FeedScreen() {
           onToggleReshare={openReshare}
           onPressComment={openComments}
           onPressCard={openDetail}
-          onScrollY={handleScroll}
+          scrollHandler={scrollHandler}
         />
       ) : (
         <FeedFollowingTab
@@ -141,7 +144,7 @@ export default function FeedScreen() {
           onToggleReshare={openReshare}
           onPressComment={openComments}
           onPressCard={openDetail}
-          onScrollY={handleScroll}
+          scrollHandler={scrollHandler}
         />
       )}
 

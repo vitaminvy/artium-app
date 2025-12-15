@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, Pressable, Image } from "react-native";
+import { View, Text, Pressable } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { FeedPost } from "../../types";
 import { FEED_COLORS } from "../../constants";
@@ -29,6 +30,12 @@ export default function FeedPostCard({
       .toUpperCase() || "A";
 
   const media = post.media;
+  const mediaSource =
+    typeof media?.url === "number"
+      ? media.url
+      : media?.url
+      ? { uri: media.url }
+      : undefined;
   const hasQuote = !!post.quote;
   const CardBody = () => (
     <View
@@ -90,11 +97,13 @@ export default function FeedPostCard({
             aspectRatio: media.aspectRatio ?? 0.85,
           }}
         >
-          {media.url ? (
+          {mediaSource ? (
             <Image
-              source={{ uri: media.url }}
-              className="w-full h-full"
-              resizeMode="cover"
+              source={mediaSource}
+              style={{ width: "100%", height: "100%" }}
+              contentFit="cover"
+              transition={0}
+              cachePolicy="memory-disk"
             />
           ) : null}
         </View>
@@ -128,7 +137,25 @@ export default function FeedPostCard({
                 backgroundColor: post.quote.media.placeholderColor ?? "#E2E8F0",
                 aspectRatio: post.quote.media.aspectRatio ?? 2,
               }}
-            />
+            >
+              {typeof post.quote.media.url === "number" ? (
+                <Image
+                  source={post.quote.media.url}
+                  style={{ width: "100%", height: "100%" }}
+                  contentFit="cover"
+                  transition={0}
+                  cachePolicy="memory-disk"
+                />
+              ) : post.quote.media.url ? (
+                <Image
+                  source={{ uri: post.quote.media.url }}
+                  style={{ width: "100%", height: "100%" }}
+                  contentFit="cover"
+                  transition={0}
+                  cachePolicy="memory-disk"
+                />
+              ) : null}
+            </View>
           ) : null}
         </View>
       ) : null}

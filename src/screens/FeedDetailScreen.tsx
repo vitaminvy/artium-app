@@ -18,6 +18,7 @@ import { FEED_STRINGS, CURRENT_USER } from "../domains/feed/constants";
 import { FeedPost } from "../domains/feed/types";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
+import ReshareSheet from "../domains/feed/components/sheets/ReshareSheet";
 
 type RouteProps = { key: string; name: "FeedDetail"; params: { post: FeedPost } };
 
@@ -33,6 +34,8 @@ export default function FeedDetailScreen() {
   const [comments, setComments] = useState<
     { id: string; author: { name: string; handle: string }; content: string }[]
   >([]);
+  const [showReshare, setShowReshare] = useState(false);
+  const [reshareNote, setReshareNote] = useState("");
 
   const toggleLike = () => {
     setPost((prev) => ({
@@ -45,15 +48,21 @@ export default function FeedDetailScreen() {
     }));
   };
 
-  const toggleReshare = () => {
+  const openReshare = () => {
+    setShowReshare(true);
+    setReshareNote("");
+  };
+
+  const submitReshare = () => {
     setPost((prev) => ({
       ...prev,
-      reshared: !prev.reshared,
+      reshared: true,
       metrics: {
         ...prev.metrics,
-        shares: prev.metrics.shares + (prev.reshared ? -1 : 1),
+        shares: prev.metrics.shares + 1,
       },
     }));
+    setShowReshare(false);
   };
 
   const addComment = () => {
@@ -107,7 +116,7 @@ export default function FeedDetailScreen() {
         <FeedPostCard
           post={post}
           onPressLike={() => toggleLike()}
-          onPressReshare={() => toggleReshare()}
+          onPressReshare={() => openReshare()}
           onPressComment={() => {}}
         />
 
@@ -162,6 +171,14 @@ export default function FeedDetailScreen() {
           </Pressable>
         </View>
       </View>
+      <ReshareSheet
+        visible={showReshare}
+        target={post}
+        note={reshareNote}
+        onChangeNote={setReshareNote}
+        onClose={() => setShowReshare(false)}
+        onSubmit={submitReshare}
+      />
     </KeyboardAvoidingView>
   );
 }

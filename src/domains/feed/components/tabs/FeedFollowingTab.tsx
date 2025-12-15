@@ -1,5 +1,6 @@
 import React from "react";
-import { FlatList, ListRenderItemInfo, View, Text } from "react-native";
+import { ListRenderItemInfo, View, Text } from "react-native";
+import Animated from "react-native-reanimated";
 import { FeedPost } from "../../types";
 import FeedPostCard from "../cards/FeedPostCard";
 
@@ -9,7 +10,7 @@ type Props = {
   onToggleReshare: (post: FeedPost) => void;
   onPressComment: (post: FeedPost) => void;
   onPressCard?: (post: FeedPost) => void;
-  onScrollY?: (offsetY: number) => void;
+  scrollHandler?: any;
 };
 
 export default function FeedFollowingTab({
@@ -18,7 +19,7 @@ export default function FeedFollowingTab({
   onToggleReshare,
   onPressComment,
   onPressCard,
-  onScrollY,
+  scrollHandler,
 }: Props) {
   const renderItem = ({ item }: ListRenderItemInfo<FeedPost>) => (
     <FeedPostCard
@@ -30,11 +31,17 @@ export default function FeedFollowingTab({
     />
   );
 
+  const AnimatedFlatList = Animated.FlatList as unknown as typeof Animated.FlatList<FeedPost>;
+
   return (
-    <FlatList
+    <AnimatedFlatList
       data={data}
       keyExtractor={(item) => item.id}
       renderItem={renderItem}
+      initialNumToRender={6}
+      maxToRenderPerBatch={6}
+      windowSize={7}
+      updateCellsBatchingPeriod={50}
       ListHeaderComponent={
         data.some((p) => p.author.isMe) ? (
           <View className="px-4 py-2">
@@ -51,7 +58,7 @@ export default function FeedFollowingTab({
       }}
       ItemSeparatorComponent={() => <View style={{ height: 4 }} />}
       showsVerticalScrollIndicator={false}
-      onScroll={(e) => onScrollY?.(e.nativeEvent.contentOffset.y)}
+      onScroll={scrollHandler}
       scrollEventThrottle={16}
     />
   );

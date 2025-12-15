@@ -17,6 +17,7 @@ const posts: FeedPost[] = [
     media: {
       placeholderColor: "#A8B7C6",
       aspectRatio: 1,
+      url: require("../../../assets/feed/sample_picture_01.jpg"),
     },
     metrics: {
       likes: 12,
@@ -68,7 +69,8 @@ const posts: FeedPost[] = [
       relativeTime: "5m",
       media: {
         placeholderColor: "#E2E8F0",
-        aspectRatio: 2.3,
+        aspectRatio: 1.2,
+        url: require("../../../assets/feed/sample_picture_01.jpg"),
       },
     },
     isReshare: true,
@@ -100,6 +102,7 @@ const posts: FeedPost[] = [
     media: {
       placeholderColor: "#A8B7C6",
       aspectRatio: 0.85,
+      url: require("../../../assets/feed/sample_picture_01.jpg"),
     },
     metrics: {
       likes: 1200,
@@ -124,6 +127,7 @@ const posts: FeedPost[] = [
     media: {
       placeholderColor: "#CBD5E1",
       aspectRatio: 1.1,
+      url: require("../../../assets/feed/sample_picture_01.jpg"),
     },
     metrics: {
       likes: 2,
