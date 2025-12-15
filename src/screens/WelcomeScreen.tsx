@@ -39,7 +39,7 @@ export default function WelcomeScreen({ navigation }: Props) {
         <Text className="text-white text-center text-3xl">Welcome</Text>
 
         <Pressable
-          onPress={() => navigation.navigate("SignUp")}
+          onPress={() => navigation.navigate("Tabs")}
           className="bg-white py-4 px-6 rounded-full mt-8"
         >
           <Text className="text-center text-lg">GET STARTED</Text>

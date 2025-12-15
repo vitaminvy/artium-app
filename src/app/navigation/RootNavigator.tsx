@@ -12,7 +12,7 @@ type AppStackParamList = {
   Tabs: undefined;
   ArtworkDetail: { id?: string };
   Upload: undefined;
-};
+  };
 
 type RootNavigatorProps = {
   authStatus: AuthStatus;

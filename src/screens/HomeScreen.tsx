@@ -6,6 +6,7 @@ import { useNavigation } from "@react-navigation/native";
 import ScreenHeader from "../shared/components/ScreenHeader";
 import Sidebar from "../shared/components/Sidebar";
 import { useSidebarItems } from "../shared/hooks/useSidebar";
+import UnderlineHome from "../../assets/headers/underline-home.svg";
 import { tokenStorage } from "../domains/auth/services/tokenStorage";
 
 export default function HomeScreen() {
@@ -24,7 +25,7 @@ export default function HomeScreen() {
         isMenuOpen={sidebarOpen}
         onPressAction={() => setSidebarOpen((prev) => !prev)}
         onHeightChange={(h) => setHeaderHeight(h)}
-        underlineSource={require("../../assets/headers/underline-home.svg")}
+        underlineSource={UnderlineHome}
       />
       {/* new logo */}
       <View className="flex-1 items-center justify-center px-6">
