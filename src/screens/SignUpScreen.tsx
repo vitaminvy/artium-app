@@ -16,7 +16,7 @@ import {
   statusCodes,
 } from "@react-native-google-signin/google-signin";
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 
 import { AuthStackParamList } from "@/app/navigation/AuthStack";
 import { useSignUp } from "@/domains/auth/hooks/useSignUp";
@@ -65,8 +65,11 @@ export default function SignUpScreen({ navigation }: Props) {
           email: firebaseUser.email || googleUser.email,
           displayName: firebaseUser.displayName || googleUser.name,
           photoURL: firebaseUser.photoURL || googleUser.photo,
-          createdAt: firebaseUser.metadata.creationTime,
-          lastLoginAt: firebaseUser.metadata.lastSignInTime,
+          role: "art_lover",
+          followerCount: 0,
+          followingCount: 0,
+          createdAt: serverTimestamp(),
+          lastLoginAt: serverTimestamp(),
         },
         { merge: true }
       );

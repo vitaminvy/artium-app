@@ -1,5 +1,5 @@
 import { updateProfile, UserCredential } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 
 import { firestore } from "@/configs/firebase";
 import { doCreateUserWithEmailAndPassword } from "./firebaseAuth";
@@ -28,8 +28,11 @@ export async function register(
       email: credential.user.email,
       displayName:
         name || credential.user.displayName || credential.user.email || "",
-      createdAt: credential.user.metadata.creationTime,
-      lastLoginAt: credential.user.metadata.lastSignInTime,
+      role: "art_lover",
+      followerCount: 0,
+      followingCount: 0,
+      createdAt: serverTimestamp(),
+      lastLoginAt: serverTimestamp(),
     },
     { merge: true }
   );
