@@ -44,7 +44,7 @@ const OptionsSheet = forwardRef<BottomSheetModal | null, Props>(function Options
       <BottomSheetBackdrop
         {...props}
         pressBehavior="close"
-        appearsOnIndex={0}
+        appearsOnIndex={-1}
         disappearsOnIndex={-1}
         opacity={0.4}
       />
