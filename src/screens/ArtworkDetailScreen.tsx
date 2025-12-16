@@ -1,21 +1,20 @@
+// Detailed Artwork Screen
+// src/screens/ArtworkDetailScreen.tsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Animated as RNAnimated,
   FlatList,
-  Image,
   Pressable,
   ScrollView,
   Text,
   View,
-  ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BottomSheetModalProvider, BottomSheetModal } from "@gorhom/bottom-sheet";
+import { BottomSheetModalProvider, BottomSheetModal, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
 import type { BottomSheetBackdropProps } from "@gorhom/bottom-sheet";
-import { BottomSheetBackdrop } from "@gorhom/bottom-sheet";
 
 import { discoverMockData } from "../domains/discover/mockData";
 import { Artwork } from "../domains/discover/types";
@@ -30,25 +29,13 @@ import SaveSheet from "../domains/artwork/components/SaveSheet";
 import ReportSheet from "../domains/artwork/components/ReportSheet";
 import ArtworkCarousel from "../domains/artwork/components/ArtworkCarousel";
 import SimilarCard from "../domains/artwork/components/cards/SimilarCard";
-import IconButton from "../domains/artwork/components/ui/IconButton";
-import { InfoBlock, InfoBlockWithConvert } from "../domains/artwork/components/ui/InfoBlock";
 import { shareArtwork } from "../shared/utils/shareArtwork";
 
-const cardShadow: ViewStyle = {
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 10 },
-  shadowOpacity: 0.06,
-  shadowRadius: 12,
-  elevation: 4,
-};
-
-const actionBarShadow: ViewStyle = {
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.12,
-  shadowRadius: 10,
-  elevation: 6,
-};
+// New Components
+import ArtworkHeader from "../domains/artwork/components/ArtworkHeader";
+import ArtworkInfo from "../domains/artwork/components/ArtworkInfo";
+import ArtworkDetails from "../domains/artwork/components/ArtworkDetails";
+import ArtworkActionBar from "../domains/artwork/components/ArtworkActionBar";
 
 export default function ArtworkDetailScreen() {
   const navigation = useNavigation<any>();
@@ -63,14 +50,12 @@ export default function ArtworkDetailScreen() {
   const saved = !!savedBoardId;
   const [reshared, setReshared] = useState(false);
   const actionBottom = useRef(new RNAnimated.Value(tabHeight + 12)).current;
-  const [showDimensionConvert, setShowDimensionConvert] = useState(false);
-  const [showWeightConvert, setShowWeightConvert] = useState(false);
   const [showReshareSheet, setShowReshareSheet] = useState(false);
   const [showSaveSheet, setShowSaveSheet] = useState(false);
-
-  // Bottom Sheet Refs & States
-  const optionsSheetRef = useRef<BottomSheetModal>(null);
   const [showReportSheet, setShowReportSheet] = useState(false);
+
+  // Bottom Sheet Refs
+  const optionsSheetRef = useRef<BottomSheetModal>(null);
 
   const currentArtwork: Artwork | undefined = useMemo(() => {
     const all = [...discoverMockData.artworks, ...discoverMockData.moments];
@@ -103,17 +88,6 @@ export default function ArtworkDetailScreen() {
     [detail.id]
   );
 
-  const dimensionInLabel = `${detail.dimension.h.toFixed(
-    2
-  )} × ${detail.dimension.w.toFixed(2)} × ${detail.dimension.d.toFixed(2)} in`;
-  const dimensionCmLabel = `${(detail.dimension.h * 2.54).toFixed(2)} × ${(
-    detail.dimension.w * 2.54
-  ).toFixed(2)} × ${(detail.dimension.d * 2.54).toFixed(2)} cm`;
-  const weightLbLabel = detail.weight;
-  const weightKgLabel = `${(parseFloat(detail.weight) * 0.45359237).toFixed(
-    2
-  )} kg`;
-
   const reshareTarget: FeedPost = useMemo(
     () => ({
       id: detail.id,
@@ -137,7 +111,6 @@ export default function ArtworkDetailScreen() {
     [detail]
   );
 
-  // Backdrop component
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
       <BottomSheetBackdrop
@@ -229,34 +202,11 @@ export default function ArtworkDetailScreen() {
     <BottomSheetModalProvider>
       <View className="flex-1 bg-white">
         {/* Custom Header */}
-        <View
-          className="flex-row items-center justify-between px-4 border-b border-slate-100 bg-white"
-          style={{ paddingTop: insets.top + 8, paddingBottom: 12, zIndex: 50 }}
-        >
-          <Pressable
-            className="h-10 w-10 items-center justify-center"
-            onPress={() => navigation.goBack()}
-            hitSlop={8}
-          >
-            <Ionicons name="arrow-back" size={22} color="#0F172A" />
-          </Pressable>
-          <View className="flex-row items-center gap-3">
-            <Pressable
-              className="h-10 w-10 items-center justify-center"
-              onPress={handleShare}
-              hitSlop={8}
-            >
-              <Ionicons name="share-outline" size={22} color="#0F172A" />
-            </Pressable>
-            <Pressable
-              className="h-10 w-10 items-center justify-center"
-              hitSlop={8}
-              onPress={handleOpenOptionsSheet}
-            >
-              <Ionicons name="ellipsis-vertical" size={22} color="#0F172A" />
-            </Pressable>
-          </View>
-        </View>
+        <ArtworkHeader
+          onBack={() => navigation.goBack()}
+          onShare={handleShare}
+          onOptions={handleOpenOptionsSheet}
+        />
 
         {/* Content */}
         <ScrollView
@@ -271,134 +221,10 @@ export default function ArtworkDetailScreen() {
             <ArtworkCarousel images={detail.images} />
           </View>
 
-          <View className="px-4 pt-6">
-            <Text className="text-2xl font-bold text-slate-900">
-              {detail.title}
-            </Text>
+          <ArtworkInfo detail={detail} />
+          <ArtworkDetails detail={detail} />
 
-            <View className="flex-row items-center gap-3 mt-3">
-              <View className="h-12 w-12 rounded-full overflow-hidden bg-slate-200">
-                <Image
-                  source={{ uri: detail.artist.avatar }}
-                  className="h-full w-full"
-                />
-              </View>
-              <View className="flex-row items-center gap-2">
-                <Text className="text-base font-semibold text-slate-900">
-                  {detail.artist.name}
-                </Text>
-                {detail.artist.verified ? (
-                  <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
-                ) : null}
-              </View>
-            </View>
-
-            <View className="flex-row items-center gap-4 mt-4">
-              <View className="flex-row items-center gap-1">
-                <Ionicons name="pricetag-outline" size={16} color="#94A3B8" />
-                <Text className="text-sm text-slate-500">
-                  {detail.stats.worksSold} works sold
-                </Text>
-              </View>
-              <View className="flex-row items-center gap-1">
-                <Ionicons name="people-outline" size={16} color="#94A3B8" />
-                <Text className="text-sm text-slate-500">
-                  {detail.stats.buyers} buyers
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          <View className="mt-5 border-b border-slate-100" />
-
-          <View className="px-4 py-5 gap-3">
-            <View className="flex-row items-center gap-3">
-              <View className="h-3 w-3 rounded-full bg-[#0B73FF]" />
-              <Text className="text-xl font-extrabold text-slate-900">
-                {detail.price}
-              </Text>
-            </View>
-            {detail.availabilityNote ? (
-              <Text className="text-base italic text-slate-600 mt-1">
-                {detail.availabilityNote}
-              </Text>
-            ) : null}
-          </View>
-
-          <View className="px-4 pb-5">
-            <View className="flex-row gap-3">
-              {detail.shipping.map((item, idx) => (
-                <View
-                  key={idx}
-                  className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-4"
-                  style={cardShadow}
-                >
-                  <Text className="text-sm font-semibold text-slate-900">
-                    {item.title}
-                  </Text>
-                  {item.subtitle ? (
-                    <Text className="text-xs text-slate-500 mt-1">
-                      {item.subtitle}
-                    </Text>
-                  ) : null}
-                </View>
-              ))}
-            </View>
-          </View>
-
-          <View className="px-4 py-2">
-            <Text className="text-sm font-semibold text-slate-600 mb-3">
-              ABOUT THE ARTWORK
-            </Text>
-            <View className="flex-row flex-wrap gap-3">
-              {detail.tags.map((tag) => (
-                <View
-                  key={tag}
-                  className="px-4 py-2 rounded-full border border-slate-300"
-                >
-                  <Text className="text-sm font-semibold text-slate-800 uppercase">
-                    {tag}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          <View className="px-4 py-6">
-            <View className="flex-row gap-6">
-              <InfoBlockWithConvert
-                label="Dimension: (H X W X D)"
-                value={`${dimensionInLabel}`}
-                convertLabel="This is equivalent to:"
-                convertValue={dimensionCmLabel}
-                visible={showDimensionConvert}
-                onToggle={() => setShowDimensionConvert((prev) => !prev)}
-              />
-              <InfoBlockWithConvert
-                label="Weight:"
-                value={weightLbLabel}
-                convertLabel="This is equivalent to:"
-                convertValue={weightKgLabel}
-                visible={showWeightConvert}
-                onToggle={() => setShowWeightConvert((prev) => !prev)}
-              />
-            </View>
-            <View className="flex-row gap-6 mt-5">
-              <InfoBlock
-                label="Year / Total Edition Run:"
-                value={`${detail.year} / ${detail.edition}`}
-              />
-            </View>
-            <View className="mt-6">
-              <Text className="text-xs font-semibold text-slate-500 uppercase">
-                Materials:
-              </Text>
-              <Text className="text-base text-slate-900 mt-2">
-                {detail.materials}
-              </Text>
-            </View>
-          </View>
-
+          {/* Similar Works */}
           <View className="px-4 pb-4">
             <Text className="text-xl font-semibold text-slate-900 mb-3">
               Similar Works
@@ -426,42 +252,17 @@ export default function ArtworkDetailScreen() {
         </ScrollView>
 
         {/* Action Bar */}
-        <RNAnimated.View
-          className="absolute left-3 right-3 rounded-full bg-white border border-slate-200 flex-row items-center px-3"
-          style={[
-            actionBarShadow,
-            {
-              bottom: actionBottom,
-              paddingVertical: 7,
-            },
-          ]}
-          pointerEvents="box-none"
-        >
-          <View className="flex-row items-center gap-4 flex-1 pl-1">
-            <IconButton
-              icon={liked ? "heart" : "heart-outline"}
-              color={liked ? "#EF4444" : "#0F172A"}
-              onPress={() => setLiked((prev) => !prev)}
-            />
-            <IconButton
-              icon="repeat-outline"
-              color={reshared ? "#0B73FF" : "#0F172A"}
-              bg={reshared ? "rgba(11,115,255,0.08)" : undefined}
-              onPress={handleOpenReshareSheet}
-            />
-            <IconButton
-              icon={saved ? "bookmark" : "bookmark-outline"}
-              color={saved ? "#0B73FF" : "#0F172A"}
-              onPress={handleOpenSaveSheet}
-            />
-          </View>
-          <Pressable className="bg-[#0B73FF] px-5 py-3 rounded-full flex-row items-center gap-2 active:opacity-90">
-            <Ionicons name="cart-outline" size={18} color="#ffffff" />
-            <Text className="text-white font-semibold">Buy now</Text>
-          </Pressable>
-        </RNAnimated.View>
+        <ArtworkActionBar
+          liked={liked}
+          saved={saved}
+          reshared={reshared}
+          actionBottom={actionBottom}
+          onLike={() => setLiked((prev) => !prev)}
+          onReshare={handleOpenReshareSheet}
+          onSave={handleOpenSaveSheet}
+        />
 
-        {/* Reshare Sheet - Managed directly without nested BottomSheetModal */}
+        {/* Reshare Sheet */}
         <ReshareSheet
           visible={showReshareSheet}
           target={reshareTarget}
@@ -476,7 +277,7 @@ export default function ArtworkDetailScreen() {
           }}
         />
 
-        {/* Save Sheet - Managed directly without nested BottomSheetModal */}
+        {/* Save Sheet */}
         <SaveSheet
           visible={showSaveSheet}
           onClose={() => {
@@ -517,7 +318,7 @@ export default function ArtworkDetailScreen() {
           </View>
         </BottomSheetModal>
 
-        {/* Report Sheet - Managed directly without nested BottomSheetModal */}
+        {/* Report Sheet */}
         <ReportSheet
           visible={showReportSheet}
           onClose={() => {
