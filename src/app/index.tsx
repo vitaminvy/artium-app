@@ -10,7 +10,7 @@ function NavigationWrapper() {
   useEffect(() => {
     // Configure Google Sign-In once when the app's navigation is ready.
     GoogleSignin.configure({
-      webClientId: "300008030002-ri1epn1lmsvsvnuerdutcvilei6ifrd6.apps.googleusercontent.com",
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
       offlineAccess: false,
     });
   }, []);
