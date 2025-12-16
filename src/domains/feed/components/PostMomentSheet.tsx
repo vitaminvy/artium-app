@@ -9,6 +9,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import PostMomentEditor from "./PostMomentEditor";
 import PostMomentPreview from "./PostMomentPreview";
 import { PostMomentMedia } from "../types";
+import { ANIMATION_CONFIG, MEDIA_CONFIG } from "../constants/media";
+import { FEED_MESSAGES } from "../constants/messages";
 
 type Props = {
   visible: boolean;
@@ -43,11 +45,13 @@ export default function PostMomentSheet({
 }: Props) {
   const insets = useSafeAreaInsets();
   const sheetRef = useRef<BottomSheetModal>(null);
-  const snapPoints = useMemo(() => ["46%", "86%"], []);
+  const snapPoints = useMemo(() => [...ANIMATION_CONFIG.MOMENT_SHEET_SNAP_POINTS], []);
   const blurOpacity = useSharedValue(0);
 
   useEffect(() => {
-    blurOpacity.value = withTiming(visible ? 1 : 0, { duration: 180 });
+    blurOpacity.value = withTiming(visible ? 1 : 0, {
+      duration: ANIMATION_CONFIG.SHEET_ANIMATION
+    });
     if (visible) {
       sheetRef.current?.present();
       sheetRef.current?.snapToIndex(1);
@@ -69,7 +73,7 @@ export default function PostMomentSheet({
         pressBehavior="close"
         appearsOnIndex={0}
         disappearsOnIndex={-1}
-        opacity={0.08}
+        opacity={ANIMATION_CONFIG.BACKDROP_OPACITY_LIGHT}
       />
     ),
     []
@@ -85,7 +89,7 @@ export default function PostMomentSheet({
         pointerEvents="none"
         style={[StyleSheet.absoluteFill, blurStyle]}
       >
-        <BlurView intensity={28} tint="light" style={StyleSheet.absoluteFill} />
+        <BlurView intensity={ANIMATION_CONFIG.BACKDROP_BLUR_INTENSITY} tint="light" style={StyleSheet.absoluteFill} />
       </Animated.View>
 
       <BottomSheetModal
@@ -94,7 +98,7 @@ export default function PostMomentSheet({
         onDismiss={handleSheetDismiss}
         index={1}
         backdropComponent={renderBackdrop}
-        handleIndicatorStyle={{ backgroundColor: "#CBD5E1" }}
+        handleIndicatorStyle={{ backgroundColor: MEDIA_CONFIG.PLACEHOLDER_COLOR_ALT }}
         backgroundStyle={{ backgroundColor: "white" }}
         enablePanDownToClose
         keyboardBehavior="interactive"
@@ -111,7 +115,7 @@ export default function PostMomentSheet({
         >
           <View className="flex-row items-center justify-between mb-4">
             <Text className="text-xl font-semibold text-slate-900">
-              Post a Moment
+              {FEED_MESSAGES.MOMENT_TITLE}
             </Text>
             <Pressable
               onPress={onClose}
@@ -149,7 +153,7 @@ export default function PostMomentSheet({
                 canShare ? "text-white" : "text-slate-500"
               }`}
             >
-              Share to feed
+              {FEED_MESSAGES.SHARE_BUTTON}
             </Text>
           </Pressable>
         </BottomSheetScrollView>

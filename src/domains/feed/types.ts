@@ -1,5 +1,7 @@
 // Type definitions cho domain Feed
 
+export * from "./types/video";
+
 export type FeedTab = "explore" | "following";
 
 export type FeedAuthor = {

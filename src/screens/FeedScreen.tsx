@@ -25,7 +25,6 @@ import Animated, {
 } from "react-native-reanimated";
 import PostMomentSheet from "../domains/feed/components/PostMomentSheet";
 import { usePostMoment } from "../domains/feed/hooks/usePostMoment";
-import { subscribePostMomentOpen } from "../shared/utils/postMomentBridge";
 import ImageViewing from "react-native-image-viewing";
 import { useRef } from "react";
 
@@ -46,10 +45,7 @@ export default function FeedScreen() {
   const postMoment = usePostMoment({
     onPublish: addMomentPost,
   });
-  React.useEffect(() => {
-    const unsubscribe = subscribePostMomentOpen(postMoment.actions.open);
-    return unsubscribe;
-  }, [postMoment.actions.open]);
+  // Note: Subscription to postMomentOpen is handled inside usePostMoment hook
   const [selectedPost, setSelectedPost] = React.useState<
     FeedPost | undefined
   >();
@@ -145,7 +141,9 @@ export default function FeedScreen() {
         title={FEED_STRINGS.HEADER_TITLE}
         badgeLabel="Blog"
         actionType="notifications"
-        onPressAction={() => console.log("Open notifications")}
+        onPressAction={() => {
+          // TODO: Navigate to notifications screen
+        }}
         underlineSource={UnderlineHome}
       />
 

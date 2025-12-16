@@ -5,6 +5,9 @@ import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { Image } from "expo-image";
 import { PostMomentMedia } from "../types";
 import { CURRENT_USER } from "../constants";
+import { getInitials } from "../utils";
+import { MEDIA_CONFIG, UI_SIZES } from "../constants/media";
+import { FEED_MESSAGES } from "../constants/messages";
 
 type Props = {
   text: string;
@@ -30,7 +33,7 @@ const MediaButton = ({ icon, label, active, disabled, onPress }: MediaButtonProp
       active ? "bg-slate-900 border-slate-900" : "bg-white border-slate-200"
     } ${disabled ? "opacity-60" : ""}`}
   >
-    <Ionicons name={icon} size={18} color={active ? "#fff" : "#0F172A"} />
+    <Ionicons name={icon} size={UI_SIZES.MEDIA_EDITOR_ICON_SIZE} color={active ? "#fff" : "#0F172A"} />
     <Text className={`text-sm font-semibold ${active ? "text-white" : "text-slate-800"}`}>
       {label}
     </Text>
@@ -44,16 +47,7 @@ export default function PostMomentEditor({
   onPickImage,
   onPickVideo,
 }: Props) {
-  const initials = useMemo(
-    () =>
-      CURRENT_USER.name
-        ?.split(" ")
-        .map((p) => p[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase() ?? "YOU",
-    []
-  );
+  const initials = useMemo(() => getInitials(CURRENT_USER.name), []);
 
   return (
     <View className="gap-4">
@@ -80,14 +74,14 @@ export default function PostMomentEditor({
       <BottomSheetTextInput
         value={text}
         onChangeText={onChangeText}
-        placeholder="Share a thought or ask a question..."
-        placeholderTextColor="#94A3B8"
+        placeholder={FEED_MESSAGES.MOMENT_PLACEHOLDER}
+        placeholderTextColor={MEDIA_CONFIG.TEXT_PLACEHOLDER_COLOR}
         multiline
-        maxLength={320}
+        maxLength={MEDIA_CONFIG.MAX_TEXT_LENGTH}
         style={{
           fontSize: 16,
           color: "#0F172A",
-          minHeight: 80,
+          minHeight: MEDIA_CONFIG.MIN_TEXT_HEIGHT,
           textAlignVertical: "top",
         }}
         keyboardAppearance="light"
@@ -96,14 +90,14 @@ export default function PostMomentEditor({
       <View className="flex-row items-center gap-3">
         <MediaButton
           icon="image-outline"
-          label="Image"
+          label={FEED_MESSAGES.MEDIA_BUTTON_IMAGE}
           active={media?.type === "image"}
           onPress={onPickImage}
           disabled={media?.type === "video"}
         />
         <MediaButton
           icon="videocam-outline"
-          label="Video"
+          label={FEED_MESSAGES.MEDIA_BUTTON_VIDEO}
           active={media?.type === "video"}
           onPress={onPickVideo}
           disabled={media?.type === "image"}

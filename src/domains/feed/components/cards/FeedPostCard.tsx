@@ -1,11 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { View, Text, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { Ionicons } from "@expo/vector-icons";
-import { FeedPost } from "../../types";
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from "react-native-reanimated";
+import { FeedPost, VideoPlayingChangePayload } from "../../types";
 import { FEED_COLORS } from "../../constants";
 import { shareArtwork } from "../../../../shared/utils/shareArtwork";
+import { formatDuration } from "../../utils";
+import { ANIMATION_CONFIG, MEDIA_CONFIG, FEED_MESSAGES } from "../../constants/media";
 
 type Props = {
   post: FeedPost;
@@ -49,25 +52,40 @@ function FeedPostCard({
     }
   );
   const [isPlaying, setIsPlaying] = useState(false);
+  const playButtonOpacity = useSharedValue(1);
 
   useEffect(() => {
     setIsPlaying(player.playing);
-    const sub = player.addListener?.("playingChange", (payload: any) => {
-      setIsPlaying(!!payload?.isPlaying);
+    const sub = player.addListener?.("playingChange", (payload: VideoPlayingChangePayload) => {
+      const playing = !!payload?.isPlaying;
+      setIsPlaying(playing);
+      playButtonOpacity.value = withTiming(playing ? 0 : 1, {
+        duration: ANIMATION_CONFIG.VIDEO_BUTTON_FADE
+      });
     });
     return () => {
       sub?.remove?.();
     };
-  }, [player]);
-  const hasQuote = !!post.quote;
+  }, [player, playButtonOpacity]);
 
-  const formatDuration = (durationMs?: number) => {
-    if (!durationMs) return "";
-    const totalSeconds = Math.max(0, Math.round(durationMs / 1000));
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-  };
+  const playButtonAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: playButtonOpacity.value,
+  }));
+
+  const handlePlayPause = useCallback(() => {
+    if (player.playing) {
+      player.pause();
+    } else {
+      player.play();
+    }
+  }, [player]);
+
+  const videoContainerStyle = useMemo(() => ({
+    backgroundColor: media?.placeholderColor ?? MEDIA_CONFIG.PLACEHOLDER_COLOR_ALT,
+    aspectRatio: media?.aspectRatio ?? MEDIA_CONFIG.DEFAULT_VIDEO_ASPECT_RATIO,
+  }), [media?.placeholderColor, media?.aspectRatio]);
+
+  const hasQuote = !!post.quote;
   const CardBody = () => (
     <View
       className="bg-white rounded-[28px] border px-4 py-3"
@@ -125,50 +143,36 @@ function FeedPostCard({
           {isVideo ? (
             <View
               className="rounded-2xl overflow-hidden"
-              style={{
-                backgroundColor: media.placeholderColor ?? "#CBD5E1",
-                aspectRatio: media.aspectRatio ?? 0.85,
-              }}
+              style={videoContainerStyle}
             >
-              {isVideo ? (
-                <>
-                  <VideoView
-                    pointerEvents="none"
-                    player={player}
-                    style={{ width: "100%", height: "100%" }}
-                    contentFit="cover"
-                    nativeControls={false}
-                    allowsFullscreen={false}
-                    allowsPictureInPicture={false}
-                  />
-                  <Pressable
-                    onPress={() => {
-                      if (player.playing) {
-                        player.pause();
-                      } else {
-                        player.play();
-                      }
-                    }}
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                    }}
-                    hitSlop={0}
-                    android_ripple={undefined}
-                  >
-                    {!isPlaying ? (
-                      <View className="absolute inset-0 items-center justify-center">
-                        <View className="h-14 w-14 rounded-full bg-black/55 items-center justify-center">
-                          <Ionicons name="play" size={30} color="#fff" />
-                        </View>
-                      </View>
-                    ) : null}
-                  </Pressable>
-                </>
-              ) : null}
+              <VideoView
+                pointerEvents="none"
+                player={player}
+                style={videoViewStyle}
+                contentFit="cover"
+                nativeControls={false}
+                allowsFullscreen={false}
+                allowsPictureInPicture={false}
+              />
+              <Pressable
+                onPress={handlePlayPause}
+                style={pressableOverlayStyle}
+                hitSlop={0}
+                android_ripple={undefined}
+              >
+                <Animated.View
+                  className="absolute inset-0 items-center justify-center"
+                  style={playButtonAnimatedStyle}
+                  pointerEvents="none"
+                >
+                  <View className="h-14 w-14 rounded-full bg-black/55 items-center justify-center">
+                    <Ionicons name="play" size={30} color="#fff" />
+                  </View>
+                </Animated.View>
+              </Pressable>
               <View className="absolute bottom-3 right-3 px-2 py-1 rounded-full bg-black/55">
                 <Text className="text-[11px] font-semibold text-white">
-                  {formatDuration(media.durationMs) || "Video"}
+                  {formatDuration(media.durationMs) || FEED_MESSAGES.VIDEO_LABEL_FALLBACK}
                 </Text>
               </View>
             </View>
@@ -182,8 +186,8 @@ function FeedPostCard({
             <View
               className="rounded-2xl overflow-hidden"
               style={{
-                backgroundColor: media.placeholderColor ?? "#CBD5E1",
-                aspectRatio: media.aspectRatio ?? 0.85,
+                backgroundColor: media.placeholderColor ?? MEDIA_CONFIG.PLACEHOLDER_COLOR_ALT,
+                aspectRatio: media.aspectRatio ?? MEDIA_CONFIG.SINGLE_IMAGE_ASPECT_RATIO,
               }}
             >
               <Image
@@ -334,6 +338,13 @@ const cardShadow = {
   shadowOpacity: 0.06,
   shadowRadius: 8,
   elevation: 6,
+};
+
+const videoViewStyle = { width: "100%", height: "100%" };
+
+const pressableOverlayStyle = {
+  position: "absolute" as const,
+  inset: 0,
 };
 
 const areEqual = (prev: Props, next: Props) =>
