@@ -5,8 +5,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 
-import { TAB_META, TabParamList } from "./tabTypes";
+import { TAB_META, TabParamList, UploadOption } from "./tabTypes";
 import UploadActionSheet from "./UploadActionSheet";
+import { requestPostMomentSheet } from "../../shared/utils/postMomentBridge";
 
 export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
@@ -119,7 +120,15 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
 
       <UploadActionSheet 
         visible={showUploadSheet} 
-        onClose={() => setShowUploadSheet(false)} 
+        onClose={() => setShowUploadSheet(false)}
+        onSelectOption={(option: UploadOption) => {
+          if (option.targetTab) {
+            navigation.navigate(option.targetTab);
+          }
+          if (option.key === "moment") {
+            requestPostMomentSheet();
+          }
+        }}
       />
     </>
   );

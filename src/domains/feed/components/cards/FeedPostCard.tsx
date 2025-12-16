@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, Pressable } from "react-native";
 import { Image } from "expo-image";
+import { Video, ResizeMode } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
 import { FeedPost } from "../../types";
 import { FEED_COLORS } from "../../constants";
@@ -36,7 +37,18 @@ function FeedPostCard({
       : media?.url
       ? { uri: media.url }
       : undefined;
+  const isVideo = media?.type === "video";
+  const videoSource =
+    isVideo && typeof media?.url === "string" ? { uri: media.url } : undefined;
   const hasQuote = !!post.quote;
+
+  const formatDuration = (durationMs?: number) => {
+    if (!durationMs) return "";
+    const totalSeconds = Math.max(0, Math.round(durationMs / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
   const CardBody = () => (
     <View
       className="bg-white rounded-[28px] border px-4 py-3"
@@ -97,7 +109,17 @@ function FeedPostCard({
             aspectRatio: media.aspectRatio ?? 0.85,
           }}
         >
-          {mediaSource ? (
+          {isVideo ? (
+            videoSource ? (
+              <Video
+                source={videoSource}
+                style={{ width: "100%", height: "100%" }}
+                resizeMode={ResizeMode.COVER}
+                useNativeControls
+                isLooping
+              />
+            ) : null
+          ) : mediaSource ? (
             <Image
               source={mediaSource}
               style={{ width: "100%", height: "100%" }}
@@ -105,6 +127,14 @@ function FeedPostCard({
               transition={0}
               cachePolicy="memory-disk"
             />
+          ) : null}
+
+          {isVideo ? (
+            <View className="absolute bottom-3 right-3 px-2 py-1 rounded-full bg-black/55">
+              <Text className="text-[11px] font-semibold text-white">
+                {formatDuration(media.durationMs) || "Video"}
+              </Text>
+            </View>
           ) : null}
         </View>
       ) : null}

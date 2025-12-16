@@ -12,6 +12,7 @@ type UseFeedResult = {
   createReshare: (targetId: string, note: string) => void;
   commentsByPost: Record<string, FeedComment[]>;
   addComment: (postId: string, content: string) => void;
+  addMomentPost: (post: FeedPost) => void;
 };
 
 const formatTimeAgo = (createdAt: number) => {
@@ -165,6 +166,21 @@ export function useFeed(): UseFeedResult {
     });
   }, []);
 
+  const addMomentPost = useCallback((post: FeedPost) => {
+    const normalized: FeedPost = {
+      ...post,
+      relativeTime: post.relativeTime ?? formatTimeAgo(post.createdAt),
+      quote: post.quote
+        ? {
+            ...post.quote,
+            relativeTime:
+              post.quote.relativeTime ?? formatTimeAgo(post.quote.createdAt),
+          }
+        : undefined,
+    };
+    setPosts((prev) => [normalized, ...prev]);
+  }, []);
+
   return {
     tab,
     setTab,
@@ -174,5 +190,6 @@ export function useFeed(): UseFeedResult {
     createReshare,
     commentsByPost,
     addComment,
+    addMomentPost,
   };
 }

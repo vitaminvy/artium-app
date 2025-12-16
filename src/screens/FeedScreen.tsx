@@ -3,7 +3,6 @@
 import React from "react";
 import { View, Pressable, Text, Keyboard } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import FeedTabs from "../domains/feed/components/ui/FeedTabs";
 import FeedExploreTab from "../domains/feed/components/tabs/FeedExploreTab";
@@ -24,9 +23,11 @@ import Animated, {
   interpolate,
   useAnimatedScrollHandler,
 } from "react-native-reanimated";
+import PostMomentSheet from "../domains/feed/components/PostMomentSheet";
+import { usePostMoment } from "../domains/feed/hooks/usePostMoment";
+import { subscribePostMomentOpen } from "../shared/utils/postMomentBridge";
 
 export default function FeedScreen() {
-  const insets = useSafeAreaInsets();
   const navigation =
     useNavigation<NativeStackNavigationProp<FeedStackParamList>>();
   const {
@@ -38,7 +39,15 @@ export default function FeedScreen() {
     createReshare,
     commentsByPost,
     addComment,
+    addMomentPost,
   } = useFeed();
+  const postMoment = usePostMoment({
+    onPublish: addMomentPost,
+  });
+  React.useEffect(() => {
+    const unsubscribe = subscribePostMomentOpen(postMoment.actions.open);
+    return unsubscribe;
+  }, [postMoment.actions.open]);
   const [selectedPost, setSelectedPost] = React.useState<
     FeedPost | undefined
   >();
@@ -157,6 +166,19 @@ export default function FeedScreen() {
         comments={commentTarget ? (commentsByPost[commentTarget.id] ?? []) : []}
         onClose={closeComments}
         onSubmit={submitComment}
+      />
+
+      <PostMomentSheet
+        visible={postMoment.state.visible}
+        text={postMoment.state.text}
+        media={postMoment.state.media}
+        canShare={postMoment.state.canShare}
+        onChangeText={postMoment.actions.setText}
+        onPickImage={postMoment.actions.pickImage}
+        onPickVideo={postMoment.actions.pickVideo}
+        onRemoveMedia={postMoment.actions.removeMedia}
+        onShare={postMoment.actions.share}
+        onClose={postMoment.actions.close}
       />
     </View>
   );
