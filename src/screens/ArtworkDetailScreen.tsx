@@ -1,5 +1,3 @@
-// Detailed Artwork Screen inspired by provided design
-// src/screens/ArtworkDetailScreen.tsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
@@ -189,15 +187,8 @@ export default function ArtworkDetailScreen() {
 
   // Sheet handlers
   const handleOpenOptionsSheet = useCallback(() => {
-    console.log('🔵 Opening Options Sheet');
     setHidden(true);
-    console.log('🔵 optionsSheetRef.current:', optionsSheetRef.current);
-    try {
-      optionsSheetRef.current?.present();
-      console.log('🔵 present() called successfully');
-    } catch (error) {
-      console.log('🔴 Error calling present():', error);
-    }
+    optionsSheetRef.current?.present();
   }, [setHidden]);
 
   const handleOpenSaveSheet = useCallback(() => {
@@ -478,10 +469,9 @@ export default function ArtworkDetailScreen() {
             setShowReshareSheet(false);
             handleCloseSheet();
           }}
-          onSubmit={(text) => {
+          onSubmit={() => {
             setShowReshareSheet(false);
             handleCloseSheet();
-            console.log("Reshare from artwork detail", detail.id, text);
             setReshared(true);
           }}
         />
@@ -534,10 +524,9 @@ export default function ArtworkDetailScreen() {
             setShowReportSheet(false);
             handleCloseSheet();
           }}
-          onReport={(reasons, msg) => {
+          onReport={() => {
             setShowReportSheet(false);
             handleCloseSheet();
-            console.log("Reported artwork", detail.id, "Reasons:", reasons, "Message:", msg);
           }}
         />
       </View>
