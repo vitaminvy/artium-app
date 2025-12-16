@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { View, Text, Pressable, TextInput, Image, Keyboard } from "react-native";
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import type { BottomSheetBackdropProps } from "@gorhom/bottom-sheet";
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView, BottomSheetFooter } from "@gorhom/bottom-sheet";
+import type { BottomSheetBackdropProps, BottomSheetFooterProps } from "@gorhom/bottom-sheet";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -101,10 +101,26 @@ export default function SaveSheet({
     setSelectedId((prev) => (prev === id ? null : id));
   };
 
-  const handleDone = () => {
+  const handleDone = useCallback(() => {
     onSelect(selectedId);
     handleCloseAll();
-  };
+  }, [selectedId, onSelect]);
+
+  const renderFooter = useCallback(
+    (props: BottomSheetFooterProps) => (
+      <BottomSheetFooter {...props} bottomInset={Math.max(insets.bottom, 16)}>
+        <View className="px-5 bg-white pt-2 pb-1">
+          <Pressable
+            onPress={handleDone}
+            className="rounded-full bg-[#0B73FF] py-4 items-center active:opacity-90"
+          >
+            <Text className="text-base font-semibold text-white">Done</Text>
+          </Pressable>
+        </View>
+      </BottomSheetFooter>
+    ),
+    [handleDone, insets.bottom]
+  );
 
   return (
     <>
@@ -113,6 +129,7 @@ export default function SaveSheet({
         snapPoints={snapPoints}
         index={0}
         backdropComponent={backdrop}
+        footerComponent={renderFooter}
         onDismiss={onClose}
         handleIndicatorStyle={{ backgroundColor: "#CBD5E1" }}
         backgroundStyle={{ backgroundColor: "white" }}
@@ -183,22 +200,6 @@ export default function SaveSheet({
             </Text>
           </Pressable>
         </BottomSheetScrollView>
-
-        <View
-          style={{
-            position: "absolute",
-            bottom: Math.max(insets.bottom, 16),
-            left: 20,
-            right: 20,
-          }}
-        >
-          <Pressable
-            onPress={handleDone}
-            className="rounded-full bg-[#0B73FF] py-4 items-center active:opacity-90"
-          >
-            <Text className="text-base font-semibold text-white">Done</Text>
-          </Pressable>
-        </View>
       </BottomSheetModal>
 
       <BottomSheetModal

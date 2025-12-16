@@ -1,6 +1,12 @@
 // Detailed Artwork Screen inspired by provided design
 // src/screens/ArtworkDetailScreen.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Animated as RNAnimated,
   FlatList,
@@ -13,6 +19,8 @@ import {
   Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import type { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Carousel from "react-native-reanimated-carousel";
@@ -30,6 +38,8 @@ import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import ReshareSheet from "../domains/feed/components/sheets/ReshareSheet";
 import { FeedPost } from "../domains/feed/types";
 import SaveSheet from "../domains/artwork/components/SaveSheet";
+import ReportSheet from "../domains/artwork/components/ReportSheet";
+import OptionsSheet from "../domains/artwork/components/OptionsSheet";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -107,7 +117,7 @@ const fallbackDetail: ArtworkDetail = {
 };
 
 export default function ArtworkDetailScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const insets = useSafeAreaInsets();
   const { hidden, setHidden, height: tabHeight } = useTabBarVisibility();
@@ -121,6 +131,9 @@ export default function ArtworkDetailScreen() {
   const [showWeightConvert, setShowWeightConvert] = useState(false);
   const [showReshareSheet, setShowReshareSheet] = useState(false);
   const [showSaveSheet, setShowSaveSheet] = useState(false);
+  const [showOptionsSheet, setShowOptionsSheet] = useState(false);
+  const [showReportSheet, setShowReportSheet] = useState(false);
+  const optionsSheetRef = useRef<BottomSheetModal>(null);
 
   const currentArtwork: Artwork | undefined = useMemo(() => {
     const all = [
@@ -218,28 +231,49 @@ export default function ArtworkDetailScreen() {
     scrollY.current = y;
   };
 
+  const handleOpenOptionsSheet = () => {
+    setShowOptionsSheet(true);
+    // Ensure the modal is presented even if state was already true
+    optionsSheetRef.current?.present();
+  };
+
+  const handleCloseOptionsSheet = () => {
+    setShowOptionsSheet(false);
+    optionsSheetRef.current?.dismiss();
+  };
+
+  const handleOptionsSheetChange = useCallback(
+    (open: boolean) => setShowOptionsSheet(open),
+    []
+  );
+
   return (
-    <View className="flex-1 bg-white">
-      <View
-        className="flex-row items-center justify-between px-4 border-b border-slate-100"
-        style={{ paddingTop: insets.top + 8, paddingBottom: 12 }}
-      >
-        <Pressable
-          className="h-10 w-10 items-center justify-center"
-          onPress={() => navigation.goBack()}
-          hitSlop={8}
+    <BottomSheetModalProvider>
+      <View className="flex-1 bg-white">
+        <View
+          className="flex-row items-center justify-between px-4 border-b border-slate-100 bg-white"
+          style={{ paddingTop: insets.top + 8, paddingBottom: 12, zIndex: 50 }}
         >
-          <Ionicons name="arrow-back" size={22} color="#0F172A" />
-        </Pressable>
-        <View className="flex-row items-center gap-3">
-          <Pressable className="h-10 w-10 items-center justify-center">
-            <Ionicons name="share-outline" size={22} color="#0F172A" />
+          <Pressable
+            className="h-10 w-10 items-center justify-center"
+            onPress={() => navigation.goBack()}
+            hitSlop={8}
+          >
+            <Ionicons name="arrow-back" size={22} color="#0F172A" />
           </Pressable>
-          <Pressable className="h-10 w-10 items-center justify-center">
-            <Ionicons name="ellipsis-vertical" size={22} color="#0F172A" />
-          </Pressable>
+          <View className="flex-row items-center gap-3">
+            <Pressable className="h-10 w-10 items-center justify-center">
+              <Ionicons name="share-outline" size={22} color="#0F172A" />
+            </Pressable>
+            <Pressable
+              className="h-10 w-10 items-center justify-center"
+              hitSlop={8}
+              onPress={handleOpenOptionsSheet}
+            >
+              <Ionicons name="ellipsis-vertical" size={22} color="#0F172A" />
+            </Pressable>
+          </View>
         </View>
-      </View>
 
       <ScrollView
         onScroll={handleScroll}
@@ -395,8 +429,8 @@ export default function ArtworkDetailScreen() {
               <SimilarCard
                 item={item}
                 onPress={() =>
-                  // @ts-ignore
-                  navigation.navigate("ArtworkDetail" as never, { id: item.id } as never)
+                  // Use push to force a fresh detail screen even when already on this route
+                  navigation.push("ArtworkDetail" as never, { id: item.id } as never)
                 }
               />
             )}
@@ -405,43 +439,42 @@ export default function ArtworkDetailScreen() {
         </View>
       </ScrollView>
 
-      <RNAnimated.View
-        className="absolute left-3 right-3 rounded-full bg-white border border-slate-200 flex-row items-center px-3"
-        style={[
-          actionBarShadow,
-          {
-            bottom: actionBottom,
-            paddingVertical: 7,
-          },
-        ]}
-        pointerEvents="box-none"
-      >
-        <View className="flex-row items-center gap-4 flex-1 pl-1">
-          <IconButton
-            icon={liked ? "heart" : "heart-outline"}
-            color={liked ? "#EF4444" : "#0F172A"}
-            onPress={() => setLiked((prev) => !prev)}
-          />
-          <IconButton
-            icon="repeat-outline"
-            color={reshared ? "#0B73FF" : "#0F172A"}
-            bg={reshared ? "rgba(11,115,255,0.08)" : undefined}
-            onPress={() => setShowReshareSheet(true)}
-          />
-          <IconButton
-            icon={saved ? "bookmark" : "bookmark-outline"}
-            color={saved ? "#ffffff" : "#0F172A"}
-            bg={saved ? "#0B73FF" : undefined}
-            onPress={() => {
-              setShowSaveSheet(true);
-            }}
-          />
-        </View>
-        <Pressable className="bg-[#0B73FF] px-5 py-3 rounded-full flex-row items-center gap-2 active:opacity-90">
-          <Ionicons name="cart-outline" size={18} color="#ffffff" />
-          <Text className="text-white font-semibold">Buy now</Text>
-        </Pressable>
-      </RNAnimated.View>
+        <RNAnimated.View
+          className="absolute left-3 right-3 rounded-full bg-white border border-slate-200 flex-row items-center px-3"
+          style={[
+            actionBarShadow,
+            {
+              bottom: actionBottom,
+              paddingVertical: 7,
+            },
+          ]}
+          pointerEvents="box-none"
+        >
+          <View className="flex-row items-center gap-4 flex-1 pl-1">
+            <IconButton
+              icon={liked ? "heart" : "heart-outline"}
+              color={liked ? "#EF4444" : "#0F172A"}
+              onPress={() => setLiked((prev) => !prev)}
+            />
+            <IconButton
+              icon="repeat-outline"
+              color={reshared ? "#0B73FF" : "#0F172A"}
+              bg={reshared ? "rgba(11,115,255,0.08)" : undefined}
+              onPress={() => setShowReshareSheet(true)}
+            />
+            <IconButton
+              icon={saved ? "bookmark" : "bookmark-outline"}
+              color={saved ? "#0B73FF" : "#0F172A"}
+              onPress={() => {
+                setShowSaveSheet(true);
+              }}
+            />
+          </View>
+          <Pressable className="bg-[#0B73FF] px-5 py-3 rounded-full flex-row items-center gap-2 active:opacity-90">
+            <Ionicons name="cart-outline" size={18} color="#ffffff" />
+            <Text className="text-white font-semibold">Buy now</Text>
+          </Pressable>
+        </RNAnimated.View>
 
       <ReshareSheet
         visible={showReshareSheet}
@@ -463,7 +496,29 @@ export default function ArtworkDetailScreen() {
           setShowSaveSheet(false);
         }}
       />
-    </View>
+
+        {/* Options Sheet */}
+        <OptionsSheet
+          ref={optionsSheetRef}
+          visible={showOptionsSheet}
+          onClose={handleCloseOptionsSheet}
+          onReport={() => {
+            handleCloseOptionsSheet();
+            setShowReportSheet(true);
+          }}
+          onChange={handleOptionsSheetChange}
+        />
+
+        <ReportSheet
+          visible={showReportSheet}
+          onClose={() => setShowReportSheet(false)}
+          onReport={(reason, msg) => {
+            setShowReportSheet(false);
+            console.log("Reported artwork", detail.id, reason, msg);
+          }}
+        />
+      </View>
+    </BottomSheetModalProvider>
   );
 }
 
