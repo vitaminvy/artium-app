@@ -5,11 +5,12 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import ArtworkDetailScreen from "../../screens/ArtworkDetailScreen";
 import QuickSellScreen from "../../screens/QuickSellScreen";
 import TabNavigator from "./TabNavigator";
+import { TabParamList } from "./tabTypes";
 import AuthStack from "./AuthStack";
 import { AuthStatus } from "../../domains/auth/types";
 
 type AppStackParamList = {
-  Tabs: { screen?: string; params?: any } | undefined;
+  Tabs: { screen?: keyof TabParamList; params?: TabParamList[keyof TabParamList] } | undefined;
   ArtworkDetail: { id?: string };
   Upload: undefined;
 };

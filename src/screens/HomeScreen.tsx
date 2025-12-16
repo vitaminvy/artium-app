@@ -5,9 +5,7 @@ import ScreenHeader from "../shared/components/ScreenHeader";
 import Sidebar from "../shared/components/Sidebar";
 import { useSidebarItems } from "../shared/hooks/useSidebar";
 import UnderlineHome from "../../assets/headers/underline-home.svg";
-import { tokenStorage } from "../domains/auth/services/tokenStorage";
-import { auth } from "../configs/firebase"; // Import auth
-import { signOut } from "firebase/auth";   // Import signOut
+import { doSignOut } from "../domains/auth/services/firebaseAuth"; // Import doSignOut
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -18,7 +16,7 @@ export default function HomeScreen() {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await doSignOut();
       // onAuthStateChanged in AuthProvider will handle the rest
     } catch (error) {
       console.error("Error signing out: ", error);
