@@ -214,11 +214,12 @@ export default function SignUpScreen({ navigation }: Props) {
           ) : null}
 
           <Pressable
-            className="mt-6 h-12 rounded-full bg-gray-900 items-center justify-center shadow-sm active:bg-black"
             onPress={onEmailSignUp}
             disabled={isBusy}
             className={`mt-6 h-12 rounded-full items-center justify-center shadow-sm ${
-              isBusy ? "bg-gray-300" : "bg-gray-900 active:bg-black"
+              isBusy
+                ? "bg-[#bcd3f6]"
+                : "bg-[#1a73e8] active:bg-[#125bc0]"
             }`}
           >
             {signUpLoading ? (
@@ -231,7 +232,6 @@ export default function SignUpScreen({ navigation }: Props) {
           </Pressable>
 
           <Pressable
-            className="mt-5 items-center"
             onPress={() => navigation.navigate("LogIn")}
             disabled={isBusy}
             className={`mt-5 items-center ${isBusy ? "opacity-60" : ""}`}
