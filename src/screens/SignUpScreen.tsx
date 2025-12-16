@@ -36,6 +36,7 @@ export default function SignUpScreen({ navigation }: Props) {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState("");
 
+  const isBusy = signUpLoading || googleLoading;
   const errorMsg = googleError || signUpError || "";
 
   const onGoogleButtonPress = async () => {
@@ -124,8 +125,12 @@ export default function SignUpScreen({ navigation }: Props) {
 
           <Pressable
             onPress={onGoogleButtonPress}
-            disabled={googleLoading || signUpLoading}
-            className="flex-row items-center justify-center gap-3 border border-gray-300 rounded-full py-3 px-4 bg-white shadow-sm"
+            disabled={isBusy}
+            className={`flex-row items-center justify-center gap-3 rounded-full py-3 px-4 shadow-sm border ${
+              isBusy
+                ? "bg-gray-100 border-gray-200 opacity-70"
+                : "bg-white border-gray-300"
+            }`}
           >
             {googleLoading ? (
               <ActivityIndicator />
@@ -211,7 +216,10 @@ export default function SignUpScreen({ navigation }: Props) {
           <Pressable
             className="mt-6 h-12 rounded-full bg-gray-900 items-center justify-center shadow-sm active:bg-black"
             onPress={onEmailSignUp}
-            disabled={signUpLoading || googleLoading}
+            disabled={isBusy}
+            className={`mt-6 h-12 rounded-full items-center justify-center shadow-sm ${
+              isBusy ? "bg-gray-300" : "bg-gray-900 active:bg-black"
+            }`}
           >
             {signUpLoading ? (
               <ActivityIndicator color="white" />
@@ -225,7 +233,8 @@ export default function SignUpScreen({ navigation }: Props) {
           <Pressable
             className="mt-5 items-center"
             onPress={() => navigation.navigate("LogIn")}
-            disabled={signUpLoading || googleLoading}
+            disabled={isBusy}
+            className={`mt-5 items-center ${isBusy ? "opacity-60" : ""}`}
           >
             <Text className="text-sm text-gray-700">
               Already with Artium?{" "}
