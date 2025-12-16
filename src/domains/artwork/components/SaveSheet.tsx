@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { View, Text, Pressable, TextInput, Image, Keyboard } from "react-native";
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView, BottomSheetFooter } from "@gorhom/bottom-sheet";
+import { View, Text, Pressable, Image, Keyboard } from "react-native";
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView, BottomSheetFooter, BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import type { BottomSheetBackdropProps, BottomSheetFooterProps } from "@gorhom/bottom-sheet";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -55,6 +55,7 @@ export default function SaveSheet({
       sheetRef.current?.present();
       setSelectedId(initialSelectedId ?? null);
     } else {
+      Keyboard.dismiss();
       sheetRef.current?.dismiss();
       createRef.current?.dismiss();
       setNewBoardName("");
@@ -208,9 +209,15 @@ export default function SaveSheet({
         index={0}
         backdropComponent={backdrop}
         enablePanDownToClose
-        onDismiss={() => setNewBoardName("")}
+        onDismiss={() => {
+          Keyboard.dismiss();
+          setNewBoardName("");
+        }}
         handleIndicatorStyle={{ backgroundColor: "#CBD5E1" }}
         backgroundStyle={{ backgroundColor: "white" }}
+        keyboardBehavior="interactive"
+        keyboardBlurBehavior="restore"
+        android_keyboardInputMode="adjustResize"
       >
         <BottomSheetScrollView
           contentContainerStyle={{
@@ -235,12 +242,16 @@ export default function SaveSheet({
               MOODBOARD NAME
             </Text>
             <View className="rounded-2xl border border-slate-200 px-4 py-3 bg-white">
-              <TextInput
+              <BottomSheetTextInput
                 value={newBoardName}
                 onChangeText={setNewBoardName}
                 placeholder="Enter moodboard name"
                 placeholderTextColor="#94A3B8"
-                className="text-base text-slate-900"
+                style={{
+                  fontSize: 16,
+                  color: "#0F172A",
+                  padding: 0,
+                }}
                 maxLength={24}
               />
               <Text className="text-xs text-slate-400 text-right mt-1">
@@ -258,13 +269,19 @@ export default function SaveSheet({
 
           <View className="flex-row items-center gap-3 mt-4">
             <Pressable
-              onPress={() => createRef.current?.dismiss()}
+              onPress={() => {
+                Keyboard.dismiss();
+                createRef.current?.dismiss();
+              }}
               className="flex-1 rounded-full border border-slate-200 py-3 items-center active:opacity-80"
             >
               <Text className="text-base font-semibold text-slate-900">Back</Text>
             </Pressable>
             <Pressable
-              onPress={handleCreate}
+              onPress={() => {
+                Keyboard.dismiss();
+                handleCreate();
+              }}
               disabled={!newBoardName.trim()}
               className="flex-1 rounded-full py-3 items-center"
               style={{
