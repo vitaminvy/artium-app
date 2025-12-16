@@ -19,7 +19,7 @@ type Props = {
   onChange?: (open: boolean) => void;
 };
 
-const OptionsSheet = forwardRef<BottomSheetModal, Props>(function OptionsSheet(
+const OptionsSheet = forwardRef<BottomSheetModal | null, Props>(function OptionsSheet(
   { visible, onClose, onReport, onChange }: Props,
   ref
 ) {
@@ -27,7 +27,7 @@ const OptionsSheet = forwardRef<BottomSheetModal, Props>(function OptionsSheet(
   const sheetRef = useRef<BottomSheetModal>(null);
   const snapPoints = useMemo(() => ["28%"], []);
 
-  useImperativeHandle(ref, () => sheetRef.current, []);
+  useImperativeHandle(ref, () => sheetRef.current!, []);
 
   useEffect(() => {
     if (visible) {
