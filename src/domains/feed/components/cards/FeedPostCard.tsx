@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import { Image } from "expo-image";
-import { Video, ResizeMode } from "expo-av";
+import { VideoView, useVideoPlayer } from "expo-video";
 import { Ionicons } from "@expo/vector-icons";
 import { FeedPost } from "../../types";
 import { FEED_COLORS } from "../../constants";
@@ -13,6 +13,7 @@ type Props = {
   onPressReshare: (post: FeedPost) => void;
   onPressComment?: (post: FeedPost) => void;
   onPressCard?: (post: FeedPost) => void;
+  onPressImage?: (images: { uri: string }[], index: number) => void;
 };
 
 function FeedPostCard({
@@ -21,6 +22,7 @@ function FeedPostCard({
   onPressReshare,
   onPressComment,
   onPressCard,
+  onPressImage,
 }: Props) {
   const initials =
     post.author.name
@@ -32,14 +34,31 @@ function FeedPostCard({
 
   const media = post.media;
   const mediaSource =
-    typeof media?.url === "number"
-      ? media.url
-      : media?.url
-      ? { uri: media.url }
+    media && "url" in media
+      ? typeof media.url === "number"
+        ? media.url
+        : media.url
+        ? { uri: media.url }
+        : undefined
       : undefined;
   const isVideo = media?.type === "video";
-  const videoSource =
-    isVideo && typeof media?.url === "string" ? { uri: media.url } : undefined;
+  const player = useVideoPlayer(
+    media?.type === "video" ? media.uri : null,
+    (p) => {
+      p.loop = false;
+    }
+  );
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  useEffect(() => {
+    setIsPlaying(player.playing);
+    const sub = player.addListener?.("playingChange", (payload: any) => {
+      setIsPlaying(!!payload?.isPlaying);
+    });
+    return () => {
+      sub?.remove?.();
+    };
+  }, [player]);
   const hasQuote = !!post.quote;
 
   const formatDuration = (durationMs?: number) => {
@@ -102,38 +121,78 @@ function FeedPostCard({
       ) : null}
 
       {media ? (
-        <View
-          className="rounded-2xl overflow-hidden mb-3"
-          style={{
-            backgroundColor: media.placeholderColor ?? "#CBD5E1",
-            aspectRatio: media.aspectRatio ?? 0.85,
-          }}
-        >
+        <View className="mb-3">
           {isVideo ? (
-            videoSource ? (
-              <Video
-                source={videoSource}
-                style={{ width: "100%", height: "100%" }}
-                resizeMode={ResizeMode.COVER}
-                useNativeControls
-                isLooping
-              />
-            ) : null
-          ) : mediaSource ? (
-            <Image
-              source={mediaSource}
-              style={{ width: "100%", height: "100%" }}
-              contentFit="cover"
-              transition={0}
-              cachePolicy="memory-disk"
+            <View
+              className="rounded-2xl overflow-hidden"
+              style={{
+                backgroundColor: media.placeholderColor ?? "#CBD5E1",
+                aspectRatio: media.aspectRatio ?? 0.85,
+              }}
+            >
+              {isVideo ? (
+                <>
+                  <VideoView
+                    pointerEvents="none"
+                    player={player}
+                    style={{ width: "100%", height: "100%" }}
+                    contentFit="cover"
+                    nativeControls={false}
+                    allowsFullscreen={false}
+                    allowsPictureInPicture={false}
+                  />
+                  <Pressable
+                    onPress={() => {
+                      if (player.playing) {
+                        player.pause();
+                      } else {
+                        player.play();
+                      }
+                    }}
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                    }}
+                    hitSlop={0}
+                    android_ripple={undefined}
+                  >
+                    {!isPlaying ? (
+                      <View className="absolute inset-0 items-center justify-center">
+                        <View className="h-14 w-14 rounded-full bg-black/55 items-center justify-center">
+                          <Ionicons name="play" size={30} color="#fff" />
+                        </View>
+                      </View>
+                    ) : null}
+                  </Pressable>
+                </>
+              ) : null}
+              <View className="absolute bottom-3 right-3 px-2 py-1 rounded-full bg-black/55">
+                <Text className="text-[11px] font-semibold text-white">
+                  {formatDuration(media.durationMs) || "Video"}
+                </Text>
+              </View>
+            </View>
+          ) : media && media.type === "image" && Array.isArray(media.items) ? (
+            <MediaGrid
+              items={media.items}
+              placeholder={media.placeholderColor}
+              onPressImage={onPressImage}
             />
-          ) : null}
-
-          {isVideo ? (
-            <View className="absolute bottom-3 right-3 px-2 py-1 rounded-full bg-black/55">
-              <Text className="text-[11px] font-semibold text-white">
-                {formatDuration(media.durationMs) || "Video"}
-              </Text>
+          ) : mediaSource ? (
+            <View
+              className="rounded-2xl overflow-hidden"
+              style={{
+                backgroundColor: media.placeholderColor ?? "#CBD5E1",
+                aspectRatio: media.aspectRatio ?? 0.85,
+              }}
+            >
+              <Image
+                source={mediaSource}
+                style={{ width: "100%", height: "100%" }}
+                contentFit="cover"
+                transition={0}
+                cachePolicy="memory-disk"
+              />
             </View>
           ) : null}
         </View>
@@ -282,6 +341,83 @@ const areEqual = (prev: Props, next: Props) =>
   prev.onPressLike === next.onPressLike &&
   prev.onPressReshare === next.onPressReshare &&
   prev.onPressComment === next.onPressComment &&
-  prev.onPressCard === next.onPressCard;
+  prev.onPressCard === next.onPressCard &&
+  prev.onPressImage === next.onPressImage;
 
 export default React.memo(FeedPostCard, areEqual);
+
+type MediaGridProps = {
+  items: { uri: string }[];
+  placeholder?: string;
+  onPressImage?: (images: { uri: string }[], index: number) => void;
+};
+
+function MediaGrid({ items, placeholder, onPressImage }: MediaGridProps) {
+  if (!items.length) return null;
+  const normalized = items.map((item) =>
+    typeof item === "string" ? { uri: item } : item
+  );
+
+  if (normalized.length === 1) {
+    const item = normalized[0];
+    return (
+      <Pressable
+        className="rounded-2xl overflow-hidden"
+        style={{
+          backgroundColor: placeholder ?? "#CBD5E1",
+          aspectRatio: 0.85,
+        }}
+        onPress={() => onPressImage?.(normalized, 0)}
+      >
+        <Image
+          source={{ uri: item.uri }}
+          style={{ width: "100%", height: "100%" }}
+          contentFit="cover"
+          transition={0}
+          cachePolicy="memory-disk"
+        />
+      </Pressable>
+    );
+  }
+
+  const displayItems = normalized.slice(0, 4);
+  const extra = normalized.length - displayItems.length;
+
+  return (
+    <View className="rounded-2xl overflow-hidden">
+      <View className="flex-row flex-wrap gap-2">
+        {displayItems.map((item, idx) => {
+          const isLast = idx === displayItems.length - 1;
+          const showExtra = isLast && extra > 0;
+          return (
+            <Pressable
+              key={`${item.uri}-${idx}`}
+              style={{
+                width: "48%",
+                aspectRatio: 1,
+                backgroundColor: placeholder ?? "#CBD5E1",
+                borderRadius: 12,
+                overflow: "hidden",
+                position: "relative",
+              }}
+              onPress={() => onPressImage?.(normalized, idx)}
+            >
+              <Image
+                source={{ uri: item.uri }}
+                style={{ width: "100%", height: "100%" }}
+                contentFit="cover"
+                transition={0}
+                cachePolicy="memory-disk"
+              />
+              {showExtra ? (
+                <View className="absolute inset-0 bg-black/55 items-center justify-center">
+                  <Text className="text-xl font-bold text-white">+{extra}</Text>
+                </View>
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}

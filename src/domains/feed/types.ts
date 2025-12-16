@@ -12,13 +12,36 @@ export type FeedAuthor = {
   isMe?: boolean; // author is the current user (pin to top on Following)
 };
 
-export type FeedMedia = {
-  url?: string;
-  placeholderColor?: string;
-  aspectRatio?: number; // w/h, defaults to 4/5
-  type?: "image" | "video";
-  durationMs?: number;
-};
+export type FeedImageItem =
+  | string
+  | {
+      uri: string;
+      width?: number;
+      height?: number;
+    };
+
+export type FeedMedia =
+  | {
+      type: "image";
+      items: FeedImageItem[];
+      placeholderColor?: string;
+      aspectRatio?: number;
+    }
+  | {
+      type: "video";
+      uri: string;
+      durationMs?: number;
+      placeholderColor?: string;
+      aspectRatio?: number;
+    }
+  | {
+      // Legacy single image shape for backward compatibility
+      type?: "image";
+      url?: string;
+      placeholderColor?: string;
+      aspectRatio?: number;
+      durationMs?: number;
+    };
 
 export type FeedComment = {
   id: string;
@@ -63,14 +86,25 @@ export type FeedData = {
   defaultTab?: FeedTab;
 };
 
-export type PostMomentMedia = {
-  type: "image" | "video";
+export type PostMomentImageItem = {
   uri: string;
   width?: number;
   height?: number;
-  aspectRatio?: number;
-  durationMs?: number;
 };
+
+export type PostMomentMedia =
+  | {
+      type: "image";
+      items: PostMomentImageItem[];
+    }
+  | {
+      type: "video";
+      uri: string;
+      durationMs?: number;
+      width?: number;
+      height?: number;
+      aspectRatio?: number;
+    };
 
 export type PostMomentDraft = {
   text: string;

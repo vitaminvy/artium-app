@@ -18,15 +18,17 @@ type MediaButtonProps = {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   active?: boolean;
+  disabled?: boolean;
   onPress: () => void;
 };
 
-const MediaButton = ({ icon, label, active, onPress }: MediaButtonProps) => (
+const MediaButton = ({ icon, label, active, disabled, onPress }: MediaButtonProps) => (
   <Pressable
     onPress={onPress}
+    disabled={disabled}
     className={`flex-1 flex-row items-center justify-center gap-2 rounded-2xl border px-3 py-3 active:opacity-80 ${
       active ? "bg-slate-900 border-slate-900" : "bg-white border-slate-200"
-    }`}
+    } ${disabled ? "opacity-60" : ""}`}
   >
     <Ionicons name={icon} size={18} color={active ? "#fff" : "#0F172A"} />
     <Text className={`text-sm font-semibold ${active ? "text-white" : "text-slate-800"}`}>
@@ -97,12 +99,14 @@ export default function PostMomentEditor({
           label="Image"
           active={media?.type === "image"}
           onPress={onPickImage}
+          disabled={media?.type === "video"}
         />
         <MediaButton
           icon="videocam-outline"
           label="Video"
           active={media?.type === "video"}
           onPress={onPickVideo}
+          disabled={media?.type === "image"}
         />
       </View>
     </View>

@@ -26,6 +26,8 @@ import Animated, {
 import PostMomentSheet from "../domains/feed/components/PostMomentSheet";
 import { usePostMoment } from "../domains/feed/hooks/usePostMoment";
 import { subscribePostMomentOpen } from "../shared/utils/postMomentBridge";
+import ImageViewing from "react-native-image-viewing";
+import { useRef } from "react";
 
 export default function FeedScreen() {
   const navigation =
@@ -54,6 +56,13 @@ export default function FeedScreen() {
   const [commentTarget, setCommentTarget] = React.useState<
     FeedPost | undefined
   >();
+  const viewerKeyRef = useRef(0);
+  const [viewerState, setViewerState] = React.useState<{
+    visible: boolean;
+    images: { uri: string }[];
+    initialIndex: number;
+    key: string;
+  }>({ visible: false, images: [], initialIndex: 0, key: "viewer-0" });
   const TAB_HEIGHT = 52;
   const tabsAnim = useSharedValue(1);
   const lastOffset = useSharedValue(0);
@@ -116,6 +125,20 @@ export default function FeedScreen() {
     pointerEvents: tabsAnim.value === 0 ? "none" : "auto",
   }));
 
+  const handleOpenViewer = React.useCallback((images: { uri: string }[], index: number) => {
+    viewerKeyRef.current += 1;
+    const key = `viewer-${viewerKeyRef.current}-${images.length}-${index}`;
+    // Set images/index first, then flip visible on next frame to avoid race
+    setViewerState({ visible: false, images, initialIndex: index, key });
+    requestAnimationFrame(() => {
+      setViewerState((prev) => ({ ...prev, visible: true }));
+    });
+  }, []);
+
+  const handleCloseViewer = React.useCallback(() => {
+    setViewerState((prev) => ({ ...prev, visible: false }));
+  }, []);
+
   return (
     <View className="flex-1 bg-white">
       <ScreenHeader
@@ -138,6 +161,7 @@ export default function FeedScreen() {
             onToggleReshare={openReshare}
             onPressComment={openComments}
             onPressCard={openDetail}
+            onPressImage={handleOpenViewer}
             scrollHandler={scrollHandler}
           />
         </View>
@@ -148,6 +172,7 @@ export default function FeedScreen() {
             onToggleReshare={openReshare}
             onPressComment={openComments}
             onPressCard={openDetail}
+            onPressImage={handleOpenViewer}
             scrollHandler={scrollHandler}
           />
         </View>
@@ -177,8 +202,23 @@ export default function FeedScreen() {
         onPickImage={postMoment.actions.pickImage}
         onPickVideo={postMoment.actions.pickVideo}
         onRemoveMedia={postMoment.actions.removeMedia}
+        onRemoveImageAt={postMoment.actions.removeImageAt}
+        onVideoDuration={postMoment.actions.setVideoDuration}
         onShare={postMoment.actions.share}
         onClose={postMoment.actions.close}
+        isVideoActive={postMoment.state.media?.type === "video"}
+      />
+
+      <ImageViewing
+        key={viewerState.key}
+        images={viewerState.images}
+        imageIndex={viewerState.initialIndex}
+        visible={viewerState.visible}
+        onRequestClose={handleCloseViewer}
+        swipeToCloseEnabled
+        doubleTapToZoomEnabled
+        backgroundColor="black"
+        animationType="none"
       />
     </View>
   );

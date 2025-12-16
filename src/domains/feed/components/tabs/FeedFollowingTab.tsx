@@ -10,6 +10,7 @@ type Props = {
   onToggleReshare: (post: FeedPost) => void;
   onPressComment: (post: FeedPost) => void;
   onPressCard?: (post: FeedPost) => void;
+  onPressImage?: (images: { uri: string }[], index: number) => void;
   scrollHandler?: any;
 };
 
@@ -19,6 +20,7 @@ export default function FeedFollowingTab({
   onToggleReshare,
   onPressComment,
   onPressCard,
+  onPressImage,
   scrollHandler,
 }: Props) {
   const renderItem = useCallback(
@@ -29,9 +31,10 @@ export default function FeedFollowingTab({
         onPressReshare={onToggleReshare}
         onPressComment={onPressComment}
         onPressCard={onPressCard}
+        onPressImage={onPressImage}
       />
     ),
-    [onToggleLike, onToggleReshare, onPressComment, onPressCard]
+    [onToggleLike, onToggleReshare, onPressComment, onPressCard, onPressImage]
   );
 
   const AnimatedFlatList = useMemo(

@@ -19,8 +19,11 @@ type Props = {
   onPickImage: () => void;
   onPickVideo: () => void;
   onRemoveMedia: () => void;
+  onRemoveImageAt: (index: number) => void;
+  onVideoDuration?: (durationMs: number) => void;
   onShare: () => void;
   onClose: () => void;
+  isVideoActive?: boolean;
 };
 
 export default function PostMomentSheet({
@@ -32,8 +35,11 @@ export default function PostMomentSheet({
   onPickImage,
   onPickVideo,
   onRemoveMedia,
+  onRemoveImageAt,
+  onVideoDuration,
   onShare,
   onClose,
+  isVideoActive,
 }: Props) {
   const insets = useSafeAreaInsets();
   const sheetRef = useRef<BottomSheetModal>(null);
@@ -124,7 +130,12 @@ export default function PostMomentSheet({
             onPickVideo={onPickVideo}
           />
 
-          <PostMomentPreview media={media} onRemove={onRemoveMedia} />
+          <PostMomentPreview
+            media={media}
+            onRemoveImage={onRemoveImageAt}
+            onClear={onRemoveMedia}
+            onVideoDuration={onVideoDuration}
+          />
 
           <Pressable
             onPress={onShare}

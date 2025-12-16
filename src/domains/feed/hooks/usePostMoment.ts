@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
+import * as FileSystem from "expo-file-system";
 import { CURRENT_USER } from "../constants";
 import { FeedPost, PostMomentMedia } from "../types";
 import { subscribePostMomentOpen } from "../../../shared/utils/postMomentBridge";
@@ -40,31 +41,71 @@ export function usePostMoment({
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
 
-    const mediaTypes =
-      type === "image"
-        ? ImagePicker.MediaTypeOptions.Images
-        : ImagePicker.MediaTypeOptions.Videos;
+    if (type === "image") {
+      const pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.92,
+      });
+
+      if (pickerResult.canceled || !pickerResult.assets?.length) return;
+      const items = pickerResult.assets.map((asset) => ({
+        uri: asset.uri,
+        width: asset.width,
+        height: asset.height,
+      }));
+      // Ensure video state is cleared when selecting images
+      setVideoReview(undefined);
+      setMedia({ type: "image", items });
+      return;
+    }
+
+    // Video flow: single selection, ensure images cleared
+    setMedia(undefined);
+    const cacheFile = `${FileSystem.cacheDirectory ?? ""}moment-video-${Date.now()}.mp4`;
 
     const pickerResult = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes,
+      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
       allowsMultipleSelection: false,
-      quality: 0.92,
       videoQuality: ImagePicker.UIImagePickerControllerQualityType.High,
+      quality: 0.92,
     });
-
     if (pickerResult.canceled || !pickerResult.assets?.length) return;
     const asset = pickerResult.assets[0];
-    const durationMs =
-      typeof asset.duration === "number"
-        ? normalizeDurationMs(asset.duration)
-        : undefined;
+
+    // Determine source URI; iCloud assets may not be local
+    let sourceUri = asset.uri;
+    const hasLocalFile = sourceUri?.startsWith("file://");
+
+    if (!hasLocalFile && sourceUri) {
+      const downloadRes = await FileSystem.createDownloadResumable(
+        sourceUri,
+        cacheFile,
+        {},
+        (progress) => {
+          const pct = progress.totalBytesExpectedToWrite
+            ? progress.totalBytesWritten / progress.totalBytesExpectedToWrite
+            : 0;
+        }
+      ).downloadAsync();
+
+      if (downloadRes?.uri) {
+        sourceUri = downloadRes.uri;
+      }
+    }
+
+    if (!sourceUri) return;
+
+    const aspectRatio =
+      asset.width && asset.height ? asset.width / asset.height : undefined;
 
     setMedia({
-      type,
-      uri: asset.uri,
+      type: "video",
+      uri: sourceUri,
       width: asset.width,
       height: asset.height,
-      durationMs,
+      durationMs: undefined, // will be resolved after load
+      aspectRatio,
     });
   }, []);
 
@@ -82,8 +123,20 @@ export function usePostMoment({
     setMedia(undefined);
   }, []);
 
+  const removeImageAt = useCallback((index: number) => {
+    setMedia((prev) => {
+      if (!prev || prev.type !== "image") return prev;
+      const nextItems = [...prev.items];
+      nextItems.splice(index, 1);
+      if (!nextItems.length) return undefined;
+      return { ...prev, items: nextItems };
+    });
+  }, []);
+
   const canShare = useMemo(
-    () => text.trim().length > 0 || !!media,
+    () =>
+      text.trim().length > 0 ||
+      (media?.type === "image" ? media.items.length > 0 : !!media),
     [media, text]
   );
 
@@ -91,14 +144,26 @@ export function usePostMoment({
     if (!canShare) return;
 
     const now = Date.now();
-    const feedMedia = media
-      ? {
-          url: media.uri,
-          placeholderColor: "#E2E8F0",
-          type: media.type,
-          durationMs: media.durationMs,
-        }
-      : undefined;
+    let feedMedia: FeedPost["media"] | undefined;
+    if (media?.type === "image") {
+      feedMedia = {
+        type: "image",
+        items: media.items.map((item) => ({
+          uri: item.uri,
+          width: item.width,
+          height: item.height,
+        })),
+        placeholderColor: "#E2E8F0",
+      };
+    } else if (media?.type === "video") {
+      feedMedia = {
+        type: "video",
+        uri: media.uri,
+        durationMs: media.durationMs,
+        placeholderColor: "#E2E8F0",
+        aspectRatio: media.aspectRatio,
+      };
+    }
 
     const newPost: FeedPost = {
       id: `moment-${now}`,
@@ -133,9 +198,29 @@ export function usePostMoment({
       pickImage,
       pickVideo,
       removeMedia,
+      removeImageAt,
+      setVideoDuration: (durationMs?: number) => {
+        setMedia((prev) => {
+          if (!prev || prev.type !== "video") return prev;
+          if (durationMs && durationMs > 60_000) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            alert("Video must be 60 seconds or less");
+            return undefined;
+          }
+          return { ...prev, durationMs: durationMs ?? prev.durationMs };
+        });
+      },
       share,
     }),
-    [close, open, pickImage, pickVideo, removeMedia, share]
+    [
+      close,
+      open,
+      pickImage,
+      pickVideo,
+      removeImageAt,
+      removeMedia,
+      share,
+    ]
   );
 
   return { state, actions };
@@ -158,6 +243,8 @@ type UsePostMomentActions = {
   pickImage: () => Promise<void>;
   pickVideo: () => Promise<void>;
   removeMedia: () => void;
+  removeImageAt: (index: number) => void;
+  setVideoDuration: (durationMs?: number) => void;
   share: () => void;
 };
 
