@@ -19,10 +19,10 @@ import {
   GoogleSigninButton,
   statusCodes,
 } from "@react-native-google-signin/google-signin";
-import { auth, firestore } from "../configs/firebase";
+import { auth } from "../configs/firebase";
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
 import { doSignInWithEmailAndPassword } from "@/domains/auth/services/firebaseAuth";
+import { upsertUserProfile } from "@/domains/auth/services/userProfile";
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, "LogIn">;
@@ -105,18 +105,11 @@ export default function LoginScreen({ navigation }: Props) {
       const userCredential = await signInWithCredential(auth, googleCredential);
       const firebaseUser = userCredential.user;
 
-      await setDoc(
-        doc(firestore, "users", firebaseUser.uid),
-        {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email || googleUser.email, // Use Firebase user email, fallback to googleUser if null
-          displayName: firebaseUser.displayName || googleUser.name, // Use Firebase user display name, fallback to googleUser
-          photoURL: firebaseUser.photoURL || googleUser.photo, // Use Firebase user photo, fallback to googleUser
-          createdAt: firebaseUser.metadata.creationTime,
-          lastLoginAt: firebaseUser.metadata.lastSignInTime,
-        },
-        { merge: true }
-      );
+      await upsertUserProfile(firebaseUser, {
+        email: firebaseUser.email || googleUser.email,
+        displayName: firebaseUser.displayName || googleUser.name,
+        photoURL: firebaseUser.photoURL || googleUser.photo,
+      });
 
       // Login is now handled by the onAuthStateChanged listener in AuthContext.
       // The RootNavigator will automatically switch to the main app screen.
@@ -128,6 +121,10 @@ export default function LoginScreen({ navigation }: Props) {
         setErrorMsg("Google sign-in is already in progress.");
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
         setErrorMsg("Google Play Services not available.");
+      } else if (error.code === "auth/network-request-failed") {
+        setErrorMsg(
+          "Network unavailable. Please check your connection and try again."
+        );
       } else {
         console.error("Lỗi đăng nhập Google:", error);
         setErrorMsg(

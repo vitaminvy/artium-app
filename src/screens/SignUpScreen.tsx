@@ -16,11 +16,11 @@ import {
   statusCodes,
 } from "@react-native-google-signin/google-signin";
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 
 import { AuthStackParamList } from "@/app/navigation/AuthStack";
 import { useSignUp } from "@/domains/auth/hooks/useSignUp";
 import { auth, firestore } from "@/configs/firebase";
+import { upsertUserProfile } from "@/domains/auth/services/userProfile";
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, "SignUp">;
@@ -59,21 +59,11 @@ export default function SignUpScreen({ navigation }: Props) {
       const userCredential = await signInWithCredential(auth, googleCredential);
       const firebaseUser = userCredential.user;
 
-      await setDoc(
-        doc(firestore, "users", firebaseUser.uid),
-        {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email || googleUser.email,
-          displayName: firebaseUser.displayName || googleUser.name,
-          photoURL: firebaseUser.photoURL || googleUser.photo,
-          role: "art_lover",
-          followerCount: 0,
-          followingCount: 0,
-          createdAt: serverTimestamp(),
-          lastLoginAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
+      await upsertUserProfile(firebaseUser, {
+        email: firebaseUser.email || googleUser.email,
+        displayName: firebaseUser.displayName || googleUser.name,
+        photoURL: firebaseUser.photoURL || googleUser.photo,
+      });
     } catch (error: any) {
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
         setGoogleError("Google sign-in was cancelled.");
@@ -81,6 +71,8 @@ export default function SignUpScreen({ navigation }: Props) {
         setGoogleError("Google sign-in is already in progress.");
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
         setGoogleError("Google Play Services not available.");
+      } else if (error.code === "auth/network-request-failed") {
+        setGoogleError("Network unavailable. Please check your connection and try again.");
       } else {
         console.error("Google sign-in failed:", error);
         setGoogleError(

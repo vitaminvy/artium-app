@@ -67,6 +67,9 @@ export function useSignUp() {
           case "auth/weak-password":
             msg = "Password must be at least 6 characters.";
             break;
+          case "auth/network-request-failed":
+            msg = "Network unavailable. Please check your connection and try again.";
+            break;
           default:
             msg = err?.message || msg;
             break;
