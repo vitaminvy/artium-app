@@ -2,6 +2,7 @@
 // src/screens/ArtworkDetailScreen.tsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Animated as RNAnimated,
   FlatList,
   Image,
@@ -12,10 +13,11 @@ import {
   ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import type { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BottomSheetModalProvider, BottomSheetModal } from "@gorhom/bottom-sheet";
+import type { BottomSheetBackdropProps } from "@gorhom/bottom-sheet";
+import { BottomSheetBackdrop } from "@gorhom/bottom-sheet";
 
 import { discoverMockData } from "../domains/discover/mockData";
 import { Artwork } from "../domains/discover/types";
@@ -28,11 +30,11 @@ import { ArtworkDetail } from "../domains/artwork/types";
 import { fallbackDetail } from "../domains/artwork/mockData";
 import SaveSheet from "../domains/artwork/components/SaveSheet";
 import ReportSheet from "../domains/artwork/components/ReportSheet";
-import OptionsSheet from "../domains/artwork/components/OptionsSheet";
 import ArtworkCarousel from "../domains/artwork/components/ArtworkCarousel";
 import SimilarCard from "../domains/artwork/components/cards/SimilarCard";
 import IconButton from "../domains/artwork/components/ui/IconButton";
 import { InfoBlock, InfoBlockWithConvert } from "../domains/artwork/components/ui/InfoBlock";
+import { shareArtwork } from "../shared/utils/shareArtwork";
 
 const cardShadow: ViewStyle = {
   shadowColor: "#000",
@@ -56,6 +58,8 @@ export default function ArtworkDetailScreen() {
   const insets = useSafeAreaInsets();
   const { hidden, setHidden, height: tabHeight } = useTabBarVisibility();
   const scrollY = useRef(0);
+
+  // States
   const [liked, setLiked] = useState(false);
   const [savedBoardId, setSavedBoardId] = useState<string | null>(null);
   const saved = !!savedBoardId;
@@ -65,9 +69,10 @@ export default function ArtworkDetailScreen() {
   const [showWeightConvert, setShowWeightConvert] = useState(false);
   const [showReshareSheet, setShowReshareSheet] = useState(false);
   const [showSaveSheet, setShowSaveSheet] = useState(false);
-  const [showOptionsSheet, setShowOptionsSheet] = useState(false);
-  const [showReportSheet, setShowReportSheet] = useState(false);
+
+  // Bottom Sheet Refs & States
   const optionsSheetRef = useRef<BottomSheetModal>(null);
+  const [showReportSheet, setShowReportSheet] = useState(false);
 
   const currentArtwork: Artwork | undefined = useMemo(() => {
     const all = [...discoverMockData.artworks, ...discoverMockData.moments];
@@ -99,6 +104,7 @@ export default function ArtworkDetailScreen() {
         .slice(0, 6),
     [detail.id]
   );
+
   const dimensionInLabel = `${detail.dimension.h.toFixed(
     2
   )} × ${detail.dimension.w.toFixed(2)} × ${detail.dimension.d.toFixed(2)} in`;
@@ -109,6 +115,7 @@ export default function ArtworkDetailScreen() {
   const weightKgLabel = `${(parseFloat(detail.weight) * 0.45359237).toFixed(
     2
   )} kg`;
+
   const reshareTarget: FeedPost = useMemo(
     () => ({
       id: detail.id,
@@ -132,10 +139,25 @@ export default function ArtworkDetailScreen() {
     [detail]
   );
 
+  // Backdrop component
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...props}
+        pressBehavior="close"
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        opacity={0.4}
+      />
+    ),
+    []
+  );
+
+  // Action bottom animation
   useEffect(() => {
     const targetBottom = hidden
-      ? Math.max(insets.bottom + 6, 6) // Khi tab ẩn: dính sát mép dưới/safe area
-      : tabHeight + 4; // Khi tab hiện: nằm ngay trên tab
+      ? Math.max(insets.bottom + 6, 6)
+      : tabHeight + 4;
 
     RNAnimated.spring(actionBottom, {
       toValue: targetBottom,
@@ -165,25 +187,57 @@ export default function ArtworkDetailScreen() {
     scrollY.current = y;
   };
 
-  const handleOpenOptionsSheet = () => {
-    setShowOptionsSheet(true);
-    // Ensure the modal is presented even if state was already true
-    optionsSheetRef.current?.present();
-  };
+  // Sheet handlers
+  const handleOpenOptionsSheet = useCallback(() => {
+    console.log('🔵 Opening Options Sheet');
+    setHidden(true);
+    console.log('🔵 optionsSheetRef.current:', optionsSheetRef.current);
+    try {
+      optionsSheetRef.current?.present();
+      console.log('🔵 present() called successfully');
+    } catch (error) {
+      console.log('🔴 Error calling present():', error);
+    }
+  }, [setHidden]);
 
-  const handleCloseOptionsSheet = () => {
-    setShowOptionsSheet(false);
+  const handleOpenSaveSheet = useCallback(() => {
+    setHidden(true);
+    setShowSaveSheet(true);
+  }, [setHidden]);
+
+  const handleOpenReshareSheet = useCallback(() => {
+    setHidden(true);
+    setShowReshareSheet(true);
+  }, [setHidden]);
+
+  const handleOpenReportSheet = useCallback(() => {
     optionsSheetRef.current?.dismiss();
-  };
+    setTimeout(() => {
+      setShowReportSheet(true);
+    }, 300);
+  }, []);
 
-  const handleOptionsSheetChange = useCallback(
-    (open: boolean) => setShowOptionsSheet(open),
-    []
-  );
+  const handleCloseSheet = useCallback(() => {
+    setHidden(false);
+  }, [setHidden]);
+
+  const handleShare = useCallback(async () => {
+    try {
+      await shareArtwork({
+        title: detail.title,
+        artistName: detail.artist.name,
+        marketing: "Khám phá tác phẩm này",
+        deepLink: `https://www.artium.com/artwork/${detail.id}`,
+      });
+    } catch (err) {
+      Alert.alert("Share unavailable", "Không thể mở chia sẻ trên thiết bị này.");
+    }
+  }, [detail]);
 
   return (
     <BottomSheetModalProvider>
       <View className="flex-1 bg-white">
+        {/* Custom Header */}
         <View
           className="flex-row items-center justify-between px-4 border-b border-slate-100 bg-white"
           style={{ paddingTop: insets.top + 8, paddingBottom: 12, zIndex: 50 }}
@@ -196,7 +250,11 @@ export default function ArtworkDetailScreen() {
             <Ionicons name="arrow-back" size={22} color="#0F172A" />
           </Pressable>
           <View className="flex-row items-center gap-3">
-            <Pressable className="h-10 w-10 items-center justify-center">
+            <Pressable
+              className="h-10 w-10 items-center justify-center"
+              onPress={handleShare}
+              hitSlop={8}
+            >
               <Ionicons name="share-outline" size={22} color="#0F172A" />
             </Pressable>
             <Pressable
@@ -209,6 +267,7 @@ export default function ArtworkDetailScreen() {
           </View>
         </View>
 
+        {/* Content */}
         <ScrollView
           onScroll={handleScroll}
           scrollEventThrottle={16}
@@ -363,7 +422,6 @@ export default function ArtworkDetailScreen() {
                 <SimilarCard
                   item={item}
                   onPress={() =>
-                    // Use push to force a fresh detail screen even when already on this route
                     navigation.push(
                       "ArtworkDetail" as never,
                       { id: item.id } as never
@@ -376,6 +434,7 @@ export default function ArtworkDetailScreen() {
           </View>
         </ScrollView>
 
+        {/* Action Bar */}
         <RNAnimated.View
           className="absolute left-3 right-3 rounded-full bg-white border border-slate-200 flex-row items-center px-3"
           style={[
@@ -397,14 +456,12 @@ export default function ArtworkDetailScreen() {
               icon="repeat-outline"
               color={reshared ? "#0B73FF" : "#0F172A"}
               bg={reshared ? "rgba(11,115,255,0.08)" : undefined}
-              onPress={() => setShowReshareSheet(true)}
+              onPress={handleOpenReshareSheet}
             />
             <IconButton
               icon={saved ? "bookmark" : "bookmark-outline"}
               color={saved ? "#0B73FF" : "#0F172A"}
-              onPress={() => {
-                setShowSaveSheet(true);
-              }}
+              onPress={handleOpenSaveSheet}
             />
           </View>
           <Pressable className="bg-[#0B73FF] px-5 py-3 rounded-full flex-row items-center gap-2 active:opacity-90">
@@ -413,45 +470,74 @@ export default function ArtworkDetailScreen() {
           </Pressable>
         </RNAnimated.View>
 
+        {/* Reshare Sheet - Managed directly without nested BottomSheetModal */}
         <ReshareSheet
           visible={showReshareSheet}
           target={reshareTarget}
-          onClose={() => setShowReshareSheet(false)}
+          onClose={() => {
+            setShowReshareSheet(false);
+            handleCloseSheet();
+          }}
           onSubmit={(text) => {
             setShowReshareSheet(false);
+            handleCloseSheet();
             console.log("Reshare from artwork detail", detail.id, text);
             setReshared(true);
           }}
         />
 
+        {/* Save Sheet - Managed directly without nested BottomSheetModal */}
         <SaveSheet
           visible={showSaveSheet}
-          onClose={() => setShowSaveSheet(false)}
+          onClose={() => {
+            setShowSaveSheet(false);
+            handleCloseSheet();
+          }}
           initialSelectedId={savedBoardId}
           onSelect={(id) => {
             setSavedBoardId(id);
             setShowSaveSheet(false);
+            handleCloseSheet();
           }}
         />
 
         {/* Options Sheet */}
-        <OptionsSheet
+        <BottomSheetModal
           ref={optionsSheetRef}
-          visible={showOptionsSheet}
-          onClose={handleCloseOptionsSheet}
-          onReport={() => {
-            handleCloseOptionsSheet();
-            setShowReportSheet(true);
-          }}
-          onChange={handleOptionsSheetChange}
-        />
+          snapPoints={[200]}
+          backdropComponent={renderBackdrop}
+          enablePanDownToClose
+          handleIndicatorStyle={{ backgroundColor: "#CBD5E1", width: 40, height: 4 }}
+          backgroundStyle={{ backgroundColor: "white" }}
+          enableDynamicSizing={false}
+          onDismiss={handleCloseSheet}
+        >
+          <View style={{ paddingBottom: Math.max(insets.bottom, 12) }}>
+            <Text className="text-lg font-bold text-slate-900 px-5 pt-2 pb-3">
+              Options
+            </Text>
+            <Pressable
+              onPress={handleOpenReportSheet}
+              className="flex-row items-center gap-3 px-5 py-4 active:bg-slate-50"
+              style={{ backgroundColor: 'transparent' }}
+            >
+              <Ionicons name="alert-outline" size={24} color="#0F172A" />
+              <Text className="text-base font-semibold text-slate-900">Report Artwork</Text>
+            </Pressable>
+          </View>
+        </BottomSheetModal>
 
+        {/* Report Sheet - Managed directly without nested BottomSheetModal */}
         <ReportSheet
           visible={showReportSheet}
-          onClose={() => setShowReportSheet(false)}
-          onReport={(reason, msg) => {
+          onClose={() => {
             setShowReportSheet(false);
-            console.log("Reported artwork", detail.id, reason, msg);
+            handleCloseSheet();
+          }}
+          onReport={(reasons, msg) => {
+            setShowReportSheet(false);
+            handleCloseSheet();
+            console.log("Reported artwork", detail.id, "Reasons:", reasons, "Message:", msg);
           }}
         />
       </View>

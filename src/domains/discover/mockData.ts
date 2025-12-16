@@ -182,7 +182,7 @@ const profiles: ArtistProfile[] = [
 const events: EventItem[] = [
   {
     id: "ev-1",
-    title: "Cohart x J Studio Exclusive Dinner",
+    title: "Artium x J Studio Exclusive Dinner",
     location: "Ho Chi Minh City, Vietnam",
     datetime: "2025-04-29T18:00:00Z",
     image:

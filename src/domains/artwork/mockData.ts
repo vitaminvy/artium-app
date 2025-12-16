@@ -45,6 +45,6 @@ export const fallbackDetail: ArtworkDetail = {
   materials: "Acrylic on canvas with real wood floating frame",
   shipping: [
     { title: "Shipped within 7 working days in a box" },
-    { title: "Cohart Satisfaction Guarantee" },
+    { title: "Artium Satisfaction Guarantee" },
   ],
 };
