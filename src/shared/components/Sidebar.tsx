@@ -223,7 +223,7 @@ export default function Sidebar({
           </ScrollView>
 
           <View
-            className="absolute left-0 right-0 border-t border-slate-200 border-b border-slate-200 bg-white"
+            className="absolute left-0 right-0 border-t border-slate-200 border-b bg-white"
             style={{
               bottom: 0,
               paddingBottom: Math.max(insets.bottom - 4, 0),

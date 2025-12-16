@@ -77,7 +77,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <BottomSheetModalProvider>
-        <AppEntry authStatus={auth.status} />
+        <AppEntry />
 
         {splashVisible && (
           <Animated.View
