@@ -55,7 +55,6 @@ export function usePostMoment({
         height: asset.height,
       }));
       // Ensure video state is cleared when selecting images
-      setVideoReview(undefined);
       setMedia({ type: "image", items });
       return;
     }
