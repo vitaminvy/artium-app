@@ -8,6 +8,7 @@ import HomeScreen from "../../screens/HomeScreen";
 
 import CustomTabBar from "./CustomTabBar";
 import { TabParamList } from "./tabTypes";
+import { TabBarVisibilityProvider } from "./TabBarVisibilityContext";
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
@@ -16,23 +17,25 @@ const UploadOptionsPlaceholder = () => null;
 
 export default function TabNavigator() {
   return (
-    <Tab.Navigator
-      initialRouteName="Discover"
-      screenOptions={{
-        headerShown: false,
-      }}
-      tabBar={(props) => <CustomTabBar {...props} />}
-    >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Feed" component={FeedStack} />
-      
-      {/* Center Button (Quick Sell) */}
-      <Tab.Screen name="Upload" component={UploadStack} />
+    <TabBarVisibilityProvider>
+      <Tab.Navigator
+        initialRouteName="Discover"
+        screenOptions={{
+          headerShown: false,
+        }}
+        tabBar={(props) => <CustomTabBar {...props} />}
+      >
+        <Tab.Screen name="Home" component={HomeScreen} />
+        <Tab.Screen name="Feed" component={FeedStack} />
+        
+        {/* Center Button (Quick Sell) */}
+        <Tab.Screen name="Upload" component={UploadStack} />
 
-      <Tab.Screen name="Discover" component={DiscoverStack} />
-      
-      {/* Upload Action Sheet Trigger */}
-      <Tab.Screen name="UploadOptions" component={UploadOptionsPlaceholder} />
-    </Tab.Navigator>
+        <Tab.Screen name="Discover" component={DiscoverStack} />
+        
+        {/* Upload Action Sheet Trigger */}
+        <Tab.Screen name="UploadOptions" component={UploadOptionsPlaceholder} />
+      </Tab.Navigator>
+    </TabBarVisibilityProvider>
   );
 }

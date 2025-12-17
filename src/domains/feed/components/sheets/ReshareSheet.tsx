@@ -179,7 +179,15 @@ export default function ReshareSheet({
                   backgroundColor: target.media.placeholderColor ?? "#CBD5E1",
                   aspectRatio: target.media.aspectRatio ?? 1,
                 }}
-              />
+              >
+                {target.media.url ? (
+                  <Animated.Image
+                    source={{ uri: target.media.url }}
+                    style={{ width: "100%", height: "100%" }}
+                    resizeMode="cover"
+                  />
+                ) : null}
+              </View>
             ) : null}
           </View>
         ) : null}
