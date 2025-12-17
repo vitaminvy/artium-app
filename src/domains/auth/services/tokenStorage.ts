@@ -1,6 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+// Simple token storage that tries SecureStore first and falls back to AsyncStorage.
 export const tokenStorage = {
   get: async () => {
     try {

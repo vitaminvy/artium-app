@@ -11,6 +11,7 @@ import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
 } from "react-native-reanimated";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
 
 // Ensure error handler is registered once
 LogBox.ignoreAllLogs(false);
@@ -76,7 +77,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <BottomSheetModalProvider>
-        <AppEntry authStatus={auth.status} />
+        <AppEntry />
 
         {splashVisible && (
           <Animated.View

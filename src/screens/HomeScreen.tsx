@@ -1,5 +1,3 @@
-// Main Home/Feed Screen
-// src/screens/HomeScreen.tsx
 import React, { useMemo, useState } from "react";
 import { View, Text, Pressable, Image, DevSettings } from "react-native";
 import { useNavigation } from "@react-navigation/native";
@@ -7,7 +5,7 @@ import ScreenHeader from "../shared/components/ScreenHeader";
 import Sidebar from "../shared/components/Sidebar";
 import { useSidebarItems } from "../shared/hooks/useSidebar";
 import UnderlineHome from "../../assets/headers/underline-home.svg";
-import { tokenStorage } from "../domains/auth/services/tokenStorage";
+import { doSignOut } from "../domains/auth/services/firebaseAuth"; // Import doSignOut
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -15,6 +13,15 @@ export default function HomeScreen() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(96);
   const activeKey = useMemo(() => items[0]?.key, [items]);
+
+  const handleLogout = async () => {
+    try {
+      await doSignOut();
+      // onAuthStateChanged in AuthProvider will handle the rest
+    } catch (error) {
+      console.error("Error signing out: ", error);
+    }
+  };
 
   return (
     <View className="flex-1 bg-white">
@@ -42,17 +49,16 @@ export default function HomeScreen() {
         >
           <Text className="text-white font-semibold">Go to Discover</Text>
         </Pressable>
-
-        <Pressable
-          onPress={async () => {
-            await tokenStorage.remove();
-            DevSettings.reload(); // reload app so auth bootstrap can show Welcome
-          }}
+         <Pressable
+          onPress={handleLogout}
           className="mt-4 px-4 py-2 rounded-lg border border-slate-300"
         >
-          <Text className="text-slate-700 text-sm">Đăng xuất</Text>
+          <Text className="text-slate-700 text-sm">Log out</Text>
         </Pressable>
+
+        
       </View>
+
 
       <Sidebar
         visible={sidebarOpen}
