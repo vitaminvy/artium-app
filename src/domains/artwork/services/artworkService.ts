@@ -1,22 +1,41 @@
-import { doc, getDoc, DocumentData } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, query, where, DocumentData } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 import { ArtworkDetail } from "../types";
+import { Artwork as DiscoverArtwork } from "../../discover/types"; // Import the card's artwork type
 
 const ARTWORKS_COLLECTION = "artworks";
 const ARTISTS_COLLECTION = "artists";
 
-// Helper function to get artist data. This could be in a separate artistService.ts later.
-const _getArtistById = async (id: string): Promise<ArtworkDetail['artist']> => {
+type ArtistData = {
+  name: string;
+  avatar: string;
+  verified: boolean;
+};
+
+type ArtworkDoc = {
+  id: string;
+  title: string;
+  artistId: string;
+  stats: { worksSold: number; buyers: number };
+  price: string;
+  availabilityNote?: string;
+  images: string[];
+  tags: string[];
+  dimension: { h: number; w: number; d: number; unit: string };
+  weight: string;
+  year: number;
+  edition: number;
+  materials: string;
+  shipping: { title: string; subtitle?: string }[];
+};
+
+// Helper function to get artist data
+const _getArtistById = async (id: string): Promise<ArtistData> => {
   const artistRef = doc(firestore, ARTISTS_COLLECTION, id);
   const artistSnap = await getDoc(artistRef);
 
   if (!artistSnap.exists()) {
-    // Return a default/unknown artist structure if not found
-    return {
-      name: "Unknown Artist",
-      avatar: "",
-      verified: false,
-    };
+    return { name: "Unknown Artist", avatar: "", verified: false };
   }
   
   const artistData = artistSnap.data();
@@ -26,6 +45,63 @@ const _getArtistById = async (id: string): Promise<ArtworkDetail['artist']> => {
     verified: artistData.verified || false,
   };
 };
+
+/**
+ * Fetches all artworks and formats them for the Discover screen.
+ */
+export const getArtworks = async (): Promise<DiscoverArtwork[]> => {
+  try {
+    // 1. Fetch all artwork documents
+    const artworkQuery = query(collection(firestore, ARTWORKS_COLLECTION));
+    const artworkSnapshots = await getDocs(artworkQuery);
+    const artworksFromDB = artworkSnapshots.docs.map(
+      doc => ({ id: doc.id, ...doc.data() } as ArtworkDoc)
+    );
+
+    if (artworksFromDB.length === 0) {
+      return [];
+    }
+
+    // 2. Collect all unique artist IDs
+    const artistIds = [...new Set(artworksFromDB.map(art => art.artistId).filter(id => id))];
+
+    // 3. Fetch all required artist documents in a single query
+    let artistsMap = new Map<string, ArtistData>();
+    if (artistIds.length > 0) {
+      const artistQuery = query(collection(firestore, ARTISTS_COLLECTION), where("__name__", "in", artistIds));
+      const artistSnapshots = await getDocs(artistQuery);
+      artistSnapshots.forEach(doc => {
+        const data = doc.data();
+        artistsMap.set(doc.id, {
+          name: data.name,
+          avatar: data.avatar,
+          verified: data.verified || false,
+        });
+      });
+    }
+
+    // 4. Combine artwork and artist data
+    const discoverArtworks: DiscoverArtwork[] = artworksFromDB.map(art => {
+      const artist = artistsMap.get(art.artistId) || { name: "Unknown Artist", avatar: "", verified: false };
+      return {
+        id: art.id,
+        title: art.title,
+        artist: artist.name,
+        artistAvatar: artist.avatar,
+        image: art.images?.[0] || "", // Use the first image as the preview
+        price: art.price,
+        // isTrending and location are not in our ArtworkDetail model, so they are omitted
+      };
+    });
+
+    return discoverArtworks;
+
+  } catch (error) {
+    console.error("Error getting artworks for discover:", error);
+    throw error;
+  }
+};
+
 
 /**
  * Fetches an artwork by ID and combines it with its artist's data.

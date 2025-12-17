@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import { View, ScrollView } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { View, ScrollView, Text } from "react-native";
 import ScreenHeader from "../shared/components/ScreenHeader";
 import UnderlineHome from "../../assets/headers/underline-home.svg";
 
@@ -8,6 +7,7 @@ import { useDiscover } from "../domains/discover/hooks/useDiscover";
 import { DiscoverTab } from "../domains/discover/types";
 import { TabChip } from "../domains/discover/components/ui/DiscoverShared";
 import ChangeLocationSheet from "../domains/discover/components/sheets/ChangeLocationSheet";
+import Loader from "../shared/components/Loader"; // Import Loader
 
 // Import Refactored Tabs
 import DiscoverArtworksTab from "../domains/discover/components/tabs/DiscoverArtworksTab";
@@ -26,8 +26,17 @@ const TABS: { key: DiscoverTab; label: string }[] = [
 ];
 
 export default function DiscoverScreen() {
-  const { tab, setTab, topPicks, artworks, profiles, moments, events } =
-    useDiscover();
+  const {
+    tab,
+    setTab,
+    loading, // Get loading state
+    error,   // Get error state
+    topPicks,
+    artworks,
+    profiles,
+    moments,
+    events,
+  } = useDiscover();
 
   const [showLocationSheet, setShowLocationSheet] = useState(false);
   const [locationText, setLocationText] = useState("Albuquerque, NM, USA");
@@ -35,6 +44,26 @@ export default function DiscoverScreen() {
   const [showRadiusOptions, setShowRadiusOptions] = useState(false);
 
   const renderContent = () => {
+    // --- HANDLE LOADING AND ERROR STATES ---
+    if (loading) {
+      return (
+        <View className="flex-1 justify-center items-center">
+          <Loader />
+        </View>
+      );
+    }
+
+    if (error) {
+      return (
+        <View className="flex-1 justify-center items-center p-4">
+          <Text className="text-lg text-red-500 text-center">
+            Failed to load content. Please try again later.
+          </Text>
+        </View>
+      );
+    }
+    
+    // --- RENDER TABS ---
     switch (tab) {
       case "topPicks":
         return <DiscoverArtworksTab data={topPicks} />;
