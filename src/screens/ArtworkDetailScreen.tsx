@@ -16,20 +16,18 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BottomSheetModalProvider, BottomSheetModal, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
 import type { BottomSheetBackdropProps } from "@gorhom/bottom-sheet";
 
-import { discoverMockData } from "../domains/discover/mockData";
-import { Artwork } from "../domains/discover/types";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import ReshareSheet from "../domains/feed/components/sheets/ReshareSheet";
 import { FeedPost } from "../domains/feed/types";
 
 // Domain Imports
 import { ArtworkDetail } from "../domains/artwork/types";
-import { fallbackDetail } from "../domains/artwork/mockData";
+import { getArtworkById } from "../domains/artwork/services/artworkService"; // IMPORT THE NEW SERVICE
 import SaveSheet from "../domains/artwork/components/SaveSheet";
 import ReportSheet from "../domains/artwork/components/ReportSheet";
 import ArtworkCarousel from "../domains/artwork/components/ArtworkCarousel";
-import SimilarCard from "../domains/artwork/components/cards/SimilarCard";
 import { shareArtwork } from "../shared/utils/shareArtwork";
+import Loader from "../shared/components/Loader"; // IMPORT LOADER
 
 // New Components
 import ArtworkHeader from "../domains/artwork/components/ArtworkHeader";
@@ -44,6 +42,11 @@ export default function ArtworkDetailScreen() {
   const { hidden, setHidden, height: tabHeight } = useTabBarVisibility();
   const scrollY = useRef(0);
 
+  // --- NEW STATES FOR DATA FETCHING ---
+  const [artwork, setArtwork] = useState<ArtworkDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   // States
   const [liked, setLiked] = useState(false);
   const [savedBoardId, setSavedBoardId] = useState<string | null>(null);
@@ -57,59 +60,55 @@ export default function ArtworkDetailScreen() {
   // Bottom Sheet Refs
   const optionsSheetRef = useRef<BottomSheetModal>(null);
 
-  const currentArtwork: Artwork | undefined = useMemo(() => {
-    const all = [...discoverMockData.artworks, ...discoverMockData.moments];
-    return all.find((item) => item.id === route?.params?.id);
-  }, [route?.params?.id]);
+  // --- DATA FETCHING LOGIC ---
+  useEffect(() => {
+    const fetchArtwork = async () => {
+      const artworkId = route.params?.id;
+      if (!artworkId) {
+        setError("No artwork ID provided.");
+        setLoading(false);
+        return;
+      }
 
-  const detail: ArtworkDetail = useMemo(() => {
-    if (!currentArtwork) return fallbackDetail;
-    return {
-      ...fallbackDetail,
-      id: currentArtwork.id,
-      title: currentArtwork.title,
-      artist: {
-        name: currentArtwork.artist,
-        avatar:
-          currentArtwork.artistAvatar ??
-          "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=200&q=80",
-        verified: true,
-      },
-      price: currentArtwork.price ?? fallbackDetail.price,
-      images: [currentArtwork.image, ...fallbackDetail.images.slice(1)],
+      try {
+        setLoading(true);
+        const artworkData: any = await getArtworkById(artworkId);
+        setArtwork(artworkData as ArtworkDetail);
+      } catch (err: any) {
+        setError(err.message || "An error occurred while fetching the artwork.");
+      } finally {
+        setLoading(false);
+      }
     };
-  }, [currentArtwork]);
 
-  const similarWorks = useMemo(
-    () =>
-      discoverMockData.artworks
-        .filter((item) => item.id !== detail.id)
-        .slice(0, 6),
-    [detail.id]
-  );
+    fetchArtwork();
+  }, [route.params?.id]);
 
-  const reshareTarget: FeedPost = useMemo(
-    () => ({
-      id: detail.id,
+
+  // --- REMOVED MOCK DATA LOGIC ---
+
+  const reshareTarget: FeedPost | null = useMemo(() => {
+    if (!artwork) return null;
+    return {
+      id: artwork.id,
       author: {
-        id: detail.artist.name,
-        name: detail.artist.name,
-        handle: detail.artist.name.replace(/\s+/g, "").toLowerCase(),
-        avatar: detail.artist.avatar,
-        verified: detail.artist.verified,
+        id: artwork.artist.name,
+        name: artwork.artist.name,
+        handle: artwork.artist.name.replace(/\s+/g, "").toLowerCase(),
+        avatar: artwork.artist.avatar,
+        verified: artwork.artist.verified,
       },
-      content: `${detail.title} · ${detail.price}`,
+      content: `${artwork.title} · ${artwork.price}`,
       createdAt: Date.now(),
       relativeTime: "Just now",
       media: {
-        url: detail.images[0],
+        url: artwork.images[0],
         aspectRatio: 3 / 3,
         placeholderColor: "#CBD5E1",
       },
       metrics: { likes: 0, comments: 0, shares: 0 },
-    }),
-    [detail]
-  );
+    };
+  }, [artwork]);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -170,9 +169,10 @@ export default function ArtworkDetailScreen() {
   }, [setHidden]);
 
   const handleOpenReshareSheet = useCallback(() => {
+    if (!reshareTarget) return;
     setHidden(true);
     setShowReshareSheet(true);
-  }, [setHidden]);
+  }, [setHidden, reshareTarget]);
 
   const handleOpenReportSheet = useCallback(() => {
     optionsSheetRef.current?.dismiss();
@@ -186,17 +186,49 @@ export default function ArtworkDetailScreen() {
   }, [setHidden]);
 
   const handleShare = useCallback(async () => {
+    if (!artwork) return;
     try {
       await shareArtwork({
-        title: detail.title,
-        artistName: detail.artist.name,
+        title: artwork.title,
+        artistName: artwork.artist.name,
         marketing: "Khám phá tác phẩm này",
-        deepLink: `https://www.artium.com/artwork/${detail.id}`,
+        deepLink: `https://www.artium.com/artwork/${artwork.id}`,
       });
     } catch (err) {
       Alert.alert("Share unavailable", "Không thể mở chia sẻ trên thiết bị này.");
     }
-  }, [detail]);
+  }, [artwork]);
+  
+  // --- CONDITIONAL RENDERING ---
+  if (loading) {
+    return (
+      <View className="flex-1 justify-center items-center bg-white">
+        <Loader />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View className="flex-1 justify-center items-center bg-white p-4">
+        <Text className="text-lg text-red-500 text-center">{error}</Text>
+        <Pressable onPress={() => navigation.goBack()} className="mt-4">
+          <Text className="text-blue-500">Go Back</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (!artwork) {
+    return (
+      <View className="flex-1 justify-center items-center bg-white">
+        <Text className="text-lg text-slate-500">Artwork not found.</Text>
+         <Pressable onPress={() => navigation.goBack()} className="mt-4">
+          <Text className="text-blue-500">Go Back</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <BottomSheetModalProvider>
@@ -218,37 +250,13 @@ export default function ArtworkDetailScreen() {
           }}
         >
           <View className="px-4 pt-4">
-            <ArtworkCarousel images={detail.images} />
+            <ArtworkCarousel images={artwork.images} />
           </View>
 
-          <ArtworkInfo detail={detail} />
-          <ArtworkDetails detail={detail} />
+          <ArtworkInfo detail={artwork} />
+          <ArtworkDetails detail={artwork} />
 
-          {/* Similar Works */}
-          <View className="px-4 pb-4">
-            <Text className="text-xl font-semibold text-slate-900 mb-3">
-              Similar Works
-            </Text>
-            <FlatList
-              data={similarWorks}
-              horizontal
-              keyExtractor={(item) => item.id}
-              showsHorizontalScrollIndicator={false}
-              ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
-              renderItem={({ item }) => (
-                <SimilarCard
-                  item={item}
-                  onPress={() =>
-                    navigation.push(
-                      "ArtworkDetail" as never,
-                      { id: item.id } as never
-                    )
-                  }
-                />
-              )}
-              contentContainerStyle={{ paddingRight: 16 }}
-            />
-          </View>
+          {/* Similar Works section removed for now */}
         </ScrollView>
 
         {/* Action Bar */}
@@ -263,19 +271,21 @@ export default function ArtworkDetailScreen() {
         />
 
         {/* Reshare Sheet */}
-        <ReshareSheet
-          visible={showReshareSheet}
-          target={reshareTarget}
-          onClose={() => {
-            setShowReshareSheet(false);
-            handleCloseSheet();
-          }}
-          onSubmit={() => {
-            setShowReshareSheet(false);
-            handleCloseSheet();
-            setReshared(true);
-          }}
-        />
+        {reshareTarget && (
+          <ReshareSheet
+            visible={showReshareSheet}
+            target={reshareTarget}
+            onClose={() => {
+              setShowReshareSheet(false);
+              handleCloseSheet();
+            }}
+            onSubmit={() => {
+              setShowReshareSheet(false);
+              handleCloseSheet();
+              setReshared(true);
+            }}
+          />
+        )}
 
         {/* Save Sheet */}
         <SaveSheet

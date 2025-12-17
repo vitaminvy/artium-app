@@ -8,8 +8,8 @@ import {
 
 const artworks: Artwork[] = [
   {
-    id: "aw-1",
-    title: "Make it rain",
+    id: "artwork-august",
+    title: "August",
     artist: "Edward Granger",
     image:
       "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
