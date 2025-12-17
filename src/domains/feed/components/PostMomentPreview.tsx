@@ -57,7 +57,7 @@ function PostMomentPreview({ media, onRemoveImage, onClear, onVideoDuration }: P
           className="rounded-2xl overflow-hidden border border-slate-100 self-center"
           style={{
             width: "85%",
-            aspectRatio: media.aspectRatio || MEDIA_CONFIG.DEFAULT_IMAGE_ASPECT_RATIO,
+            aspectRatio: MEDIA_CONFIG.DEFAULT_VIDEO_ASPECT_RATIO,
             backgroundColor: MEDIA_CONFIG.PLACEHOLDER_COLOR,
           }}
         >

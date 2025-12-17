@@ -391,6 +391,68 @@ function MediaGrid({ items, placeholder, onPressImage }: MediaGridProps) {
     );
   }
 
+  // Special layout for exactly 3 images: first image on left (full height), 2 images stacked on right
+  if (normalized.length === 3) {
+    return (
+      <View className="flex-row gap-2">
+        <Pressable
+          style={{
+            width: "48.5%",
+            aspectRatio: 0.75,
+            backgroundColor: placeholder ?? "#CBD5E1",
+            borderRadius: 16,
+            overflow: "hidden",
+          }}
+          onPress={() => onPressImage?.(normalized, 0)}
+        >
+          <Image
+            source={{ uri: normalized[0].uri }}
+            style={{ width: "100%", height: "100%" }}
+            contentFit="cover"
+            transition={0}
+            cachePolicy="memory-disk"
+          />
+        </Pressable>
+        <View className="flex-1 gap-2">
+          <Pressable
+            style={{
+              flex: 1,
+              backgroundColor: placeholder ?? "#CBD5E1",
+              borderRadius: 16,
+              overflow: "hidden",
+            }}
+            onPress={() => onPressImage?.(normalized, 1)}
+          >
+            <Image
+              source={{ uri: normalized[1].uri }}
+              style={{ width: "100%", height: "100%" }}
+              contentFit="cover"
+              transition={0}
+              cachePolicy="memory-disk"
+            />
+          </Pressable>
+          <Pressable
+            style={{
+              flex: 1,
+              backgroundColor: placeholder ?? "#CBD5E1",
+              borderRadius: 16,
+              overflow: "hidden",
+            }}
+            onPress={() => onPressImage?.(normalized, 2)}
+          >
+            <Image
+              source={{ uri: normalized[2].uri }}
+              style={{ width: "100%", height: "100%" }}
+              contentFit="cover"
+              transition={0}
+              cachePolicy="memory-disk"
+            />
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
   const displayItems = normalized.slice(0, 4);
   const extra = normalized.length - displayItems.length;
 

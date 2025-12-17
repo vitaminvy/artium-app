@@ -72,16 +72,40 @@ export function usePostMoment({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsMultipleSelection: false,
         videoQuality: ImagePicker.UIImagePickerControllerQualityType.High,
+        videoExportPreset: ImagePicker.VideoExportPreset.MediumQuality,
         quality: MEDIA_CONFIG.VIDEO_QUALITY,
       });
       if (pickerResult.canceled || !pickerResult.assets?.length) return;
       const asset = pickerResult.assets[0];
+
+      // Validate asset has URI
+      if (!asset.uri) {
+        Alert.alert(
+          FEED_MESSAGES.ERROR_VIDEO_UNAVAILABLE,
+          FEED_MESSAGES.ERROR_VIDEO_UNAVAILABLE_MESSAGE
+        );
+        return;
+      }
 
       // Determine source URI; iCloud assets may not be local
       let sourceUri = asset.uri;
       const hasLocalFile = sourceUri?.startsWith("file://");
 
       if (!hasLocalFile && sourceUri) {
+        // Check if file exists before downloading
+        try {
+          const fileInfo = await FileSystem.getInfoAsync(sourceUri);
+          if (!fileInfo.exists) {
+            Alert.alert(
+              FEED_MESSAGES.ERROR_VIDEO_ICLOUD,
+              FEED_MESSAGES.ERROR_VIDEO_ICLOUD_MESSAGE
+            );
+            return;
+          }
+        } catch (error) {
+          console.warn("File check failed, attempting download:", error);
+        }
+
         const downloadRes = await FileSystem.createDownloadResumable(
           sourceUri,
           cacheFile,
@@ -93,7 +117,10 @@ export function usePostMoment({
         }
       }
 
-      if (!sourceUri) return;
+      if (!sourceUri) {
+        Alert.alert("Error", FEED_MESSAGES.ERROR_VIDEO_LOAD_FAILED);
+        return;
+      }
 
       const aspectRatio =
         asset.width && asset.height ? asset.width / asset.height : undefined;

@@ -19,6 +19,11 @@ export const FEED_MESSAGES = {
   ERROR_PERMISSION_MESSAGE: "Please grant access to your photos to continue.",
   ERROR_VIDEO_TOO_LONG: "Video must be 60 seconds or less",
   ERROR_MEDIA_SELECTION_FAILED: "Failed to select media. Please try again.",
+  ERROR_VIDEO_UNAVAILABLE: "Video Unavailable",
+  ERROR_VIDEO_UNAVAILABLE_MESSAGE: "Unable to access this video. Please try another one.",
+  ERROR_VIDEO_ICLOUD: "Video Not Available",
+  ERROR_VIDEO_ICLOUD_MESSAGE: "This video is stored in iCloud and needs to be downloaded first. Please ensure it's downloaded to your device.",
+  ERROR_VIDEO_LOAD_FAILED: "Failed to load video. Please try again.",
 
   // Video
   VIDEO_LABEL_FALLBACK: "Video",
