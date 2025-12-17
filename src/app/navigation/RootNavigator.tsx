@@ -5,11 +5,12 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import ArtworkDetailScreen from "../../screens/ArtworkDetailScreen";
 import QuickSellScreen from "../../screens/QuickSellScreen";
 import TabNavigator from "./TabNavigator";
+import { TabParamList } from "./tabTypes";
 import AuthStack from "./AuthStack";
 import { AuthStatus } from "../../domains/auth/types";
 
 type AppStackParamList = {
-  Tabs: undefined;
+  Tabs: { screen?: keyof TabParamList; params?: TabParamList[keyof TabParamList] } | undefined;
   ArtworkDetail: { id?: string };
   Upload: undefined;
 };
@@ -24,19 +25,22 @@ function AppStack() {
   return (
     <Stack.Navigator
       initialRouteName="Tabs"
-      screenOptions={{ headerShown: false }}
+      screenOptions={{
+        headerShown: true,
+        headerTitleAlign: "center",
+      }}
     >
-      <Stack.Screen name="Tabs" component={TabNavigator} />
+      <Stack.Screen
+        name="Tabs"
+        component={TabNavigator}
+        options={{ headerShown: false }}
+      />
       <Stack.Screen
         name="ArtworkDetail"
         component={ArtworkDetailScreen}
-        options={{ headerShown: true, title: "Artwork Detail" }}
+        options={{ title: "Artwork Detail" }}
       />
-      <Stack.Screen
-        name="Upload"
-        component={QuickSellScreen}
-        options={{ headerShown: true }}
-      />
+      <Stack.Screen name="Upload" component={QuickSellScreen} />
     </Stack.Navigator>
   );
 }
