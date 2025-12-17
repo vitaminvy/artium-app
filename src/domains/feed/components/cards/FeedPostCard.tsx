@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useCallback, useMemo } from "react";
 import { View, Text, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { VideoView, useVideoPlayer } from "expo-video";
@@ -8,7 +8,8 @@ import { FeedPost, VideoPlayingChangePayload } from "../../types";
 import { FEED_COLORS } from "../../constants";
 import { shareArtwork } from "../../../../shared/utils/shareArtwork";
 import { formatDuration } from "../../utils";
-import { ANIMATION_CONFIG, MEDIA_CONFIG, FEED_MESSAGES } from "../../constants/media";
+import { ANIMATION_CONFIG, MEDIA_CONFIG } from "../../constants/media";
+import { FEED_MESSAGES } from "../../constants/messages";
 
 type Props = {
   post: FeedPost;
@@ -51,14 +52,11 @@ function FeedPostCard({
       p.loop = false;
     }
   );
-  const [isPlaying, setIsPlaying] = useState(false);
   const playButtonOpacity = useSharedValue(1);
 
   useEffect(() => {
-    setIsPlaying(player.playing);
     const sub = player.addListener?.("playingChange", (payload: VideoPlayingChangePayload) => {
       const playing = !!payload?.isPlaying;
-      setIsPlaying(playing);
       playButtonOpacity.value = withTiming(playing ? 0 : 1, {
         duration: ANIMATION_CONFIG.VIDEO_BUTTON_FADE
       });
