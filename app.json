@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.artium.app",
+      "bundleIdentifier": "com.ngovanthinh.artium.dev",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -37,6 +37,7 @@
       "expo-web-browser",
       "expo-secure-store",
       "expo-video",
+      "expo-image-picker",
       [
         "@react-native-google-signin/google-signin",
         {

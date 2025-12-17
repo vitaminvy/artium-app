@@ -36,7 +36,8 @@ export function usePostMoment({
 
   const handlePickMedia = useCallback(async (type: "image" | "video") => {
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
         Alert.alert(
           FEED_MESSAGES.ERROR_PERMISSION_DENIED,
@@ -53,7 +54,7 @@ export function usePostMoment({
         });
 
         if (pickerResult.canceled || !pickerResult.assets?.length) return;
-        const items = pickerResult.assets.map((asset) => ({
+        const items = pickerResult.assets.map((asset: any) => ({
           uri: asset.uri,
           width: asset.width,
           height: asset.height,
@@ -242,15 +243,7 @@ export function usePostMoment({
       },
       share,
     }),
-    [
-      close,
-      open,
-      pickImage,
-      pickVideo,
-      removeImageAt,
-      removeMedia,
-      share,
-    ]
+    [close, open, pickImage, pickVideo, removeImageAt, removeMedia, share]
   );
 
   return { state, actions };
