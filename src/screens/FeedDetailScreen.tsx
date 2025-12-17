@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { FeedPost } from "../domains/feed/types";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import ReshareSheet from "../domains/feed/components/sheets/ReshareSheet";
+import ImageViewing from "react-native-image-viewing";
 
 type RouteProps = { key: string; name: "FeedDetail"; params: { post: FeedPost } };
 
@@ -37,6 +38,20 @@ export default function FeedDetailScreen() {
     { id: string; author: { name: string; handle: string }; content: string }[]
   >([]);
   const [showReshare, setShowReshare] = useState(false);
+
+  // Image viewer state
+  const viewerKeyRef = useRef(0);
+  const [viewerState, setViewerState] = useState<{
+    visible: boolean;
+    images: { uri: string }[];
+    initialIndex: number;
+    key: string;
+  }>({
+    visible: false,
+    images: [],
+    initialIndex: 0,
+    key: "viewer-0",
+  });
 
   const toggleLike = () => {
     setPost((prev) => ({
@@ -81,6 +96,19 @@ export default function FeedDetailScreen() {
     Keyboard.dismiss();
   };
 
+  const handleOpenViewer = (images: { uri: string }[], index: number) => {
+    viewerKeyRef.current += 1;
+    const key = `viewer-${viewerKeyRef.current}-${images.length}-${index}`;
+    setViewerState({ visible: false, images, initialIndex: index, key });
+    requestAnimationFrame(() => {
+      setViewerState((prev) => ({ ...prev, visible: true }));
+    });
+  };
+
+  const handleCloseViewer = () => {
+    setViewerState((prev) => ({ ...prev, visible: false }));
+  };
+
   // Hide tab bar while on detail
   useFocusEffect(() => {
     const parent = navigation.getParent();
@@ -118,6 +146,7 @@ export default function FeedDetailScreen() {
           onPressLike={() => toggleLike()}
           onPressReshare={() => openReshare()}
           onPressComment={() => { }}
+          onPressImage={handleOpenViewer}
         />
 
         <View className="mt-6 px-2">
@@ -178,6 +207,17 @@ export default function FeedDetailScreen() {
         target={post}
         onClose={() => setShowReshare(false)}
         onSubmit={submitReshare}
+      />
+      <ImageViewing
+        key={viewerState.key}
+        images={viewerState.images}
+        imageIndex={viewerState.initialIndex}
+        visible={viewerState.visible}
+        onRequestClose={handleCloseViewer}
+        swipeToCloseEnabled
+        doubleTapToZoomEnabled
+        backgroundColor="black"
+        animationType="none"
       />
     </KeyboardAvoidingView>
   );
