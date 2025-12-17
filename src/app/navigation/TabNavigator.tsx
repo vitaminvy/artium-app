@@ -22,6 +22,7 @@ export default function TabNavigator() {
         initialRouteName="Discover"
         screenOptions={{
           headerShown: false,
+          lazy: false, // mount tabs eagerly so global sheets can open anywhere
         }}
         tabBar={(props) => <CustomTabBar {...props} />}
       >
