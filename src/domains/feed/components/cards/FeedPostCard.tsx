@@ -1,10 +1,10 @@
 import React, { useEffect, useCallback, useMemo } from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, StyleSheet, StyleProp, ViewStyle } from "react-native";
 import { Image } from "expo-image";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from "react-native-reanimated";
-import { FeedPost, VideoPlayingChangePayload } from "../../types";
+import { FeedImageItem, FeedMedia, FeedPost, VideoPlayingChangePayload } from "../../types";
 import { FEED_COLORS } from "../../constants";
 import { shareArtwork } from "../../../../shared/utils/shareArtwork";
 import { formatDuration } from "../../utils";
@@ -39,17 +39,11 @@ function FeedPostCard({
       .toUpperCase() || "A";
 
   const media = post.media;
-  const mediaSource =
-    media && "url" in media
-      ? typeof media.url === "number"
-        ? media.url
-        : media.url
-        ? { uri: media.url }
-        : undefined
-      : undefined;
-  const isVideo = media?.type === "video";
+  const isVideo = isVideoMedia(media);
+  const isGallery = isImageGallery(media);
+  const legacyImageSource = getLegacyImageSource(media);
   const player = useVideoPlayer(
-    media?.type === "video" ? media.uri : null,
+    isVideo ? media.uri : null,
     (p) => {
       p.loop = false;
     }
@@ -102,6 +96,8 @@ function FeedPostCard({
     aspectRatio: media?.aspectRatio ?? MEDIA_CONFIG.DEFAULT_VIDEO_ASPECT_RATIO,
   }), [media?.placeholderColor, media?.aspectRatio]);
 
+  const quoteMedia = post.quote?.media;
+  const quoteImageSource = getLegacyImageSource(quoteMedia);
   const hasQuote = !!post.quote;
   const CardBody = () => (
     <View
@@ -193,22 +189,22 @@ function FeedPostCard({
                 </Text>
               </View>
             </View>
-          ) : media && media.type === "image" && Array.isArray(media.items) ? (
+          ) : isGallery ? (
             <MediaGrid
               items={media.items}
               placeholder={media.placeholderColor}
               onPressImage={onPressImage}
             />
-          ) : mediaSource ? (
+          ) : legacyImageSource ? (
             <View
               className="rounded-2xl overflow-hidden"
               style={{
-                backgroundColor: media.placeholderColor ?? MEDIA_CONFIG.PLACEHOLDER_COLOR_ALT,
-                aspectRatio: media.aspectRatio ?? MEDIA_CONFIG.SINGLE_IMAGE_ASPECT_RATIO,
+                backgroundColor: media?.placeholderColor ?? MEDIA_CONFIG.PLACEHOLDER_COLOR_ALT,
+                aspectRatio: media?.aspectRatio ?? MEDIA_CONFIG.SINGLE_IMAGE_ASPECT_RATIO,
               }}
             >
               <Image
-                source={mediaSource}
+                source={legacyImageSource}
                 style={{ width: "100%", height: "100%" }}
                 contentFit="cover"
                 transition={0}
@@ -240,31 +236,21 @@ function FeedPostCard({
           <Text className="text-[13px] text-slate-800 leading-5 mb-2">
             {post.quote?.content}
           </Text>
-          {post.quote?.media ? (
+          {quoteMedia && quoteImageSource ? (
             <View
               className="rounded-xl overflow-hidden"
               style={{
-                backgroundColor: post.quote.media.placeholderColor ?? "#E2E8F0",
-                aspectRatio: post.quote.media.aspectRatio ?? 2,
+                backgroundColor: quoteMedia.placeholderColor ?? "#E2E8F0",
+                aspectRatio: quoteMedia.aspectRatio ?? 2,
               }}
             >
-              {typeof post.quote.media.url === "number" ? (
-                <Image
-                  source={post.quote.media.url}
-                  style={{ width: "100%", height: "100%" }}
-                  contentFit="cover"
-                  transition={0}
-                  cachePolicy="memory-disk"
-                />
-              ) : post.quote.media.url ? (
-                <Image
-                  source={{ uri: post.quote.media.url }}
-                  style={{ width: "100%", height: "100%" }}
-                  contentFit="cover"
-                  transition={0}
-                  cachePolicy="memory-disk"
-                />
-              ) : null}
+              <Image
+                source={quoteImageSource}
+                style={{ width: "100%", height: "100%" }}
+                contentFit="cover"
+                transition={0}
+                cachePolicy="memory-disk"
+              />
             </View>
           ) : null}
         </View>
@@ -357,12 +343,9 @@ const cardShadow = {
   elevation: 6,
 };
 
-const videoViewStyle = { width: "100%", height: "100%" };
+const videoViewStyle: StyleProp<ViewStyle> = StyleSheet.absoluteFillObject;
 
-const pressableOverlayStyle = {
-  position: "absolute" as const,
-  inset: 0,
-};
+const pressableOverlayStyle: StyleProp<ViewStyle> = StyleSheet.absoluteFillObject;
 
 const areEqual = (prev: Props, next: Props) =>
   prev.post === next.post &&
@@ -375,8 +358,27 @@ const areEqual = (prev: Props, next: Props) =>
 
 export default React.memo(FeedPostCard, areEqual);
 
+const isVideoMedia = (media?: FeedMedia): media is Extract<FeedMedia, { type: "video" }> =>
+  !!media && media.type === "video" && typeof media.uri === "string";
+
+const isImageGallery = (
+  media?: FeedMedia
+): media is Extract<FeedMedia, { type: "image"; items: FeedImageItem[] }> =>
+  !!media &&
+  media.type === "image" &&
+  "items" in media &&
+  Array.isArray((media as any).items);
+
+const getLegacyImageSource = (media?: FeedMedia) => {
+  if (!media) return undefined;
+  if ("url" in media && media.url) {
+    return typeof media.url === "number" ? media.url : { uri: media.url };
+  }
+  return undefined;
+};
+
 type MediaGridProps = {
-  items: { uri: string }[];
+  items: FeedImageItem[];
   placeholder?: string;
   onPressImage?: (images: { uri: string }[], index: number) => void;
 };
