@@ -4,12 +4,12 @@ import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyAtcqjCyvOkG7FAU3daLtHf_7ZRZgh0S98",
-  authDomain: "euphoric-axon-480911-m6.firebaseapp.com",
-  projectId: "euphoric-axon-480911-m6",
-  storageBucket: "euphoric-axon-480911-m6.firebasestorage.app",
-  messagingSenderId: "300008030002",
-  appId: "1:300008030002:web:b584355ba475bd56e0a12b"
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID
 };
 
 // Initialize Firebase

@@ -8,10 +8,7 @@ type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, "Welcome">;
 };
 
-// Dùng video remote để tránh lỗi thiếu asset cục bộ
-const VIDEO_SOURCE = {
-  uri: "https://d23dyxeqlo5psv.cloudfront.net/big_buck_bunny.mp4",
-};
+const VIDEO_SOURCE = require("../../assets/videos/welcome.mp4");
 
 export default function WelcomeScreen({ navigation }: Props) {
   const player = useVideoPlayer(VIDEO_SOURCE, (instance) => {
@@ -22,14 +19,17 @@ export default function WelcomeScreen({ navigation }: Props) {
 
   return (
     <View style={{ flex: 1 }}>
+      {/* Background video (muted, looped) */}
       <VideoView
         style={StyleSheet.absoluteFill}
         player={player}
         contentFit="cover"
+        nativeControls={false}
         allowsFullscreen={false}
         allowsPictureInPicture={false}
       />
 
+      {/* Optional overlay for readability */}
       <View
         pointerEvents="none"
         style={{

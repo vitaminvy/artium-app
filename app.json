@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "artium",
+    "name": "Artium",
     "slug": "artium",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.artium.app",
+      "bundleIdentifier": "com.ngovanthinh.artium.dev",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -27,7 +27,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.artium.app"
+      "package": "com.anonymous.artium"
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -37,6 +37,7 @@
       "expo-web-browser",
       "expo-secure-store",
       "expo-video",
+      "expo-image-picker",
       [
         "@react-native-google-signin/google-signin",
         {

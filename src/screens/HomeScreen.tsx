@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, Image, DevSettings } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import ScreenHeader from "../shared/components/ScreenHeader";
 import Sidebar from "../shared/components/Sidebar";
 import { useSidebarItems } from "../shared/hooks/useSidebar";
-import { auth } from "../configs/firebase"; // Import auth
-import { signOut } from "firebase/auth";   // Import signOut
+import UnderlineHome from "../../assets/headers/underline-home.svg";
+import { doSignOut } from "../domains/auth/services/firebaseAuth"; // Import doSignOut
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -16,7 +16,7 @@ export default function HomeScreen() {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await doSignOut();
       // onAuthStateChanged in AuthProvider will handle the rest
     } catch (error) {
       console.error("Error signing out: ", error);
@@ -32,12 +32,16 @@ export default function HomeScreen() {
         isMenuOpen={sidebarOpen}
         onPressAction={() => setSidebarOpen((prev) => !prev)}
         onHeightChange={(h) => setHeaderHeight(h)}
-        underlineSource={require("../../assets/headers/underline-home.svg")}
+        underlineSource={UnderlineHome}
       />
-
+      {/* new logo */}
       <View className="flex-1 items-center justify-center px-6">
-        <Text className="text-3xl font-bold text-slate-900">ARTIUM</Text>
-        <Text className="text-lg mt-2 text-gray-700">Home Screen</Text>
+        <Image
+          source={require("../../assets/logos/logo-text-only-light-mode.png")}
+          resizeMode="contain"
+          style={{ width: 170, height: 64, marginBottom: 10 }}
+        />
+        <Text className="text-lg text-gray-700">Home Screen</Text>
 
         <Pressable
           onPress={() => navigation.navigate("Discover" as never)}

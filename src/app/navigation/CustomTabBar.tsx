@@ -1,20 +1,44 @@
-import React, { useState } from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, View, Text, TouchableOpacity } from "react-native";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 
-import { TAB_META, TabParamList } from "./tabTypes";
+import { TAB_META, TabParamList, UploadOption } from "./tabTypes";
 import UploadActionSheet from "./UploadActionSheet";
+import { requestPostMomentSheet } from "../../shared/utils/postMomentBridge";
+import { useTabBarVisibility } from "./TabBarVisibilityContext";
 
 export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const [showUploadSheet, setShowUploadSheet] = useState(false);
+  const translateY = useRef(new Animated.Value(0)).current;
+  const { hidden, setHeight, height } = useTabBarVisibility();
+
+  useEffect(() => {
+    Animated.timing(translateY, {
+      toValue: hidden ? height + 40 : 0,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+  }, [hidden, translateY, height]);
+
+  const focusedOptions = descriptors[state.routes[state.index].key]?.options;
+  if (
+    focusedOptions?.tabBarStyle &&
+    (focusedOptions.tabBarStyle as any)?.display === "none"
+  ) {
+    return null;
+  }
 
   return (
     <>
-      <View className="bg-transparent absolute bottom-0 w-full">
+      <Animated.View
+        className="bg-transparent absolute bottom-0 w-full"
+        style={{ transform: [{ translateY }] }}
+        onLayout={(e) => setHeight(e.nativeEvent.layout.height)}
+      >
         <View
           className="flex-row items-end bg-white rounded-t-[24px] px-2 pt-2 shadow-sm"
           style={[
@@ -107,11 +131,20 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
             );
           })}
         </View>
-      </View>
+      </Animated.View>
 
       <UploadActionSheet 
         visible={showUploadSheet} 
-        onClose={() => setShowUploadSheet(false)} 
+        onClose={() => setShowUploadSheet(false)}
+        onSelectOption={(option: UploadOption) => {
+          if (option.key === "moment") {
+            requestPostMomentSheet();
+            return;
+          }
+          if (option.targetTab) {
+            navigation.navigate(option.targetTab);
+          }
+        }}
       />
     </>
   );
