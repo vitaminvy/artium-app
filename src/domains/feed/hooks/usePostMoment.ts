@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import * as FileSystem from "expo-file-system";
-import { Alert } from "react-native";
+import { ActionSheetIOS, Alert, Platform } from "react-native";
 import { CURRENT_USER } from "../constants";
 import { FeedPost, PostMomentMedia } from "../types";
 import { subscribePostMomentOpen } from "../../../shared/utils/postMomentBridge";
 import { MEDIA_CONFIG } from "../constants/media";
 import { FEED_MESSAGES } from "../constants/messages";
+
+type MediaSource = "library" | "camera";
 
 export function usePostMoment({
   onPublish,
@@ -34,24 +36,92 @@ export function usePostMoment({
 
   useEffect(() => subscribePostMomentOpen(open), [open]);
 
-  const handlePickMedia = useCallback(async (type: "image" | "video") => {
-    try {
-      const permission =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
+  const chooseSource = useCallback(
+    async (type: "image" | "video"): Promise<MediaSource | null> => {
+      const cameraLabel =
+        type === "image"
+          ? FEED_MESSAGES.ACTION_CAMERA_PHOTO
+          : FEED_MESSAGES.ACTION_CAMERA_VIDEO;
+      const libraryLabel = FEED_MESSAGES.ACTION_LIBRARY;
+
+      if (Platform.OS === "ios") {
+        return new Promise((resolve) => {
+          ActionSheetIOS.showActionSheetWithOptions(
+            {
+              options: [cameraLabel, libraryLabel, FEED_MESSAGES.ACTION_CANCEL],
+              cancelButtonIndex: 2,
+            },
+            (buttonIndex) => {
+              if (buttonIndex === 0) return resolve("camera");
+              if (buttonIndex === 1) return resolve("library");
+              resolve(null);
+            }
+          );
+        });
+      }
+
+      return new Promise((resolve) => {
+        Alert.alert(FEED_MESSAGES.SOURCE_PICKER_TITLE, "", [
+          {
+            text: cameraLabel,
+            onPress: () => resolve("camera"),
+          },
+          {
+            text: libraryLabel,
+            onPress: () => resolve("library"),
+          },
+          {
+            text: FEED_MESSAGES.ACTION_CANCEL,
+            style: "cancel",
+            onPress: () => resolve(null),
+          },
+        ]);
+      });
+    },
+    []
+  );
+
+  const ensurePermission = useCallback(async (source: MediaSource) => {
+    if (source === "library") {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
         Alert.alert(
           FEED_MESSAGES.ERROR_PERMISSION_DENIED,
           FEED_MESSAGES.ERROR_PERMISSION_MESSAGE
         );
-        return;
+        return false;
       }
+      return true;
+    }
+
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        FEED_MESSAGES.ERROR_PERMISSION_DENIED,
+        FEED_MESSAGES.ERROR_CAMERA_PERMISSION_MESSAGE
+      );
+      return false;
+    }
+    return true;
+  }, []);
+
+  const handlePickMedia = useCallback(async (type: "image" | "video", source: MediaSource = "library") => {
+    try {
+      const hasPermission = await ensurePermission(source);
+      if (!hasPermission) return;
 
       if (type === "image") {
-        const pickerResult = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsMultipleSelection: true,
-          quality: MEDIA_CONFIG.IMAGE_QUALITY,
-        });
+        const pickerResult =
+          source === "camera"
+            ? await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                quality: MEDIA_CONFIG.IMAGE_QUALITY,
+              })
+            : await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsMultipleSelection: true,
+                quality: MEDIA_CONFIG.IMAGE_QUALITY,
+              });
 
         if (pickerResult.canceled || !pickerResult.assets?.length) return;
         const items = pickerResult.assets.map((asset: any) => ({
@@ -59,7 +129,6 @@ export function usePostMoment({
           width: asset.width,
           height: asset.height,
         }));
-        // Ensure video state is cleared when selecting images
         setMedia({ type: "image", items });
         return;
       }
@@ -69,15 +138,34 @@ export function usePostMoment({
       const cacheDir = (FileSystem as any).cacheDirectory ?? "";
       const cacheFile = `${cacheDir}${MEDIA_CONFIG.CACHE_FILE_PREFIX}${Date.now()}.mp4`;
 
-      const pickerResult = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-        allowsMultipleSelection: false,
-        videoQuality: ImagePicker.UIImagePickerControllerQualityType.High,
-        videoExportPreset: ImagePicker.VideoExportPreset.MediumQuality,
-        quality: MEDIA_CONFIG.VIDEO_QUALITY,
-      });
+      const pickerResult =
+        source === "camera"
+          ? await ImagePicker.launchCameraAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+              videoMaxDuration: MEDIA_CONFIG.MAX_VIDEO_DURATION_MS / 1000,
+              videoQuality: ImagePicker.UIImagePickerControllerQualityType.High,
+              videoExportPreset: ImagePicker.VideoExportPreset.MediumQuality,
+              quality: MEDIA_CONFIG.VIDEO_QUALITY,
+            })
+          : await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+              allowsMultipleSelection: false,
+              videoQuality: ImagePicker.UIImagePickerControllerQualityType.High,
+              videoExportPreset: ImagePicker.VideoExportPreset.MediumQuality,
+              quality: MEDIA_CONFIG.VIDEO_QUALITY,
+            });
       if (pickerResult.canceled || !pickerResult.assets?.length) return;
       const asset = pickerResult.assets[0];
+
+      const rawDuration = asset.duration ?? 0;
+      const durationMs =
+        rawDuration > 0 && rawDuration < 1000 ? rawDuration * 1000 : rawDuration;
+
+      if (durationMs && durationMs > MEDIA_CONFIG.MAX_VIDEO_DURATION_MS) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert("Error", FEED_MESSAGES.ERROR_VIDEO_TOO_LONG);
+        return;
+      }
 
       // Validate asset has URI
       if (!asset.uri) {
@@ -90,31 +178,34 @@ export function usePostMoment({
 
       // Determine source URI; iCloud assets may not be local
       let sourceUri = asset.uri;
-      const hasLocalFile = sourceUri?.startsWith("file://");
 
-      if (!hasLocalFile && sourceUri) {
-        // Check if file exists before downloading
-        try {
-          const fileInfo = await FileSystem.getInfoAsync(sourceUri);
-          if (!fileInfo.exists) {
-            Alert.alert(
-              FEED_MESSAGES.ERROR_VIDEO_ICLOUD,
-              FEED_MESSAGES.ERROR_VIDEO_ICLOUD_MESSAGE
-            );
-            return;
+      if (source === "library") {
+        const hasLocalFile = sourceUri?.startsWith("file://");
+
+        if (!hasLocalFile && sourceUri) {
+          // Check if file exists before downloading
+          try {
+            const fileInfo = await FileSystem.getInfoAsync(sourceUri);
+            if (!fileInfo.exists) {
+              Alert.alert(
+                FEED_MESSAGES.ERROR_VIDEO_ICLOUD,
+                FEED_MESSAGES.ERROR_VIDEO_ICLOUD_MESSAGE
+              );
+              return;
+            }
+          } catch (error) {
+            console.warn("File check failed, attempting download:", error);
           }
-        } catch (error) {
-          console.warn("File check failed, attempting download:", error);
-        }
 
-        const downloadRes = await FileSystem.createDownloadResumable(
-          sourceUri,
-          cacheFile,
-          {}
-        ).downloadAsync();
+          const downloadRes = await FileSystem.createDownloadResumable(
+            sourceUri,
+            cacheFile,
+            {}
+          ).downloadAsync();
 
-        if (downloadRes?.uri) {
-          sourceUri = downloadRes.uri;
+          if (downloadRes?.uri) {
+            sourceUri = downloadRes.uri;
+          }
         }
       }
 
@@ -131,23 +222,26 @@ export function usePostMoment({
         uri: sourceUri,
         width: asset.width,
         height: asset.height,
-        durationMs: undefined, // will be resolved after load
+        durationMs: durationMs || undefined, // will be resolved after load if missing
         aspectRatio,
       });
     } catch (error) {
       console.error("Failed to pick media:", error);
       Alert.alert("Error", FEED_MESSAGES.ERROR_MEDIA_SELECTION_FAILED);
     }
-  }, []);
+  }, [ensurePermission]);
 
-  const pickImage = useCallback(
-    () => handlePickMedia("image"),
-    [handlePickMedia]
-  );
-  const pickVideo = useCallback(
-    () => handlePickMedia("video"),
-    [handlePickMedia]
-  );
+  const pickImage = useCallback(async () => {
+    const source = await chooseSource("image");
+    if (!source) return;
+    return handlePickMedia("image", source);
+  }, [chooseSource, handlePickMedia]);
+
+  const pickVideo = useCallback(async () => {
+    const source = await chooseSource("video");
+    if (!source) return;
+    return handlePickMedia("video", source);
+  }, [chooseSource, handlePickMedia]);
 
   const removeMedia = useCallback(() => {
     Haptics.selectionAsync();

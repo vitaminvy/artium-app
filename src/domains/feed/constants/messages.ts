@@ -14,9 +14,17 @@ export const FEED_MESSAGES = {
   MEDIA_BUTTON_VIDEO: "Video",
   REMOVE_ALL_BUTTON: "Remove all",
 
+  // Action labels
+  ACTION_CAMERA_PHOTO: "Take a photo",
+  ACTION_CAMERA_VIDEO: "Record a video",
+  ACTION_LIBRARY: "Choose from library",
+  ACTION_CANCEL: "Cancel",
+  SOURCE_PICKER_TITLE: "Select source",
+
   // Errors
   ERROR_PERMISSION_DENIED: "Permission Required",
   ERROR_PERMISSION_MESSAGE: "Please grant access to your photos to continue.",
+  ERROR_CAMERA_PERMISSION_MESSAGE: "Please grant access to your camera to continue.",
   ERROR_VIDEO_TOO_LONG: "Video must be 60 seconds or less",
   ERROR_MEDIA_SELECTION_FAILED: "Failed to select media. Please try again.",
   ERROR_VIDEO_UNAVAILABLE: "Video Unavailable",
