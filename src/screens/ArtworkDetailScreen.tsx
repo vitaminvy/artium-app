@@ -22,12 +22,17 @@ import { FeedPost } from "../domains/feed/types";
 
 // Domain Imports
 import { ArtworkDetail } from "../domains/artwork/types";
-import { getArtworkById } from "../domains/artwork/services/artworkService"; // IMPORT THE NEW SERVICE
+// --- UPDATED IMPORTS ---
+import {
+  getArtworkById,
+  incrementArtworkView,
+  toggleArtworkLike,
+} from "../domains/artwork/services/artworkService";
 import SaveSheet from "../domains/artwork/components/SaveSheet";
 import ReportSheet from "../domains/artwork/components/ReportSheet";
 import ArtworkCarousel from "../domains/artwork/components/ArtworkCarousel";
 import { shareArtwork } from "../shared/utils/shareArtwork";
-import Loader from "../shared/components/Loader"; // IMPORT LOADER
+import Loader from "../shared/components/Loader";
 
 // New Components
 import ArtworkHeader from "../domains/artwork/components/ArtworkHeader";
@@ -42,12 +47,10 @@ export default function ArtworkDetailScreen() {
   const { hidden, setHidden, height: tabHeight } = useTabBarVisibility();
   const scrollY = useRef(0);
 
-  // --- NEW STATES FOR DATA FETCHING ---
+  // States
   const [artwork, setArtwork] = useState<ArtworkDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // States
   const [liked, setLiked] = useState(false);
   const [savedBoardId, setSavedBoardId] = useState<string | null>(null);
   const saved = !!savedBoardId;
@@ -60,20 +63,24 @@ export default function ArtworkDetailScreen() {
   // Bottom Sheet Refs
   const optionsSheetRef = useRef<BottomSheetModal>(null);
 
-  // --- DATA FETCHING LOGIC ---
+  // --- DATA FETCHING & VIEW COUNT LOGIC ---
   useEffect(() => {
-    const fetchArtwork = async () => {
-      const artworkId = route.params?.id;
-      if (!artworkId) {
-        setError("No artwork ID provided.");
-        setLoading(false);
-        return;
-      }
+    const artworkId = route.params?.id;
+    if (!artworkId) {
+      setError("No artwork ID provided.");
+      setLoading(false);
+      return;
+    }
 
+    const fetchArtwork = async () => {
       try {
         setLoading(true);
         const artworkData: any = await getArtworkById(artworkId);
-        setArtwork(artworkData as ArtworkDetail);
+        setArtwork(artworkData);
+        // Increment view count after successfully fetching artwork
+        if (artworkData) {
+          await incrementArtworkView(artworkId);
+        }
       } catch (err: any) {
         setError(err.message || "An error occurred while fetching the artwork.");
       } finally {
@@ -84,8 +91,6 @@ export default function ArtworkDetailScreen() {
     fetchArtwork();
   }, [route.params?.id]);
 
-
-  // --- REMOVED MOCK DATA LOGIC ---
 
   const reshareTarget: FeedPost | null = useMemo(() => {
     if (!artwork) return null;
@@ -156,6 +161,25 @@ export default function ArtworkDetailScreen() {
     }
     scrollY.current = y;
   };
+  
+  // --- LIKE HANDLER ---
+  const handleLike = async () => {
+    if (!artwork) return;
+    
+    // Immediately update UI for better UX
+    const newLikedState = !liked;
+    setLiked(newLikedState);
+
+    try {
+      // Call the service to update Firestore
+      await toggleArtworkLike(artwork.id, !newLikedState); // Pass the original state
+    } catch (err) {
+      // If the update fails, revert the UI and show an error
+      console.error("Failed to update like status:", err);
+      setLiked(!newLikedState); // Revert to original state
+      Alert.alert("Error", "Could not update like status. Please try again.");
+    }
+  };
 
   // Sheet handlers
   const handleOpenOptionsSheet = useCallback(() => {
@@ -199,7 +223,7 @@ export default function ArtworkDetailScreen() {
     }
   }, [artwork]);
   
-  // --- CONDITIONAL RENDERING ---
+  // Conditional Rendering
   if (loading) {
     return (
       <View className="flex-1 justify-center items-center bg-white">
@@ -212,6 +236,7 @@ export default function ArtworkDetailScreen() {
     return (
       <View className="flex-1 justify-center items-center bg-white p-4">
         <Text className="text-lg text-red-500 text-center">{error}</Text>
+
         <Pressable onPress={() => navigation.goBack()} className="mt-4">
           <Text className="text-blue-500">Go Back</Text>
         </Pressable>
@@ -265,7 +290,7 @@ export default function ArtworkDetailScreen() {
           saved={saved}
           reshared={reshared}
           actionBottom={actionBottom}
-          onLike={() => setLiked((prev) => !prev)}
+          onLike={handleLike}
           onReshare={handleOpenReshareSheet}
           onSave={handleOpenSaveSheet}
         />

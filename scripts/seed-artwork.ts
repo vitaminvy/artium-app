@@ -50,6 +50,15 @@ async function seedArtwork() {
       worksSold: 4,
       buyers: 3,
     },
+    // --- ADD NEW FIELDS FOR TRENDING ---
+    metrics: {
+      views: 0,
+      likes: 0,
+      shares: 0,
+    },
+    popularityScore: 0,
+    createdAt: new Date(),
+    // ------------------------------------
     price: "USD $550",
     availabilityNote: "Only 1 available. Get yours now!",
     images: [

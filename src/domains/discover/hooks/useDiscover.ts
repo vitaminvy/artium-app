@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { getArtworks } from "../../artwork/services/artworkService"; // IMPORT OUR NEW SERVICE
+import { useEffect, useState } from "react";
+import { getArtworks, getTrendingArtworks } from "../../artwork/services/artworkService"; // IMPORT BOTH SERVICES
 import {
   DiscoverTab,
   EventItem,
@@ -23,17 +23,23 @@ type UseDiscoverResult = {
 export function useDiscover(): UseDiscoverResult {
   const [tab, setTab] = useState<DiscoverTab>(defaultDiscoverTab);
   
-  // --- NEW STATE MANAGEMENT FOR ARTWORKS ---
+  // --- STATE MANAGEMENT FOR ALL ARTWORK FETCHING ---
   const [artworks, setArtworks] = useState<Artwork[]>([]);
+  const [topPicks, setTopPicks] = useState<Artwork[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    const fetchArtworks = async () => {
+    const fetchAllArtworks = async () => {
       try {
         setLoading(true);
-        const fetchedArtworks = await getArtworks();
-        setArtworks(fetchedArtworks);
+        // Fetch trending and all artworks in parallel
+        const [trending, all] = await Promise.all([
+          getTrendingArtworks(),
+          getArtworks()
+        ]);
+        setTopPicks(trending);
+        setArtworks(all);
       } catch (e: any) {
         setError(e);
       } finally {
@@ -41,14 +47,13 @@ export function useDiscover(): UseDiscoverResult {
       }
     };
 
-    fetchArtworks();
+    fetchAllArtworks();
   }, []); // Run once on mount
 
   // Keep mock data for other sections for now
-  const topPicks = useMemo(() => artworks.slice(0, 6), [artworks]); // Base topPicks on real data
-  const moments = useMemo(() => discoverMockData.moments, []);
-  const profiles = useMemo(() => discoverMockData.profiles, []);
-  const events = useMemo(() => discoverMockData.events, []);
+  const moments = discoverMockData.moments;
+  const profiles = discoverMockData.profiles;
+  const events = discoverMockData.events;
 
   return {
     tab,
