@@ -43,7 +43,7 @@ export default function ArtworkCard({
           <View
             className="absolute bottom-3 left-3 flex-row items-center gap-1 rounded-full px-3 py-1"
             style={{
-              backgroundColor: "rgba(255,255,255,0.32)",
+              backgroundColor: "rgba(255,255,255,0.8)",
               borderWidth: 1,
               borderColor: "rgba(255,255,255,0.55)",
             }}
