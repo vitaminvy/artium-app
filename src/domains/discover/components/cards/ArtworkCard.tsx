@@ -56,7 +56,7 @@ export default function ArtworkCard({
         )}
       </View>
 
-      <View className="px-4 py-4 gap-3 bg-white rounded-b-[28px]">
+      <View className="px-4 py-4 bg-white rounded-b-[28px] flex-1 justify-between">
         <View className="flex-row items-center gap-3">
           <View className="h-7 w-7 rounded-full bg-slate-200 overflow-hidden">
             {item.artistAvatar ? (
@@ -75,11 +75,11 @@ export default function ArtworkCard({
           {item.title}
         </Text>
 
-        <View className="flex-row items-center gap-3 flex-wrap">
-          {item.price ? <Pill label={item.price} color="#2563EB" /> : null}
+        <View className="gap-2">
           {item.location ? (
             <Text className="text-sm text-slate-400">{item.location}</Text>
           ) : null}
+          {item.price ? <Pill label={item.price} color="#2563EB" /> : null}
         </View>
       </View>
     </Pressable>
