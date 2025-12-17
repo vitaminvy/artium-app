@@ -18,6 +18,7 @@ type Props = {
   onPressComment?: (post: FeedPost) => void;
   onPressCard?: (post: FeedPost) => void;
   onPressImage?: (images: { uri: string }[], index: number) => void;
+  isVisible?: boolean;
 };
 
 function FeedPostCard({
@@ -27,6 +28,7 @@ function FeedPostCard({
   onPressComment,
   onPressCard,
   onPressImage,
+  isVisible = true,
 }: Props) {
   const initials =
     post.author.name
@@ -53,6 +55,23 @@ function FeedPostCard({
     }
   );
   const playButtonOpacity = useSharedValue(1);
+
+  // Auto-play/pause video based on visibility
+  useEffect(() => {
+    if (!isVideo) return;
+
+    if (isVisible) {
+      // Auto-play when visible
+      if (!player.playing) {
+        player.play();
+      }
+    } else {
+      // Auto-pause when not visible
+      if (player.playing) {
+        player.pause();
+      }
+    }
+  }, [isVideo, isVisible, player]);
 
   useEffect(() => {
     const sub = player.addListener?.("playingChange", (payload: VideoPlayingChangePayload) => {
@@ -351,7 +370,8 @@ const areEqual = (prev: Props, next: Props) =>
   prev.onPressReshare === next.onPressReshare &&
   prev.onPressComment === next.onPressComment &&
   prev.onPressCard === next.onPressCard &&
-  prev.onPressImage === next.onPressImage;
+  prev.onPressImage === next.onPressImage &&
+  prev.isVisible === next.isVisible;
 
 export default React.memo(FeedPostCard, areEqual);
 

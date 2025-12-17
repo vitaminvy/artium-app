@@ -13,6 +13,7 @@ type MediaSource = "library" | "camera";
 
 export function usePostMoment({
   onPublish,
+  onShared,
 }: UsePostMomentParams): UsePostMomentResult {
   const [visible, setVisible] = useState(false);
   const [text, setText] = useState("");
@@ -306,6 +307,7 @@ export function usePostMoment({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     resetDraft();
     setVisible(false);
+    onShared?.();
   }, [canShare, media, onPublish, resetDraft, text]);
 
   const state: UsePostMomentState = {
@@ -344,6 +346,7 @@ export function usePostMoment({
 }
 type UsePostMomentParams = {
   onPublish: (post: FeedPost) => void;
+  onShared?: () => void;
 };
 
 type UsePostMomentState = {

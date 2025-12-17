@@ -44,6 +44,10 @@ export default function FeedScreen() {
   } = useFeed();
   const postMoment = usePostMoment({
     onPublish: addMomentPost,
+    onShared: () => {
+      // Ensure Feed tab is focused after sharing
+      navigation.getParent()?.navigate("Feed");
+    },
   });
   // Note: Subscription to postMomentOpen is handled inside usePostMoment hook
   const [selectedPost, setSelectedPost] = React.useState<
@@ -161,6 +165,7 @@ export default function FeedScreen() {
             onPressCard={openDetail}
             onPressImage={handleOpenViewer}
             scrollHandler={scrollHandler}
+            isTabActive={tab === "explore"}
           />
         </View>
         <View style={{ flex: 1, display: tab === "following" ? "flex" : "none" }}>
@@ -172,6 +177,7 @@ export default function FeedScreen() {
             onPressCard={openDetail}
             onPressImage={handleOpenViewer}
             scrollHandler={scrollHandler}
+            isTabActive={tab === "following"}
           />
         </View>
       </View>

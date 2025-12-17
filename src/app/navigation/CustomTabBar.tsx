@@ -137,11 +137,12 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
         visible={showUploadSheet} 
         onClose={() => setShowUploadSheet(false)}
         onSelectOption={(option: UploadOption) => {
-          if (option.targetTab) {
-            navigation.navigate(option.targetTab);
-          }
           if (option.key === "moment") {
             requestPostMomentSheet();
+            return;
+          }
+          if (option.targetTab) {
+            navigation.navigate(option.targetTab);
           }
         }}
       />
