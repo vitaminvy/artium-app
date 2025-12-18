@@ -13,6 +13,8 @@ import ProfileMoodboardsTab from "../domains/user/components/profile/tabs/Profil
 import { useProfile } from "../domains/user/hooks/useProfile";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
 import { shareProfile } from "../shared/utils/shareProfile";
+import Sidebar from "../shared/components/Sidebar";
+import { useSidebarItems, SidebarKey } from "../shared/hooks/useSidebar";
 
 type NavigationProp = NativeStackNavigationProp<
   HomeStackParamList,
@@ -22,6 +24,10 @@ type NavigationProp = NativeStackNavigationProp<
 export default function ProfileScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { profile, tab, setTab } = useProfile();
+  const sidebarItems = useSidebarItems();
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const [headerHeight, setHeaderHeight] = React.useState(96);
+  const [activeKey, setActiveKey] = React.useState<SidebarKey>("profile");
 
   const handleBack = () => {
     if (navigation.canGoBack()) {
@@ -41,9 +47,30 @@ export default function ProfileScreen() {
     });
   };
 
+  const handleSidebarSelect = (key: SidebarKey) => {
+    setSidebarOpen(false);
+    setActiveKey(key);
+
+    if (key === "home") {
+      navigation.navigate("HomeMain");
+      // Switch tab back to Home if we were on another tab
+      const tabNav = navigation.getParent()?.getParent();
+      tabNav?.navigate("Home");
+      return;
+    }
+
+    if (key === "profile") return;
+
+    console.log("Sidebar selected:", key);
+  };
+
   return (
     <View className="flex-1 bg-white">
-      <ProfileHeader onPressBack={handleBack} onPressMenu={() => {}} />
+      <ProfileHeader
+        onPressBack={handleBack}
+        onPressMenu={() => setSidebarOpen((prev) => !prev)}
+        onLayout={(e: any) => setHeaderHeight(e.nativeEvent.layout.height)}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -63,6 +90,15 @@ export default function ProfileScreen() {
           {tab === "moodboards" && <ProfileMoodboardsTab profile={profile} />}
         </View>
       </ScrollView>
+
+      <Sidebar
+        visible={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onSelect={handleSidebarSelect}
+        topOffset={headerHeight}
+        activeKey={activeKey}
+        items={sidebarItems}
+      />
     </View>
   );
 }
