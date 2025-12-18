@@ -6,13 +6,12 @@ import {
   Pressable,
   ActivityIndicator,
   ImageBackground,
-  KeyboardAvoidingView,
-  Platform,
   Dimensions,
 } from "react-native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Path } from "react-native-svg";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import * as WebBrowser from "expo-web-browser";
 
 import { AuthStackParamList } from "../app/navigation/AuthStack";
@@ -150,12 +149,14 @@ export default function LoginScreen({ navigation }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1"
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
-    >
-      <View className="flex-1 bg-white">
+    <View className="flex-1 bg-white">
+      <KeyboardAwareScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        bottomOffset={24}
+      >
+        <View className="flex-1 bg-white">
         <View className="relative">
           <ImageBackground
             source={require("../../assets/auth-decor.jpg")}
@@ -240,6 +241,7 @@ export default function LoginScreen({ navigation }: Props) {
                 autoCapitalize="none"
                 keyboardType="email-address"
                 returnKeyType="next"
+                returnKeyLabel="›"
                 blurOnSubmit={false}
                 onSubmitEditing={() => passwordInputRef.current?.focus()}
                 onChangeText={setEmail}
@@ -332,7 +334,8 @@ export default function LoginScreen({ navigation }: Props) {
             </Text>
           </Pressable>
         </View>
-      </View>
-    </KeyboardAvoidingView>
+        </View>
+      </KeyboardAwareScrollView>
+    </View>
   );
 }

@@ -1,9 +1,7 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
   ImageBackground,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   Text,
   TextInput,
@@ -13,6 +11,7 @@ import {
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Path } from "react-native-svg";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import {
   GoogleSignin,
   statusCodes,
@@ -40,6 +39,9 @@ export default function SignUpScreen({ navigation }: Props) {
     useSignUp();
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState("");
+  const nameInputRef = useRef<TextInput>(null);
+  const emailInputRef = useRef<TextInput>(null);
+  const passwordInputRef = useRef<TextInput>(null);
 
   const isBusy = signUpLoading || googleLoading;
   const errorMsg = googleError || signUpError || "";
@@ -101,13 +103,15 @@ export default function SignUpScreen({ navigation }: Props) {
   };
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1"
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
-    >
-      <View className="flex-1 bg-white">
-        <View className="relative">
+    <View className="flex-1 bg-white">
+      <KeyboardAwareScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        bottomOffset={24}
+      >
+        <View className="flex-1 bg-white">
+          <View className="relative">
           <ImageBackground
             source={require("../../assets/auth-decor.jpg")}
             resizeMode="cover"
@@ -142,7 +146,7 @@ export default function SignUpScreen({ navigation }: Props) {
           </Svg>
         </View>
 
-        <View className="flex-1 px-6 pb-12 pt-10 -mt-8">
+          <View className="flex-1 px-6 pb-12 pt-10 -mt-8">
           <View>
             <Text className="text-center text-gray-900 text-base font-medium mb-5">
               Sign up with
@@ -185,11 +189,16 @@ export default function SignUpScreen({ navigation }: Props) {
                 DISPLAY NAME
               </Text>
               <TextInput
+                ref={nameInputRef}
                 className="h-[52px] rounded-[18px] border border-gray-200 px-4 text-gray-900 bg-[#fafafb]"
                 style={{ paddingVertical: 0, textAlignVertical: "center" }}
                 placeholder="How should we call you?"
                 placeholderTextColor="#B8BEC8"
                 autoCapitalize="words"
+                returnKeyType="next"
+                returnKeyLabel="›"
+                blurOnSubmit={false}
+                onSubmitEditing={() => emailInputRef.current?.focus()}
                 onChangeText={setName}
                 value={name}
                 editable={!isBusy}
@@ -201,12 +210,17 @@ export default function SignUpScreen({ navigation }: Props) {
                 EMAIL ADDRESS <Text className="text-red-500">*</Text>
               </Text>
               <TextInput
+                ref={emailInputRef}
                 className="h-[52px] rounded-[18px] border border-gray-200 px-4 text-gray-900 bg-[#fafafb]"
                 style={{ paddingVertical: 0, textAlignVertical: "center" }}
                 placeholder="you@example.com"
                 placeholderTextColor="#B8BEC8"
                 autoCapitalize="none"
                 keyboardType="email-address"
+                returnKeyType="next"
+                returnKeyLabel="›"
+                blurOnSubmit={false}
+                onSubmitEditing={() => passwordInputRef.current?.focus()}
                 onChangeText={setEmail}
                 value={email}
                 editable={!isBusy}
@@ -219,11 +233,17 @@ export default function SignUpScreen({ navigation }: Props) {
               </Text>
               <View className="h-[52px] rounded-[18px] border border-gray-200 px-4 flex-row items-center bg-[#fafafb]">
                 <TextInput
+                  ref={passwordInputRef}
                   className="flex-1 text-gray-900"
                   style={{ paddingVertical: 0, textAlignVertical: "center" }}
                   placeholder="Create a password"
                   placeholderTextColor="#B8BEC8"
                   secureTextEntry={!showPassword}
+                  returnKeyType="done"
+                  onSubmitEditing={() => {
+                    passwordInputRef.current?.blur();
+                    onEmailSignUp();
+                  }}
                   onChangeText={setPassword}
                   value={password}
                   editable={!isBusy}
@@ -267,8 +287,9 @@ export default function SignUpScreen({ navigation }: Props) {
               <Text className="font-semibold text-[#1a73e8]">Sign in</Text>
             </Text>
           </Pressable>
+          </View>
         </View>
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
+    </View>
   );
 }
