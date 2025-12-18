@@ -1,17 +1,11 @@
 import {
   createNavigationContainerRef,
-  NavigationContainerRefWithCurrent,
 } from "@react-navigation/native";
-import { AppStackParamList } from "./types";
 
-export const navigationRef: NavigationContainerRefWithCurrent<AppStackParamList> =
-  createNavigationContainerRef<AppStackParamList>();
+export const navigationRef = createNavigationContainerRef();
 
-export function navigate<Name extends keyof AppStackParamList>(
-  name: Name,
-  params?: AppStackParamList[Name]
-) {
+export function navigate(name: string, params?: any) {
   if (navigationRef.isReady()) {
-    navigationRef.navigate(name, params);
+    navigationRef.navigate(name as never, params);
   }
 }

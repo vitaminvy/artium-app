@@ -2,7 +2,7 @@
 // src/screens/HomeScreen.tsx
 import React, { useState } from "react";
 import { View, Text, Pressable, Image, DevSettings } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, CommonActions } from "@react-navigation/native";
 import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { CompositeNavigationProp } from "@react-navigation/native";
@@ -13,10 +13,11 @@ import UnderlineHome from "../../assets/headers/underline-home.svg";
 import { tokenStorage } from "../domains/auth/services/tokenStorage";
 import { TabParamList } from "../app/navigation/tabTypes";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
+import { navigationRef } from "../app/navigation/navigationRef";
 
 type HomeScreenNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<HomeStackParamList, "HomeMain">,
-  BottomTabNavigationProp<TabParamList, "Home">
+  BottomTabNavigationProp<TabParamList>
 >;
 
 export default function HomeScreen() {
@@ -33,8 +34,10 @@ export default function HomeScreen() {
   };
 
   const goToDiscoverTab = () => {
-    const tabNav = navigation.getParent()?.getParent();
-    tabNav?.navigate("Discover");
+    // Use root navigation ref to navigate to Discover tab
+    if (navigationRef.isReady()) {
+      navigationRef.navigate("Discover" as never);
+    }
   };
 
   const handleSidebarSelect = (key: SidebarKey) => {
