@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   ImageBackground,
   Dimensions,
+  Linking,
 } from "react-native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
@@ -147,6 +148,16 @@ export default function LoginScreen({ navigation }: Props) {
     // And configure Apple Sign-In in your Firebase project
     setErrorMsg("Apple sign-in is not yet implemented.");
   }
+
+  const handleContactSupport = () => {
+    const email = "artium.support@artium.com";
+    const subject = "Artium Support";
+    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
+    Linking.openURL(mailtoUrl).catch((err) => {
+      console.error("Failed to open mail app:", err);
+      setErrorMsg("Unable to open mail app.");
+    });
+  };
 
   return (
     <View className="flex-1 bg-white">
@@ -323,7 +334,7 @@ export default function LoginScreen({ navigation }: Props) {
 
           <Pressable
             className="mt-4 items-center"
-            onPress={() => setErrorMsg("")}
+            onPress={handleContactSupport}
             disabled={loading}
           >
             <Text className="text-xs text-gray-400">
