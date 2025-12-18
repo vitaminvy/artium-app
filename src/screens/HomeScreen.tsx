@@ -77,13 +77,6 @@ export default function HomeScreen() {
         </Pressable>
 
         <Pressable
-          onPress={navigateToProfile}
-          className="mt-4 px-6 py-3 bg-blue-600 rounded-xl"
-        >
-          <Text className="text-white font-semibold">Test Go to Profile</Text>
-        </Pressable>
-
-        <Pressable
           onPress={async () => {
             await tokenStorage.remove();
             DevSettings.reload(); // reload app so auth bootstrap can show Welcome
