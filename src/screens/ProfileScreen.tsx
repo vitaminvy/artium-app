@@ -12,6 +12,7 @@ import ProfileMomentsTab from "../domains/user/components/profile/tabs/ProfileMo
 import ProfileMoodboardsTab from "../domains/user/components/profile/tabs/ProfileMoodboardsTab";
 import { useProfile } from "../domains/user/hooks/useProfile";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
+import { shareProfile } from "../shared/utils/shareProfile";
 
 type NavigationProp = NativeStackNavigationProp<
   HomeStackParamList,
@@ -32,6 +33,14 @@ export default function ProfileScreen() {
     navigation.navigate("EditProfile");
   };
 
+  const handleShare = () => {
+    shareProfile({
+      user: profile.user,
+      stats: profile.stats,
+      deepLink: `https://www.artium.com/user/${profile.user.id ?? "me"}`,
+    });
+  };
+
   return (
     <View className="flex-1 bg-white">
       <ProfileHeader onPressBack={handleBack} onPressMenu={() => {}} />
@@ -41,7 +50,10 @@ export default function ProfileScreen() {
         contentContainerStyle={{ paddingBottom: 120 }}
       >
         <ProfileHero user={profile.user} stats={profile.stats} />
-        <ProfileActionButtons onPressEdit={openEditProfile} />
+        <ProfileActionButtons
+          onPressEdit={openEditProfile}
+          onPressShare={handleShare}
+        />
         <ProfileTabBar tab={tab} onChange={setTab} />
 
         <View className="px-1 pb-4">
