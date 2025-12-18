@@ -19,7 +19,7 @@ export const incrementArtworkView = async (artworkId: string): Promise<void> => 
       "metrics.views": increment(1),
     });
   } catch (error) {
-    console.warn("Could not increment artwork view count:", error);
+    console.warn("Could  not increment artwork view count:", error);
     // Non-critical, so we don't throw
   }
 };
