@@ -2,7 +2,7 @@
 // src/screens/HomeScreen.tsx
 import React, { useState } from "react";
 import { View, Text, Pressable, Image, DevSettings } from "react-native";
-import { useNavigation, CommonActions } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { CompositeNavigationProp } from "@react-navigation/native";

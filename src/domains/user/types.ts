@@ -35,3 +35,13 @@ export type ProfileViewModel = {
   featuredArtworks: ProfileFeaturedArtwork[];
   moodboards: ProfileMoodboard[];
 };
+
+export type EditProfileFormValues = {
+  avatar?: string;
+  countryCode: string;
+  username: string;
+  firstName: string;
+  lastName?: string;
+  phoneNumber?: string;
+  address?: string;
+};
