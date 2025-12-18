@@ -22,7 +22,7 @@ export default function EditProfileHeader({
       className="bg-white border-b border-slate-200 px-4 pb-3"
       style={{ paddingTop: insets.top + 8 }}
     >
-      <View className="flex-row items-center justify-between">
+      <View className="relative flex-row items-center justify-between">
         <Pressable
           onPress={onBack}
           hitSlop={10}
@@ -30,9 +30,13 @@ export default function EditProfileHeader({
         >
           <Ionicons name="arrow-back" size={22} color="#0F172A" />
         </Pressable>
-        <Text className="text-lg font-semibold text-slate-900">
-          {EDIT_PROFILE_LABELS.headerTitle}
-        </Text>
+
+        <View className="absolute left-0 right-0 items-center pointer-events-none">
+          <Text className="text-lg font-semibold text-slate-900">
+            {EDIT_PROFILE_LABELS.headerTitle}
+          </Text>
+        </View>
+
         <Pressable
           onPress={onSave}
           hitSlop={8}
