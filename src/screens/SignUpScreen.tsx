@@ -8,9 +8,11 @@ import {
   Text,
   TextInput,
   View,
+  Dimensions,
 } from "react-native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
+import Svg, { Path } from "react-native-svg";
 import {
   GoogleSignin,
   statusCodes,
@@ -19,12 +21,15 @@ import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 
 import { AuthStackParamList } from "@/app/navigation/AuthStack";
 import { useSignUp } from "@/domains/auth/hooks/useSignUp";
-import { auth, firestore } from "@/configs/firebase";
+import { auth } from "@/configs/firebase";
 import { upsertUserProfile } from "@/domains/auth/services/userProfile";
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, "SignUp">;
 };
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const HERO_HEIGHT = 280;
 
 export default function SignUpScreen({ navigation }: Props) {
   const [name, setName] = useState("");
@@ -84,6 +89,11 @@ export default function SignUpScreen({ navigation }: Props) {
     }
   };
 
+  const onAppleButtonPress = () => {
+    clearError();
+    setGoogleError("Apple sign-in is not yet implemented.");
+  };
+
   const onEmailSignUp = () => {
     clearError();
     setGoogleError("");
@@ -91,110 +101,138 @@ export default function SignUpScreen({ navigation }: Props) {
   };
 
   return (
-    <View className="flex-1 bg-white">
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        className="flex-1"
-      >
-        <ImageBackground
-          source={require("../../assets/auth-decor.jpg")}
-          resizeMode="cover"
-          className="h-[260px] w-full"
-        >
-          <View className="absolute inset-0 bg-black/35" />
-          <View className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/30 to-transparent" />
-          <View className="flex-1 justify-end pb-12 px-6">
-            <Text className="text-white text-4xl font-extrabold">
-              Create account
-            </Text>
-          </View>
-        </ImageBackground>
-
-        <View className="-mt-6 rounded-t-3xl bg-white px-6 pb-10 pt-8">
-          <Text className="text-center text-base text-gray-700 font-semibold mb-5">
-            Sign up with email
-          </Text>
-
-          <Pressable
-            onPress={onGoogleButtonPress}
-            disabled={isBusy}
-            className={`flex-row items-center justify-center gap-3 rounded-full py-3 px-4 shadow-sm border ${
-              isBusy
-                ? "bg-gray-100 border-gray-200 opacity-70"
-                : "bg-white border-gray-300"
-            }`}
+    <KeyboardAvoidingView
+      className="flex-1"
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+    >
+      <View className="flex-1 bg-white">
+        <View className="relative">
+          <ImageBackground
+            source={require("../../assets/auth-decor.jpg")}
+            resizeMode="cover"
+            style={{ height: HERO_HEIGHT, width: "100%" }}
           >
-            {googleLoading ? (
-              <ActivityIndicator />
-            ) : (
-              <>
-                <Ionicons name="logo-google" size={20} color="#DB4437" />
-                <Text className="text-base font-semibold text-gray-900">
-                  Continue with Google
-                </Text>
-              </>
-            )}
-          </Pressable>
+            <Pressable
+              className="absolute left-4 top-12 h-10 w-10 items-center justify-center rounded-full bg-black/45"
+              onPress={() => navigation.goBack()}
+              hitSlop={10}
+            >
+              <Ionicons name="arrow-back" size={22} color="white" />
+            </Pressable>
+            <View className="absolute inset-0 bg-black/50" />
+            <View className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/45 to-transparent" />
+            <View className="flex-1 justify-end pb-14 px-6">
+              <Text className="text-white text-[34px] font-extrabold drop-shadow-lg">
+                Create account
+              </Text>
+            </View>
+          </ImageBackground>
+          <Svg
+            pointerEvents="none"
+            width={SCREEN_WIDTH}
+            height={60}
+            style={{ position: "absolute", bottom: -24, left: 0 }}
+            viewBox={`0 0 ${SCREEN_WIDTH} 60`}
+          >
+            <Path
+              d={`M0 0 Q${SCREEN_WIDTH / 2} 26 ${SCREEN_WIDTH} 0 L${SCREEN_WIDTH} 60 L0 60 Z`}
+              fill="white"
+            />
+          </Svg>
+        </View>
 
-          <View className="flex-row items-center my-6">
+        <View className="flex-1 px-6 pb-12 pt-10 -mt-8">
+          <View>
+            <Text className="text-center text-gray-900 text-base font-medium mb-5">
+              Sign up with
+            </Text>
+
+            <View className="flex-row justify-center gap-4">
+              <Pressable
+                onPress={onGoogleButtonPress}
+                disabled={isBusy}
+                className="flex-1 max-w-[170px] h-[58px] border border-gray-200 rounded-full bg-white shadow-sm items-center justify-center active:bg-gray-50"
+              >
+                {googleLoading ? (
+                  <ActivityIndicator />
+                ) : (
+                  <Ionicons name="logo-google" size={28} color="#DB4437" />
+                )}
+              </Pressable>
+
+              <Pressable
+                onPress={onAppleButtonPress}
+                disabled={isBusy}
+                className="flex-1 max-w-[170px] h-[58px] border border-gray-200 rounded-full bg-white shadow-sm items-center justify-center active:bg-gray-50"
+              >
+                <Ionicons name="logo-apple" size={28} color="#000000" />
+              </Pressable>
+            </View>
+          </View>
+
+          <View className="flex-row items-center my-8">
             <View className="flex-1 h-px bg-gray-200" />
-            <Text className="mx-3 text-gray-400 text-sm uppercase tracking-[0.2em]">
+            <Text className="mx-3 text-gray-400 text-xs uppercase tracking-[0.25em]">
               OR
             </Text>
             <View className="flex-1 h-px bg-gray-200" />
           </View>
 
-          <View className="gap-4">
+          <View className="gap-6">
             <View>
-              <Text className="text-xs font-semibold text-gray-600">
+              <Text className="text-xs font-semibold text-gray-600 mb-2">
                 DISPLAY NAME
               </Text>
               <TextInput
-                className="mt-2 h-12 rounded-xl border border-gray-200 px-4 text-base text-gray-900 bg-white"
+                className="h-[52px] rounded-[18px] border border-gray-200 px-4 text-gray-900 bg-[#fafafb]"
+                style={{ paddingVertical: 0, textAlignVertical: "center" }}
                 placeholder="How should we call you?"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#B8BEC8"
                 autoCapitalize="words"
                 onChangeText={setName}
                 value={name}
-                editable={!signUpLoading && !googleLoading}
+                editable={!isBusy}
               />
             </View>
 
             <View>
-              <Text className="text-xs font-semibold text-gray-600">
+              <Text className="text-xs font-semibold text-gray-600 mb-2">
                 EMAIL ADDRESS <Text className="text-red-500">*</Text>
               </Text>
               <TextInput
-                className="mt-2 h-12 rounded-xl border border-gray-200 px-4 text-base text-gray-900 bg-white"
+                className="h-[52px] rounded-[18px] border border-gray-200 px-4 text-gray-900 bg-[#fafafb]"
+                style={{ paddingVertical: 0, textAlignVertical: "center" }}
                 placeholder="you@example.com"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#B8BEC8"
                 autoCapitalize="none"
                 keyboardType="email-address"
                 onChangeText={setEmail}
                 value={email}
-                editable={!signUpLoading && !googleLoading}
+                editable={!isBusy}
               />
             </View>
 
             <View>
-              <Text className="text-xs font-semibold text-gray-600">
+              <Text className="text-xs font-semibold text-gray-600 mb-2">
                 PASSWORD <Text className="text-red-500">*</Text>
               </Text>
-              <View className="mt-2 h-12 rounded-xl border border-gray-200 px-4 flex-row items-center bg-white">
+              <View className="h-[52px] rounded-[18px] border border-gray-200 px-4 flex-row items-center bg-[#fafafb]">
                 <TextInput
-                  className="flex-1 text-base text-gray-900"
+                  className="flex-1 text-gray-900"
+                  style={{ paddingVertical: 0, textAlignVertical: "center" }}
                   placeholder="Create a password"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor="#B8BEC8"
                   secureTextEntry={!showPassword}
                   onChangeText={setPassword}
                   value={password}
-                  editable={!signUpLoading && !googleLoading}
+                  editable={!isBusy}
                 />
                 <Pressable onPress={() => setShowPassword((prev) => !prev)}>
                   <Ionicons
                     name={showPassword ? "eye-off-outline" : "eye-outline"}
-                    size={20}
-                    color="#6B7280"
+                    size={18}
+                    color="#9CA3AF"
                   />
                 </Pressable>
               </View>
@@ -202,39 +240,35 @@ export default function SignUpScreen({ navigation }: Props) {
           </View>
 
           {errorMsg ? (
-            <Text className="text-red-500 text-sm mt-3">{errorMsg}</Text>
+            <Text className="text-red-500 text-xs mt-2">{errorMsg}</Text>
           ) : null}
 
           <Pressable
             onPress={onEmailSignUp}
             disabled={isBusy}
-            className={`mt-6 h-12 rounded-full items-center justify-center shadow-sm ${
-              isBusy
-                ? "bg-[#bcd3f6]"
-                : "bg-[#1a73e8] active:bg-[#125bc0]"
+            className={`mt-8 h-[50px] rounded-[14px] items-center justify-center shadow-sm ${
+              isBusy ? "bg-[#bcd3f6]" : "bg-[#2d74ed] active:bg-[#2163d2]"
             }`}
           >
             {signUpLoading ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text className="text-white text-base font-semibold">
-                Sign Up
-              </Text>
+              <Text className="text-white text-base font-semibold">Sign Up</Text>
             )}
           </Pressable>
 
           <Pressable
             onPress={() => navigation.navigate("LogIn")}
             disabled={isBusy}
-            className={`mt-5 items-center ${isBusy ? "opacity-60" : ""}`}
+            className="mt-5 items-center"
           >
             <Text className="text-sm text-gray-700">
               Already with Artium?{" "}
-              <Text className="font-semibold text-gray-900">Sign in</Text>
+              <Text className="font-semibold text-[#1a73e8]">Sign in</Text>
             </Text>
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
-    </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
