@@ -7,9 +7,10 @@ const HERO_HEIGHT = 280;
 
 type Props = {
   title: string;
+  subtitle?: string;
 };
 
-export default function AuthHero({ title }: Props) {
+export default function AuthHero({ title, subtitle }: Props) {
   return (
     <View className="relative">
       <ImageBackground
@@ -23,6 +24,11 @@ export default function AuthHero({ title }: Props) {
           <Text className="text-white text-[34px] font-extrabold drop-shadow-lg">
             {title}
           </Text>
+          {subtitle ? (
+            <Text className="text-white/90 text-base mt-3 leading-6">
+              {subtitle}
+            </Text>
+          ) : null}
         </View>
       </ImageBackground>
       <Svg

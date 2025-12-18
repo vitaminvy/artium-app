@@ -6,10 +6,11 @@ import AuthHero from "./AuthHero";
 
 type Props = {
   title: string;
+  subtitle?: string;
   children: React.ReactNode;
 };
 
-export default function AuthScreenLayout({ title, children }: Props) {
+export default function AuthScreenLayout({ title, subtitle, children }: Props) {
   return (
     <View className="flex-1 bg-white">
       <KeyboardAwareScrollView
@@ -19,7 +20,7 @@ export default function AuthScreenLayout({ title, children }: Props) {
         bottomOffset={24}
       >
         <View className="flex-1 bg-white">
-          <AuthHero title={title} />
+          <AuthHero title={title} subtitle={subtitle} />
           <View className="flex-1 px-6 pb-12 pt-10 -mt-8">{children}</View>
         </View>
       </KeyboardAwareScrollView>
