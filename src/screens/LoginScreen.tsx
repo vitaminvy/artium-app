@@ -16,15 +16,8 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import * as WebBrowser from "expo-web-browser";
 
 import { AuthStackParamList } from "../app/navigation/AuthStack";
-
-import {
-  GoogleSignin,
-  statusCodes,
-} from "@react-native-google-signin/google-signin";
-import { auth } from "../configs/firebase";
-import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { doSignInWithEmailAndPassword } from "@/domains/auth/services/firebaseAuth";
-import { upsertUserProfile } from "@/domains/auth/services/userProfile";
+import { useGoogleAuth } from "@/domains/auth/hooks/useGoogleAuth";
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, "LogIn">;
@@ -41,11 +34,18 @@ export default function LoginScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  
+  const { 
+    signInWithGoogle, 
+    loading: googleLoading, 
+    error: googleError 
+  } = useGoogleAuth();
+
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
 
-  // The GoogleSignin.configure call has been moved to src/app/index.tsx
-  // to ensure it only runs once when the app starts.
+  const isBusy = loading || googleLoading;
+  const displayError = errorMsg || googleError;
 
   async function handleLogin() {
     if (!email.trim()) {
@@ -88,57 +88,6 @@ export default function LoginScreen({ navigation }: Props) {
       setErrorMsg(msg);
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function onGoogleButtonPress() {
-    setLoading(true);
-    setErrorMsg("");
-    try {
-      await GoogleSignin.hasPlayServices({
-        showPlayServicesUpdateDialog: true,
-      });
-
-      const signInResult = await GoogleSignin.signIn();
-
-      if (signInResult.type !== "success" || !signInResult.data?.idToken) {
-        throw new Error("Google sign-in did not complete. Please try again.");
-      }
-      const idToken = signInResult.data.idToken;
-      const googleUser = signInResult.data.user; // Get the user info from the data object
-
-      const googleCredential = GoogleAuthProvider.credential(idToken);
-
-      const userCredential = await signInWithCredential(auth, googleCredential);
-      const firebaseUser = userCredential.user;
-
-      await upsertUserProfile(firebaseUser, {
-        email: firebaseUser.email || googleUser.email,
-        displayName: firebaseUser.displayName || googleUser.name,
-        photoURL: firebaseUser.photoURL || googleUser.photo,
-      });
-
-      // Login is now handled by the onAuthStateChanged listener in AuthContext.
-      // The RootNavigator will automatically switch to the main app screen.
-      // No reload or manual token management is needed.
-    } catch (error: any) {
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        setErrorMsg("Google sign-in was cancelled.");
-      } else if (error.code === statusCodes.IN_PROGRESS) {
-        setErrorMsg("Google sign-in is already in progress.");
-      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        setErrorMsg("Google Play Services not available.");
-      } else if (error.code === "auth/network-request-failed") {
-        setErrorMsg(
-          "Network unavailable. Please check your connection and try again."
-        );
-      } else {
-        setErrorMsg(
-          `Google sign-in failed: ${error.message || "Unknown error"}`
-        );
-      }
-    } finally {
-      setLoading(false); // Make sure to turn off loading here
     }
   }
 
@@ -194,16 +143,20 @@ export default function LoginScreen({ navigation }: Props) {
           <View>
             <View className="flex-row justify-center">
               <Pressable
-                onPress={onGoogleButtonPress}
-                disabled={loading}
+                onPress={() => signInWithGoogle()}
+                disabled={isBusy}
                 className="flex-1 max-w-[280px] h-[58px] border border-gray-200 rounded-full bg-white shadow-sm items-center justify-center active:bg-gray-50"
               >
-                <View className="flex-row items-center justify-center gap-2">
-                  <Ionicons name="logo-google" size={26} color="#DB4437" />
-                  <Text className="text-base font-semibold text-gray-900">
-                    Sign in with Google
-                  </Text>
-                </View>
+                {googleLoading ? (
+                  <ActivityIndicator />
+                ) : (
+                  <View className="flex-row items-center justify-center gap-2">
+                    <Ionicons name="logo-google" size={26} color="#DB4437" />
+                    <Text className="text-base font-semibold text-gray-900">
+                      Sign in with Google
+                    </Text>
+                  </View>
+                )}
               </Pressable>
             </View>
           </View>
@@ -236,7 +189,7 @@ export default function LoginScreen({ navigation }: Props) {
                 onSubmitEditing={() => passwordInputRef.current?.focus()}
                 onChangeText={setEmail}
                 value={email}
-                editable={!loading}
+                editable={!isBusy}
               />
             </View>
 
@@ -259,7 +212,7 @@ export default function LoginScreen({ navigation }: Props) {
                   }}
                   onChangeText={setPassword}
                   value={password}
-                  editable={!loading}
+                  editable={!isBusy}
                 />
                 <Pressable onPress={() => setShowPassword((prev) => !prev)}>
                   <Ionicons
@@ -272,15 +225,15 @@ export default function LoginScreen({ navigation }: Props) {
             </View>
           </View>
 
-          {errorMsg ? (
-            <Text className="text-red-500 text-xs mt-2">{errorMsg}</Text>
+          {displayError ? (
+            <Text className="text-red-500 text-xs mt-2">{displayError}</Text>
           ) : null}
 
           {/* Sign In Button */}
           <Pressable
             className="mt-8 h-[50px] rounded-[14px] bg-[#2d74ed] items-center justify-center shadow-sm active:bg-[#2163d2]"
             onPress={handleLogin}
-            disabled={loading}
+            disabled={isBusy}
           >
             {loading ? (
               <ActivityIndicator color="white" />
@@ -293,7 +246,7 @@ export default function LoginScreen({ navigation }: Props) {
           <Pressable
             className="mt-6 items-center"
             onPress={() => navigation.navigate("ForgotPassword")}
-            disabled={loading}
+            disabled={isBusy}
           >
             <Text className="text-sm font-medium text-[#2b6fe8]">
               Forgot password?
@@ -303,7 +256,7 @@ export default function LoginScreen({ navigation }: Props) {
           <Pressable
             className="mt-5 items-center"
             onPress={() => navigation.navigate("SignUp")}
-            disabled={loading}
+            disabled={isBusy}
           >
             <Text className="text-sm text-gray-700">
               Not yet on Artium?{" "}
@@ -314,7 +267,7 @@ export default function LoginScreen({ navigation }: Props) {
           <Pressable
             className="mt-4 items-center"
             onPress={handleContactSupport}
-            disabled={loading}
+            disabled={isBusy}
           >
             <Text className="text-xs text-gray-400">
               Need help?{" "}

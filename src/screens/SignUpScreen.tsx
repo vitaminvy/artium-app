@@ -12,21 +12,13 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Path } from "react-native-svg";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
-import {
-  GoogleSignin,
-  statusCodes,
-} from "@react-native-google-signin/google-signin";
-import {
-  GoogleAuthProvider,
-  signInWithCredential,
-  signOut,
-} from "firebase/auth";
+import { signOut } from "firebase/auth";
 
 import { AuthStackParamList } from "@/app/navigation/AuthStack";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
 import { useSignUp } from "@/domains/auth/hooks/useSignUp";
 import { auth } from "@/configs/firebase";
-import { upsertUserProfile } from "@/domains/auth/services/userProfile";
+import { useGoogleAuth } from "@/domains/auth/hooks/useGoogleAuth";
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, "SignUp">;
@@ -41,10 +33,17 @@ export default function SignUpScreen({ navigation }: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  
   const { signUp, loading: signUpLoading, error: signUpError, clearError } =
     useSignUp();
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [googleError, setGoogleError] = useState("");
+  
+  const { 
+    signInWithGoogle, 
+    loading: googleLoading, 
+    error: googleError,
+    clearError: clearGoogleError
+  } = useGoogleAuth();
+
   const nameInputRef = useRef<TextInput>(null);
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
@@ -53,65 +52,26 @@ export default function SignUpScreen({ navigation }: Props) {
   const errorMsg = googleError || signUpError || "";
 
   const onGoogleButtonPress = async () => {
-    setGoogleLoading(true);
     clearError();
-    setGoogleError("");
+    clearGoogleError();
     suppressNextAuth();
 
-    try {
-      await GoogleSignin.hasPlayServices({
-        showPlayServicesUpdateDialog: true,
-      });
-
-      const signInResult = await GoogleSignin.signIn();
-      if (signInResult.type !== "success" || !signInResult.data?.idToken) {
-        throw new Error("Google sign-in did not complete. Please try again.");
-      }
-
-      const { idToken, user: googleUser } = signInResult.data;
-      const googleCredential = GoogleAuthProvider.credential(idToken);
-      const userCredential = await signInWithCredential(auth, googleCredential);
-      const firebaseUser = userCredential.user;
-
-      await upsertUserProfile(firebaseUser, {
-        email: firebaseUser.email || googleUser.email,
-        displayName: firebaseUser.displayName || googleUser.name,
-        photoURL: firebaseUser.photoURL || googleUser.photo,
-      });
-
-      // Sign out to prevent auto-login and redirect to login screen
-      await signOut(auth);
-      // Wait for auth state to propagate through the system
-      await new Promise((resolve) => setTimeout(resolve, 300));
+    const user = await signInWithGoogle();
+    
+    // If sign-in failed or was cancelled, we clear the suppression
+    if (!user) {
       clearSuppressNextAuth();
-      // Reset navigation stack to ensure we're on the LogIn screen
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "LogIn" }],
-      });
-    } catch (error: any) {
-      clearSuppressNextAuth();
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        setGoogleError("Google sign-in was cancelled.");
-      } else if (error.code === statusCodes.IN_PROGRESS) {
-        setGoogleError("Google sign-in is already in progress.");
-      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        setGoogleError("Google Play Services not available.");
-      } else if (error.code === "auth/network-request-failed") {
-        setGoogleError("Network unavailable. Please check your connection and try again.");
-      } else {
-        setGoogleError(
-          `Google sign-in failed: ${error.message || "Unknown error"}`
-        );
-      }
-    } finally {
-      setGoogleLoading(false);
+    } else {
+      // Success: AuthContext will handle state change and navigation.
+      // We do NOT sign out here, unlike the email flow below.
+      // This provides a smoother UX for Google users.
+      clearSuppressNextAuth(); 
     }
   };
 
   const onEmailSignUp = async () => {
     clearError();
-    setGoogleError("");
+    clearGoogleError();
     suppressNextAuth();
     const user = await signUp(name.trim() || undefined, email, password);
     if (!user) {
