@@ -51,19 +51,7 @@ export default function SignUpScreen({ navigation }: Props) {
   const onGoogleButtonPress = async () => {
     clearError();
     clearGoogleError();
-    suppressNextAuth();
-
-    const user = await signInWithGoogle();
-
-    // If sign-in failed or was cancelled, we clear the suppression
-    if (!user) {
-      clearSuppressNextAuth();
-    } else {
-      // Success: AuthContext will handle state change and navigation.
-      // We do NOT sign out here, unlike the email flow below.
-      // This provides a smoother UX for Google users.
-      clearSuppressNextAuth();
-    }
+    await signInWithGoogle();
   };
 
   const onEmailSignUp = async () => {

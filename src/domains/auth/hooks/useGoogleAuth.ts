@@ -20,13 +20,30 @@ export function useGoogleAuth() {
         showPlayServicesUpdateDialog: true,
       });
 
-      const signInResult = await GoogleSignin.signIn();
+      const signInResult: any = await GoogleSignin.signIn();
+      let idToken: string | null = null;
+      let googleUser: any = null;
 
-      if (signInResult.type !== "success" || !signInResult.data?.idToken) {
+      if (signInResult?.type) {
+        if (signInResult.type !== "success") {
+          throw new Error("Google sign-in did not complete. Please try again.");
+        }
+        idToken = signInResult.data?.idToken ?? null;
+        googleUser = signInResult.data?.user ?? null;
+      } else {
+        idToken = signInResult?.idToken ?? null;
+        googleUser = signInResult?.user ?? null;
+      }
+
+      if (!idToken) {
+        const tokens = await GoogleSignin.getTokens().catch(() => null);
+        idToken = tokens?.idToken ?? null;
+      }
+
+      if (!idToken) {
         throw new Error("Google sign-in did not complete. Please try again.");
       }
 
-      const { idToken, user: googleUser } = signInResult.data;
       const googleCredential = GoogleAuthProvider.credential(idToken);
 
       const userCredential = await signInWithCredential(auth, googleCredential);
@@ -34,9 +51,9 @@ export function useGoogleAuth() {
 
       // Sync user profile to Firestore
       await upsertUserProfile(firebaseUser, {
-        email: firebaseUser.email || googleUser.email,
-        displayName: firebaseUser.displayName || googleUser.name,
-        photoURL: firebaseUser.photoURL || googleUser.photo,
+        email: firebaseUser.email || googleUser?.email,
+        displayName: firebaseUser.displayName || googleUser?.name,
+        photoURL: firebaseUser.photoURL || googleUser?.photo,
       });
 
       return firebaseUser;
