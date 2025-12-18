@@ -1,7 +1,5 @@
 import { updateProfile, UserCredential } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
-
-import { firestore } from "@/configs/firebase";
 import { doCreateUserWithEmailAndPassword } from "./firebaseAuth";
 import { upsertUserProfile } from "./userProfile";
 

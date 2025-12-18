@@ -16,9 +16,14 @@ import {
   GoogleSignin,
   statusCodes,
 } from "@react-native-google-signin/google-signin";
-import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
+import {
+  GoogleAuthProvider,
+  signInWithCredential,
+  signOut,
+} from "firebase/auth";
 
 import { AuthStackParamList } from "@/app/navigation/AuthStack";
+import { useAuth } from "@/domains/auth/contexts/AuthContext";
 import { useSignUp } from "@/domains/auth/hooks/useSignUp";
 import { auth } from "@/configs/firebase";
 import { upsertUserProfile } from "@/domains/auth/services/userProfile";
@@ -31,6 +36,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const HERO_HEIGHT = 280;
 
 export default function SignUpScreen({ navigation }: Props) {
+  const { suppressNextAuth, clearSuppressNextAuth } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,6 +56,7 @@ export default function SignUpScreen({ navigation }: Props) {
     setGoogleLoading(true);
     clearError();
     setGoogleError("");
+    suppressNextAuth();
 
     try {
       await GoogleSignin.hasPlayServices({
@@ -71,7 +78,19 @@ export default function SignUpScreen({ navigation }: Props) {
         displayName: firebaseUser.displayName || googleUser.name,
         photoURL: firebaseUser.photoURL || googleUser.photo,
       });
+
+      // Sign out to prevent auto-login and redirect to login screen
+      await signOut(auth);
+      // Wait for auth state to propagate through the system
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      clearSuppressNextAuth();
+      // Reset navigation stack to ensure we're on the LogIn screen
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "LogIn" }],
+      });
     } catch (error: any) {
+      clearSuppressNextAuth();
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
         setGoogleError("Google sign-in was cancelled.");
       } else if (error.code === statusCodes.IN_PROGRESS) {
@@ -96,10 +115,31 @@ export default function SignUpScreen({ navigation }: Props) {
     setGoogleError("Apple sign-in is not yet implemented.");
   };
 
-  const onEmailSignUp = () => {
+  const onEmailSignUp = async () => {
     clearError();
     setGoogleError("");
-    void signUp(name.trim() || undefined, email, password);
+    suppressNextAuth();
+    const user = await signUp(name.trim() || undefined, email, password);
+    if (!user) {
+      clearSuppressNextAuth();
+      return;
+    }
+
+    // Immediately sign out to prevent auto-login
+    try {
+      await signOut(auth);
+      // Wait for auth state to propagate through the system
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      clearSuppressNextAuth();
+      // Reset navigation stack to ensure we're on the LogIn screen
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "LogIn" }],
+      });
+    } catch (error) {
+      console.error("Failed to sign out after sign-up:", error);
+      clearSuppressNextAuth();
+    }
   };
 
   return (
