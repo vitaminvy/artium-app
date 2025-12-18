@@ -17,6 +17,16 @@ export type TabMeta = {
   opensSheet?: boolean;
 };
 
+export type UploadOption = {
+  key: "inventory" | "moment" | "invoice";
+  title: string;
+  subtitle: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  iconColor: string;
+  tint: string;
+  targetTab?: keyof TabParamList;
+};
+
 // --- Configurations ---
 
 export const TAB_META: Record<keyof TabParamList, TabMeta> = {
@@ -27,26 +37,32 @@ export const TAB_META: Record<keyof TabParamList, TabMeta> = {
   UploadOptions: { icon: "add-outline", label: "Upload", opensSheet: true },
 };
 
-export const UPLOAD_OPTIONS = [
+export const UPLOAD_OPTIONS: UploadOption[] = [
   {
+    key: "inventory",
     title: "Upload inventory",
     subtitle: "Supports GIF, PNG, JPG, JPEG, HEIC",
-    icon: "image-outline" as const,
+    icon: "image-outline",
     iconColor: "#0F172A",
     tint: "#E0F2FE",
+    targetTab: "Upload",
   },
   {
+    key: "moment",
     title: "Post a Moment",
     subtitle: "Videos of your thoughts, moments, or anything you'd like to share.",
-    icon: "videocam-outline" as const,
+    icon: "videocam-outline",
     iconColor: "#0F172A",
     tint: "#E4E9F2",
+    targetTab: "Feed",
   },
   {
+    key: "invoice",
     title: "Create an Invoice",
     subtitle: "Easily create and send invoices for your artwork sales",
-    icon: "document-text-outline" as const,
+    icon: "document-text-outline",
     iconColor: "#0F172A",
     tint: "#E9D5FF",
+    targetTab: "Upload",
   },
 ];

@@ -4,7 +4,7 @@ import { tokenStorage } from "../domains/auth/services/tokenStorage";
 import { AuthStackParamList } from "../app/navigation/AuthStack";
 
 type Props = {
-  navigation: NativeStackNavigationProp<AuthStackParamList, "SignIn">;
+  navigation: NativeStackNavigationProp<AuthStackParamList, "LogIn">;
 };
 
 export default function SignInScreen({ navigation }: Props) {

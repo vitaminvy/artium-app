@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { View, Text, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { UPLOAD_OPTIONS } from "./tabTypes";
+import { UPLOAD_OPTIONS, UploadOption } from "./tabTypes";
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
@@ -14,9 +14,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 interface UploadActionSheetProps {
   visible: boolean;
   onClose: () => void;
+  onSelectOption?: (option: UploadOption) => void;
 }
 
-export default function UploadActionSheet({ visible, onClose }: UploadActionSheetProps) {
+export default function UploadActionSheet({
+  visible,
+  onClose,
+  onSelectOption,
+}: UploadActionSheetProps) {
   const insets = useSafeAreaInsets();
   const sheetRef = useRef<BottomSheetModal>(null);
   const snapPoints = useMemo(() => ["45%", "60%"], []);
@@ -47,6 +52,15 @@ export default function UploadActionSheet({ visible, onClose }: UploadActionShee
     []
   );
 
+  const handlePress = useCallback(
+    (option: UploadOption) => {
+      Haptics.selectionAsync();
+      onSelectOption?.(option);
+      onClose();
+    },
+    [onClose, onSelectOption]
+  );
+
   return (
     <BottomSheetModal
       ref={sheetRef}
@@ -72,10 +86,7 @@ export default function UploadActionSheet({ visible, onClose }: UploadActionShee
               className={`flex-row items-center gap-4 px-5 py-5 active:bg-slate-50 ${
                 idx < UPLOAD_OPTIONS.length - 1 ? "border-b border-slate-100" : ""
               }`}
-              onPress={() => {
-                Haptics.selectionAsync();
-                onClose();
-              }}
+              onPress={() => handlePress(opt)}
             >
               <View
                 className="h-12 w-12 items-center justify-center rounded-2xl"
