@@ -1,20 +1,53 @@
 // Main Home/Feed Screen
 // src/screens/HomeScreen.tsx
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { View, Text, Pressable, Image, DevSettings } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { CompositeNavigationProp } from "@react-navigation/native";
 import ScreenHeader from "../shared/components/ScreenHeader";
 import Sidebar from "../shared/components/Sidebar";
-import { useSidebarItems } from "../shared/hooks/useSidebar";
+import { SidebarKey, useSidebarItems } from "../shared/hooks/useSidebar";
 import UnderlineHome from "../../assets/headers/underline-home.svg";
 import { tokenStorage } from "../domains/auth/services/tokenStorage";
+import { TabParamList } from "../app/navigation/tabTypes";
+import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
+
+type HomeScreenNavigationProp = CompositeNavigationProp<
+  NativeStackNavigationProp<HomeStackParamList, "HomeMain">,
+  BottomTabNavigationProp<TabParamList, "Home">
+>;
 
 export default function HomeScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<HomeScreenNavigationProp>();
   const items = useSidebarItems();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(96);
-  const activeKey = useMemo(() => items[0]?.key, [items]);
+  const [activeKey, setActiveKey] = useState<SidebarKey>(
+    items[0]?.key ?? "home"
+  );
+
+  const navigateToProfile = () => {
+    navigation.navigate("Profile");
+  };
+
+  const goToDiscoverTab = () => {
+    const tabNav = navigation.getParent()?.getParent();
+    tabNav?.navigate("Discover");
+  };
+
+  const handleSidebarSelect = (key: SidebarKey) => {
+    setSidebarOpen(false);
+    setActiveKey(key);
+
+    if (key === "profile") {
+      navigateToProfile();
+      return;
+    }
+
+    console.log("Selected sidebar item:", key);
+  };
 
   return (
     <View className="flex-1 bg-white">
@@ -37,10 +70,17 @@ export default function HomeScreen() {
         <Text className="text-lg text-gray-700">Home Screen</Text>
 
         <Pressable
-          onPress={() => navigation.navigate("Discover" as never)}
+          onPress={goToDiscoverTab}
           className="mt-6 px-6 py-3 bg-slate-900 rounded-xl"
         >
           <Text className="text-white font-semibold">Go to Discover</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={navigateToProfile}
+          className="mt-4 px-6 py-3 bg-blue-600 rounded-xl"
+        >
+          <Text className="text-white font-semibold">Test Go to Profile</Text>
         </Pressable>
 
         <Pressable
@@ -57,10 +97,7 @@ export default function HomeScreen() {
       <Sidebar
         visible={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        onSelect={(key) => {
-          setSidebarOpen(false);
-          console.log("Selected sidebar item:", key);
-        }}
+        onSelect={handleSidebarSelect}
         topOffset={headerHeight}
         activeKey={activeKey}
         items={items}
