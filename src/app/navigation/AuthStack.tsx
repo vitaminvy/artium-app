@@ -3,9 +3,11 @@ import WelcomeScreen from "../../screens/WelcomeScreen";
 import LoginScreen from "../../screens/LoginScreen";
 import SignUpScreen from "../../screens/SignUpScreen";
 import ForgotPasswordScreen from "../../screens/ForgotPasswordScreen";
+import DiscoverScreen from "../../screens/DiscoverScreen";
 
 export type AuthStackParamList = {
   Welcome: undefined;
+  Discover: undefined;
   LogIn: undefined;
   SignUp: undefined;
   ForgotPassword: undefined;
@@ -17,6 +19,7 @@ export default function AuthStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
+      <Stack.Screen name="Discover" component={DiscoverScreen} />
       <Stack.Screen name="LogIn" component={LoginScreen} />
       <Stack.Screen name="SignUp" component={SignUpScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />

@@ -5,11 +5,15 @@ import ProfileCard from "../cards/ProfileCard";
 
 type Props = {
   data: ArtistProfile[];
+  onCardPress?: (item: ArtistProfile) => void;
 };
 
-export default function DiscoverProfilesTab({ data }: Props) {
+export default function DiscoverProfilesTab({ data, onCardPress }: Props) {
   const renderItem = ({ item }: ListRenderItemInfo<ArtistProfile>) => (
-    <ProfileCard item={item} />
+    <ProfileCard
+      item={item}
+      onPress={onCardPress ? () => onCardPress(item) : undefined}
+    />
   );
 
   return (

@@ -100,7 +100,6 @@ export default function SignUpScreen({ navigation }: Props) {
       } else if (error.code === "auth/network-request-failed") {
         setGoogleError("Network unavailable. Please check your connection and try again.");
       } else {
-        console.error("Google sign-in failed:", error);
         setGoogleError(
           `Google sign-in failed: ${error.message || "Unknown error"}`
         );
@@ -108,11 +107,6 @@ export default function SignUpScreen({ navigation }: Props) {
     } finally {
       setGoogleLoading(false);
     }
-  };
-
-  const onAppleButtonPress = () => {
-    clearError();
-    setGoogleError("Apple sign-in is not yet implemented.");
   };
 
   const onEmailSignUp = async () => {
@@ -157,13 +151,6 @@ export default function SignUpScreen({ navigation }: Props) {
             resizeMode="cover"
             style={{ height: HERO_HEIGHT, width: "100%" }}
           >
-            <Pressable
-              className="absolute left-4 top-12 h-10 w-10 items-center justify-center rounded-full bg-black/45"
-              onPress={() => navigation.goBack()}
-              hitSlop={10}
-            >
-              <Ionicons name="arrow-back" size={22} color="white" />
-            </Pressable>
             <View className="absolute inset-0 bg-black/50" />
             <View className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/45 to-transparent" />
             <View className="flex-1 justify-end pb-14 px-6">
@@ -188,29 +175,22 @@ export default function SignUpScreen({ navigation }: Props) {
 
           <View className="flex-1 px-6 pb-12 pt-10 -mt-8">
           <View>
-            <Text className="text-center text-gray-900 text-base font-medium mb-5">
-              Sign up with
-            </Text>
-
-            <View className="flex-row justify-center gap-4">
+            <View className="flex-row justify-center">
               <Pressable
                 onPress={onGoogleButtonPress}
                 disabled={isBusy}
-                className="flex-1 max-w-[170px] h-[58px] border border-gray-200 rounded-full bg-white shadow-sm items-center justify-center active:bg-gray-50"
+                className="flex-1 max-w-[280px] h-[58px] border border-gray-200 rounded-full bg-white shadow-sm items-center justify-center active:bg-gray-50"
               >
                 {googleLoading ? (
                   <ActivityIndicator />
                 ) : (
-                  <Ionicons name="logo-google" size={28} color="#DB4437" />
+                  <View className="flex-row items-center justify-center gap-2">
+                    <Ionicons name="logo-google" size={26} color="#DB4437" />
+                    <Text className="text-base font-semibold text-gray-900">
+                      Sign up with Google
+                    </Text>
+                  </View>
                 )}
-              </Pressable>
-
-              <Pressable
-                onPress={onAppleButtonPress}
-                disabled={isBusy}
-                className="flex-1 max-w-[170px] h-[58px] border border-gray-200 rounded-full bg-white shadow-sm items-center justify-center active:bg-gray-50"
-              >
-                <Ionicons name="logo-apple" size={28} color="#000000" />
               </Pressable>
             </View>
           </View>
