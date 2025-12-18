@@ -6,9 +6,10 @@ import MomentCard from "../cards/MomentCard";
 
 type Props = {
   data: Artwork[];
+  onCardPress?: (item: Artwork) => void;
 };
 
-export default function DiscoverMomentsTab({ data }: Props) {
+export default function DiscoverMomentsTab({ data, onCardPress }: Props) {
   const navigation = useNavigation();
 
   return (
@@ -19,7 +20,9 @@ export default function DiscoverMomentsTab({ data }: Props) {
         <MomentCard
           item={item}
           onPress={() =>
-            (navigation.navigate as any)("ArtworkDetail", { id: item.id })
+            onCardPress
+              ? onCardPress(item)
+              : (navigation.navigate as any)("ArtworkDetail", { id: item.id })
           }
         />
       )}

@@ -51,7 +51,7 @@ export default function WelcomeScreen({ navigation }: Props) {
         </Text>
 
         <Pressable
-          onPress={() => navigation.navigate("SignUp")}
+          onPress={() => navigation.navigate("Discover")}
           style={{
             backgroundColor: "white",
             padding: 15,

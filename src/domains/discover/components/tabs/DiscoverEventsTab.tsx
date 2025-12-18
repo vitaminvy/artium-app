@@ -5,11 +5,15 @@ import EventCard from "../cards/EventCard";
 
 type Props = {
   data: EventItem[];
+  onCardPress?: (item: EventItem) => void;
 };
 
-export default function DiscoverEventsTab({ data }: Props) {
+export default function DiscoverEventsTab({ data, onCardPress }: Props) {
   const renderItem = ({ item }: ListRenderItemInfo<EventItem>) => (
-    <EventCard item={item} />
+    <EventCard
+      item={item}
+      onPress={onCardPress ? () => onCardPress(item) : undefined}
+    />
   );
 
   return (

@@ -6,16 +6,19 @@ import ArtworkCard from "../cards/ArtworkCard";
 
 type Props = {
   data: Artwork[];
+  onCardPress?: (item: Artwork) => void;
 };
 
-export default function DiscoverArtworksTab({ data }: Props) {
+export default function DiscoverArtworksTab({ data, onCardPress }: Props) {
   const navigation = useNavigation();
 
   const renderItem = ({ item }: ListRenderItemInfo<Artwork>) => (
     <ArtworkCard
       item={item}
       onPress={() =>
-        (navigation.navigate as any)("ArtworkDetail", { id: item.id })
+        onCardPress
+          ? onCardPress(item)
+          : (navigation.navigate as any)("ArtworkDetail", { id: item.id })
       }
     />
   );

@@ -18,6 +18,7 @@ type Props = {
   radius: string;
   onOpenLocationSheet: () => void;
   onSwitchTab: (tab: DiscoverTab) => void;
+  onCardPress?: () => void;
 };
 
 export default function DiscoverNearbyTab({
@@ -28,6 +29,7 @@ export default function DiscoverNearbyTab({
   radius,
   onOpenLocationSheet,
   onSwitchTab,
+  onCardPress,
 }: Props) {
   const navigation = useNavigation();
 
@@ -35,16 +37,20 @@ export default function DiscoverNearbyTab({
   const renderArtwork = ({ item }: ListRenderItemInfo<Artwork>) => (
     <ArtworkCard
       item={item}
-      onPress={() => (navigation.navigate as any)("ArtworkDetail", { id: item.id })}
+      onPress={() =>
+        onCardPress
+          ? onCardPress()
+          : (navigation.navigate as any)("ArtworkDetail", { id: item.id })
+      }
     />
   );
   
   const renderProfile = ({ item }: ListRenderItemInfo<ArtistProfile>) => (
-    <ProfileCard item={item} />
+    <ProfileCard item={item} onPress={onCardPress} />
   );
 
   const renderEvent = ({ item }: ListRenderItemInfo<EventItem>) => (
-    <EventCard item={item} />
+    <EventCard item={item} onPress={onCardPress} />
   );
 
   return (
