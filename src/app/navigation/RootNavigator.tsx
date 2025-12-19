@@ -3,7 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import ArtworkDetailScreen from "../../screens/ArtworkDetailScreen";
-import QuickSellScreen from "../../screens/QuickSellScreen";
+import UploadInventoryScreen from "../../screens/UploadInventoryScreen";
 import TabNavigator from "./TabNavigator";
 import { TabParamList } from "./tabTypes";
 import AuthStack from "./AuthStack";
@@ -40,7 +40,7 @@ function AppStack() {
         component={ArtworkDetailScreen}
         options={{ title: "Artwork Detail" }}
       />
-      <Stack.Screen name="Upload" component={QuickSellScreen} />
+      <Stack.Screen name="Upload" component={UploadInventoryScreen} />
     </Stack.Navigator>
   );
 }

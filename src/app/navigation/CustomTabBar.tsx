@@ -14,7 +14,10 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
   const insets = useSafeAreaInsets();
   const [showUploadSheet, setShowUploadSheet] = useState(false);
   const translateY = useRef(new Animated.Value(0)).current;
-  const { hidden, setHeight, height } = useTabBarVisibility();
+  const { hidden, setHeight, height, setLastTab } = useTabBarVisibility();
+  const previousTabRef = useRef<string | null>(null);
+
+  const currentTab = state.routes[state.index].name;
 
   useEffect(() => {
     Animated.timing(translateY, {
@@ -23,6 +26,20 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
       useNativeDriver: true,
     }).start();
   }, [hidden, translateY, height]);
+
+  useEffect(() => {
+    // Track the last non-upload tab so we can restore it when exiting upload flows
+    const prev = previousTabRef.current;
+    if (prev && currentTab === "Upload") {
+      setLastTab(prev);
+    }
+    if (currentTab !== prev) {
+      if (currentTab !== "Upload") {
+        setLastTab(currentTab);
+      }
+      previousTabRef.current = currentTab;
+    }
+  }, [currentTab, setLastTab]);
 
   const focusedOptions = descriptors[state.routes[state.index].key]?.options;
   if (

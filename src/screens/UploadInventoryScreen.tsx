@@ -1,0 +1,198 @@
+import React, { useCallback } from "react";
+import {
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
+
+import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
+import { useUploadInventory } from "../domains/inventory/hooks/useUploadInventory";
+import { StepIndicator } from "../domains/inventory/components/ui/StepIndicator";
+import { UploadImagesStep } from "../domains/inventory/components/UploadImagesStep";
+import { ArtworkDetailsStep } from "../domains/inventory/components/ArtworkDetailsStep";
+import { STEPS } from "../domains/inventory/constants";
+
+export default function UploadInventoryScreen() {
+  const insets = useSafeAreaInsets();
+  const { setHidden } = useTabBarVisibility();
+
+  const {
+    step,
+    setStep,
+    images,
+    details,
+    setDetails,
+    showExitConfirm,
+    setShowExitConfirm,
+    canContinue,
+    canSubmit,
+    handlePickImages,
+    handleRemoveImage,
+    handleCancel,
+    handleSubmit,
+    resetForm,
+    goToPreviousTab,
+  } = useUploadInventory();
+
+  // Hide tab bar when this screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      setHidden(true);
+      return () => setHidden(false);
+    }, [setHidden])
+  );
+
+  return (
+    <View className="flex-1 bg-[#F8FAFC]">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        className="flex-1"
+      >
+        <View
+          className="px-6 pb-2 items-center"
+          style={{ paddingTop: Math.max(insets.top, 24) }}
+        >
+          <Text className="text-2xl font-semibold text-slate-900 text-center">
+            Upload Artwork
+          </Text>
+          <Text className="text-sm text-slate-500 mt-1 text-center">
+            Add images and details to your inventory listing.
+          </Text>
+        </View>
+
+        <StepIndicator step={step} steps={STEPS} />
+
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{
+            paddingBottom: 120 + insets.bottom,
+          }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {step === 0 ? (
+            <UploadImagesStep
+              images={images}
+              onPickImages={handlePickImages}
+              onRemoveImage={handleRemoveImage}
+            />
+          ) : (
+            <ArtworkDetailsStep
+              details={details}
+              onChangeDetails={setDetails}
+            />
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* Footer Actions */}
+      <View
+        className="border-t border-slate-200 bg-white px-6 pt-4"
+        style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+      >
+        <View className="flex-row items-center gap-3">
+          <Pressable
+            onPress={handleCancel}
+            className="flex-1 rounded-full border border-slate-200 py-3 items-center active:opacity-80"
+          >
+            <Text className="text-sm font-semibold text-slate-600">Cancel</Text>
+          </Pressable>
+
+          {step === 0 ? (
+            <Pressable
+              onPress={() => setStep(1)}
+              disabled={!canContinue}
+              className={`flex-1 rounded-full py-3 items-center ${
+                canContinue ? "bg-[#0B73FF]" : "bg-slate-200"
+              }`}
+            >
+              <Text
+                className={`text-sm font-semibold ${
+                  canContinue ? "text-white" : "text-slate-500"
+                }`}
+              >
+                Continue
+              </Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={handleSubmit}
+              disabled={!canSubmit}
+              className={`flex-1 rounded-full py-3 items-center ${
+                canSubmit ? "bg-[#0B73FF]" : "bg-slate-200"
+              }`}
+            >
+              <Text
+                className={`text-sm font-semibold ${
+                  canSubmit ? "text-white" : "text-slate-500"
+                }`}
+              >
+                Submit
+              </Text>
+            </Pressable>
+          )}
+        </View>
+      </View>
+
+      {/* Exit Confirmation Modal */}
+      <Modal
+        visible={showExitConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowExitConfirm(false)}
+      >
+        <View className="flex-1 bg-black/40 items-center justify-center px-6">
+          <View className="w-full rounded-[28px] bg-white p-6">
+            <View className="flex-row justify-end">
+              <Pressable
+                onPress={() => setShowExitConfirm(false)}
+                hitSlop={12}
+                className="h-10 w-10 items-center justify-center rounded-full"
+              >
+                <Ionicons name="close" size={22} color="#0F172A" />
+              </Pressable>
+            </View>
+
+            <View className="mt-2 mb-5">
+              <Text className="text-2xl font-bold text-slate-900 text-center">
+                Are you sure{"\n"}you want to exit?
+              </Text>
+              <Text className="mt-3 text-base text-slate-500 text-center">
+                All your process will be lost if you exit the uploading process now.
+              </Text>
+            </View>
+
+            <View className="gap-3">
+              <Pressable
+                onPress={() => {
+                  setShowExitConfirm(false);
+                  resetForm();
+                  goToPreviousTab();
+                }}
+                className="rounded-full border border-rose-500 py-3 items-center active:opacity-80"
+              >
+                <Text className="text-base font-semibold text-rose-500">
+                  Exit uploading
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setShowExitConfirm(false)}
+                className="rounded-full border border-slate-200 py-3 items-center active:opacity-80"
+              >
+                <Text className="text-base font-semibold text-slate-700">
+                  Continue uploading
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
