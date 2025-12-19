@@ -141,8 +141,9 @@ export function useUploadInventory() {
   const handleSubmit = useCallback(() => {
     if (!canSubmit) return;
     // TODO: Add API call here
-    Alert.alert("Listing saved", "Your inventory listing is ready to review.");
-  }, [canSubmit]);
+    Alert.alert("Listing saved", "Returning to Home.");
+    navigation.navigate("Home");
+  }, [canSubmit, navigation]);
 
   return {
     step,

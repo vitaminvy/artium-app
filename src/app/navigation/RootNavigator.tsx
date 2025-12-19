@@ -40,7 +40,11 @@ function AppStack() {
         component={ArtworkDetailScreen}
         options={{ title: "Artwork Detail" }}
       />
-      <Stack.Screen name="Upload" component={UploadInventoryScreen} />
+      <Stack.Screen
+        name="Upload"
+        component={UploadInventoryScreen}
+        options={{ headerShown: false }}
+      />
     </Stack.Navigator>
   );
 }
