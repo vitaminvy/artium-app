@@ -10,6 +10,7 @@ type ScreenHeaderProps = {
   title: string;
   badgeLabel?: string;
   onPressBadge?: () => void;
+  showBadge?: boolean;
   actionType?: HeaderAction;
   onPressAction?: () => void;
   accentColor?: string;
@@ -29,6 +30,7 @@ export default function ScreenHeader({
   title,
   badgeLabel = "Blog",
   onPressBadge,
+  showBadge = true,
   actionType,
   onPressAction,
   accentColor = "#9BE163",
@@ -80,16 +82,18 @@ export default function ScreenHeader({
           </View>
 
           <View className="flex-row items-center" style={{ columnGap: 14 }}>
-            <Pressable
-              onPress={onPressBadge}
-              accessibilityRole="button"
-              hitSlop={6}
-              className="px-5 py-2 rounded-full border border-slate-200 bg-white shadow-[0px_6px_12px_rgba(0,0,0,0.05)] flex-row items-center justify-center"
-            >
-              <Text className="text-[14px] font-semibold text-slate-800">
-                {badgeLabel}
-              </Text>
-            </Pressable>
+            {showBadge ? (
+              <Pressable
+                onPress={onPressBadge}
+                accessibilityRole="button"
+                hitSlop={6}
+                className="px-5 py-2 rounded-full border border-slate-200 bg-white shadow-[0px_6px_12px_rgba(0,0,0,0.05)] flex-row items-center justify-center"
+              >
+                <Text className="text-[14px] font-semibold text-slate-800">
+                  {badgeLabel}
+                </Text>
+              </Pressable>
+            ) : null}
 
             {actionType ? (
               <Pressable

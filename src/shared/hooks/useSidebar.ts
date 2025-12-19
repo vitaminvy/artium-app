@@ -67,8 +67,7 @@ const ITEMS: SidebarItem[] = [
     key: "inventory",
     label: "Inventory",
     icon: "image-outline",
-    subtitle: "Leaving the app and redirecting to the web version",
-    trailing: "external",
+    subtitle: "Manage artworks and artists",
   },
   {
     key: "sales",
