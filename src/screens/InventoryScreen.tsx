@@ -72,6 +72,7 @@ export default function InventoryScreen() {
   } = useInventoryList();
 
   const screenPadding = 20;
+  const gridCardWidth = (Dimensions.get("window").width - screenPadding * 2 - 12) / 2;
   const rootNav = navigation.getParent?.()?.getParent?.() ?? navigation;
   const openUpload = () => {
     rootNav.navigate("Upload");
@@ -256,11 +257,24 @@ export default function InventoryScreen() {
               <InventoryEmptyState />
             )
           ) : artists.length ? (
-            <View className="gap-3">
-              {artists.map((item) => (
-                <ArtistCard key={item.id} item={item} />
-              ))}
-            </View>
+            viewMode === "list" ? (
+              <View className="gap-3">
+                {artists.map((item) => (
+                  <ArtistCard key={item.id} item={item} variant="list" />
+                ))}
+              </View>
+            ) : (
+              <View className="flex-row flex-wrap gap-3">
+                {artists.map((item) => (
+                  <ArtistCard
+                    key={item.id}
+                    item={item}
+                    variant="grid"
+                    width={gridCardWidth}
+                  />
+                ))}
+              </View>
+            )
           ) : (
             <InventoryEmptyState />
           )}
