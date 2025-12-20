@@ -2,8 +2,11 @@ import { useCallback, useMemo, useState } from "react";
 import { ActionSheetIOS, Alert, Platform } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useNavigation } from "@react-navigation/native";
-import { InventoryDetails, InventoryImage, MediaSource } from "../types";
+import { InventoryDetails, InventoryImage, MediaSource, Artwork } from "../types";
 import { INITIAL_DETAILS, MAX_IMAGES } from "../constants";
+import { FieldKey } from "../components/ArtworkDetailsStep";
+
+const DEFAULT_UPLOAD_FOLDER = "Unsorted";
 
 export function useUploadInventory() {
   const navigation = useNavigation<any>();
@@ -11,6 +14,9 @@ export function useUploadInventory() {
   const [images, setImages] = useState<InventoryImage[]>([]);
   const [details, setDetails] = useState<InventoryDetails>(INITIAL_DETAILS);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [scrollToError, setScrollToError] = useState(false);
 
   // Computed states
   const canContinue = images.length > 0;
@@ -18,6 +24,40 @@ export function useUploadInventory() {
     () => details.title.trim().length > 0 && images.length > 0,
     [details.title, images.length]
   );
+
+  const validateDetails = useCallback(() => {
+    const nextErrors: Partial<Record<FieldKey, string>> = {};
+    const require = (cond: boolean, key: FieldKey, message: string) => {
+      if (!cond) nextErrors[key] = message;
+    };
+
+    require(details.title.trim().length > 0, "title", "Please enter a title.");
+    require(details.description.trim().length > 0, "description", "Please add a description.");
+    require(details.year.trim().length > 0, "year", "Year is required.");
+    require(details.edition.trim().length > 0, "edition", "Edition is required.");
+    const dimsMissing =
+      !details.dimensions.height.trim().length ||
+      !details.dimensions.width.trim().length ||
+      !details.dimensions.depth.trim().length;
+    if (dimsMissing) {
+      nextErrors["dimensions.height"] = "Dimensions are required.";
+    }
+    require(details.weight.value.trim().length > 0, "weight.value", "Weight is required.");
+    require(details.materials.trim().length > 0, "materials", "Materials are required.");
+    require(details.price.trim().length > 0, "price", "Price is required.");
+    require(details.quantity.trim().length > 0, "quantity", "Quantity is required.");
+
+    return nextErrors;
+  }, [details]);
+
+  const clearFieldError = useCallback((key: FieldKey) => {
+    setErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
 
   // --- Logic for Image Picking ---
   const chooseSource = useCallback(async (): Promise<MediaSource | null> => {
@@ -119,6 +159,9 @@ export function useUploadInventory() {
     setStep(0);
     setImages([]);
     setDetails(INITIAL_DETAILS);
+    setSelectedTags([]);
+    setErrors({});
+    setScrollToError(false);
   }, []);
 
   const goToPreviousTab = useCallback(() => {
@@ -138,11 +181,65 @@ export function useUploadInventory() {
     setShowExitConfirm(true);
   }, [goToPreviousTab, images.length]);
 
+  const handleNextFromDetails = useCallback(() => {
+    const validation = validateDetails();
+    if (Object.keys(validation).length > 0) {
+      setErrors(validation);
+      setStep(1);
+      setScrollToError(true);
+      return false;
+    }
+    setErrors({});
+    setScrollToError(false);
+    setStep(2);
+    return true;
+  }, [validateDetails]);
+
+  const handleToggleTag = useCallback((tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  }, []);
+
   const handleSubmit = useCallback(() => {
-    if (!canSubmit) return;
-    // TODO: Add API call here
-    Alert.alert("Listing saved", "Your inventory listing is ready to review.");
-  }, [canSubmit]);
+    const validation = validateDetails();
+    if (Object.keys(validation).length > 0) {
+      setErrors(validation);
+      setStep(1);
+      setScrollToError(true);
+      return;
+    }
+    setErrors({});
+    setScrollToError(false);
+    const yearNumber = parseInt(details.year, 10);
+    const dimensionText = `${details.dimensions.height || "?"} x ${
+      details.dimensions.width || "?"
+    } ${details.dimensions.unit}`;
+    const newArtwork: Artwork = {
+      id: `aw-${Date.now()}`,
+      title: details.title || "Untitled",
+      artist: "Unknown Artist",
+      year: Number.isFinite(yearNumber) ? yearNumber : new Date().getFullYear(),
+      price: details.price ? `$${details.price}` : "Price upon request",
+      status: "Available",
+      folder: DEFAULT_UPLOAD_FOLDER,
+      thumbnail: images[0]?.uri ?? "",
+      images: images.length ? images.map((img) => img.uri) : undefined,
+      dimensions: dimensionText,
+    };
+
+    navigation.navigate("Tabs", {
+      screen: "Home",
+      params: {
+        screen: "Inventory",
+        params: { newArtwork },
+      },
+    });
+    setStep(0);
+    setImages([]);
+    setDetails(INITIAL_DETAILS);
+    setSelectedTags([]);
+  }, [validateDetails, details, images, navigation]);
 
   return {
     step,
@@ -157,8 +254,16 @@ export function useUploadInventory() {
     handlePickImages,
     handleRemoveImage,
     handleCancel,
+    handleNextFromDetails,
     handleSubmit,
     resetForm,
     goToPreviousTab,
+    errors,
+    setErrors,
+    clearFieldError,
+    scrollToError,
+    setScrollToError,
+    selectedTags,
+    handleToggleTag,
   };
 }

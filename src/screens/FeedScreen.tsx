@@ -22,11 +22,13 @@ import Animated, {
   withTiming,
   interpolate,
   useAnimatedScrollHandler,
+  runOnJS,
 } from "react-native-reanimated";
 import PostMomentSheet from "../domains/feed/components/PostMomentSheet";
 import { usePostMoment } from "../domains/feed/hooks/usePostMoment";
 import ImageViewing from "react-native-image-viewing";
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
+import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 
 export default function FeedScreen() {
   const navigation =
@@ -66,6 +68,7 @@ export default function FeedScreen() {
   const TAB_HEIGHT = 52;
   const tabsAnim = useSharedValue(1);
   const lastOffset = useSharedValue(0);
+  const { setHidden } = useTabBarVisibility();
 
   const openReshare = React.useCallback((post: FeedPost) => {
     setSelectedPost(post);
@@ -106,12 +109,21 @@ export default function FeedScreen() {
       // Nhạy hơn cho cuộn chậm: ngưỡng nhỏ và auto-ẩn khi đã vượt xa
       if ((diff > 6 && y > 16) || y > 120) {
         tabsAnim.value = withTiming(0, { duration: 140 });
+        runOnJS(setHidden)(true);
       } else if (diff < -6) {
         tabsAnim.value = withTiming(1, { duration: 140 });
+        runOnJS(setHidden)(false);
       }
       lastOffset.value = y;
     },
   });
+
+  useEffect(
+    () => () => {
+      setHidden(false);
+    },
+    [setHidden]
+  );
 
   const tabAnimatedStyle = useAnimatedStyle(() => ({
     height: interpolate(tabsAnim.value, [0, 1], [0, TAB_HEIGHT]),

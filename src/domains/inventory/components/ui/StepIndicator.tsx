@@ -19,13 +19,13 @@ export function StepIndicator({ step, steps }: StepIndicatorProps) {
           />
         ))}
       </View>
-      <View className="mt-3 flex-row justify-center gap-8">
+      <View className="mt-3 flex-row justify-between">
         {steps.map((label, index) => {
           const isActive = index === step;
           return (
             <Text
               key={`${label}-label`}
-              className={`text-[15px] font-semibold ${
+              className={`text-[15px] font-semibold text-center flex-1 ${
                 isActive ? "text-slate-900" : "text-slate-400"
               }`}
             >

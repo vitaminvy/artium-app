@@ -9,6 +9,7 @@ type LabeledFieldProps = {
   keyboardType?: "default" | "numeric";
   multiline?: boolean;
   onChangeText: (value: string) => void;
+  inputRef?: (node: TextInput | null) => void;
 };
 
 export function LabeledField({
@@ -19,6 +20,7 @@ export function LabeledField({
   keyboardType,
   multiline,
   onChangeText,
+  inputRef,
 }: LabeledFieldProps) {
   return (
     <View className="gap-3">
@@ -26,6 +28,7 @@ export function LabeledField({
         {label}
       </Text>
       <TextInput
+        ref={inputRef}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}

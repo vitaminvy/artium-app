@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import {
   Modal,
   KeyboardAvoidingView,
@@ -16,7 +16,8 @@ import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import { useUploadInventory } from "../domains/inventory/hooks/useUploadInventory";
 import { StepIndicator } from "../domains/inventory/components/ui/StepIndicator";
 import { UploadImagesStep } from "../domains/inventory/components/UploadImagesStep";
-import { ArtworkDetailsStep } from "../domains/inventory/components/ArtworkDetailsStep";
+import { ArtworkDetailsStep, FieldKey } from "../domains/inventory/components/ArtworkDetailsStep";
+import { TagsStep } from "../domains/inventory/components/TagsStep";
 import { STEPS } from "../domains/inventory/constants";
 
 export default function UploadInventoryScreen() {
@@ -36,10 +37,19 @@ export default function UploadInventoryScreen() {
     handlePickImages,
     handleRemoveImage,
     handleCancel,
+    handleNextFromDetails,
     handleSubmit,
     resetForm,
     goToPreviousTab,
+    errors,
+    clearFieldError,
+    scrollToError,
+    setScrollToError,
+    selectedTags,
+    handleToggleTag,
   } = useUploadInventory();
+  const scrollRef = useRef<ScrollView>(null);
+  const fieldPositions = useRef<Record<FieldKey, number>>({} as any);
 
   // Hide tab bar when this screen is focused
   useFocusEffect(
@@ -48,6 +58,18 @@ export default function UploadInventoryScreen() {
       return () => setHidden(false);
     }, [setHidden])
   );
+
+  useEffect(() => {
+    if (!scrollToError || !errors || !scrollRef.current) return;
+    const firstKey = Object.keys(errors)[0] as FieldKey | undefined;
+    if (firstKey) {
+      const y = fieldPositions.current[firstKey];
+      if (typeof y === "number") {
+        scrollRef.current.scrollTo({ y: Math.max(y - 20, 0), animated: true });
+      }
+    }
+    setScrollToError(false);
+  }, [errors, scrollToError, setScrollToError]);
 
   return (
     <View className="flex-1 bg-[#F8FAFC]">
@@ -70,9 +92,10 @@ export default function UploadInventoryScreen() {
         <StepIndicator step={step} steps={STEPS} />
 
         <ScrollView
+          ref={scrollRef}
           className="flex-1"
           contentContainerStyle={{
-            paddingBottom: 120 + insets.bottom,
+            paddingBottom: 20 + insets.bottom,
           }}
           keyboardShouldPersistTaps="handled"
         >
@@ -82,10 +105,24 @@ export default function UploadInventoryScreen() {
               onPickImages={handlePickImages}
               onRemoveImage={handleRemoveImage}
             />
-          ) : (
+          ) : step === 1 ? (
             <ArtworkDetailsStep
               details={details}
               onChangeDetails={setDetails}
+              errors={errors}
+              onFieldLayout={(key, y) => {
+                fieldPositions.current[key] = y;
+              }}
+              onFieldChange={(key) => {
+                if (errors?.[key]) {
+                  clearFieldError(key);
+                }
+              }}
+            />
+          ) : (
+            <TagsStep
+              selectedTags={selectedTags}
+              onToggleTag={handleToggleTag}
             />
           )}
         </ScrollView>
@@ -97,12 +134,25 @@ export default function UploadInventoryScreen() {
         style={{ paddingBottom: Math.max(insets.bottom, 16) }}
       >
         <View className="flex-row items-center gap-3">
-          <Pressable
-            onPress={handleCancel}
-            className="flex-1 rounded-full border border-slate-200 py-3 items-center active:opacity-80"
-          >
-            <Text className="text-sm font-semibold text-slate-600">Cancel</Text>
-          </Pressable>
+          {step === 0 ? (
+            <Pressable
+              onPress={handleCancel}
+              className="flex-1 rounded-full border border-slate-200 py-3 items-center active:opacity-80"
+            >
+              <Text className="text-sm font-semibold text-slate-600">
+                Cancel
+              </Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => setStep((prev) => Math.max(prev - 1, 0))}
+              className="flex-1 rounded-full border border-slate-200 py-3 items-center active:opacity-80"
+            >
+              <Text className="text-sm font-semibold text-slate-600">
+                Previous
+              </Text>
+            </Pressable>
+          )}
 
           {step === 0 ? (
             <Pressable
@@ -119,6 +169,13 @@ export default function UploadInventoryScreen() {
               >
                 Continue
               </Text>
+            </Pressable>
+          ) : step === 1 ? (
+            <Pressable
+              onPress={handleNextFromDetails}
+              className="flex-1 rounded-full py-3 items-center bg-[#0B73FF]"
+            >
+              <Text className="text-sm font-semibold text-white">Next</Text>
             </Pressable>
           ) : (
             <Pressable
