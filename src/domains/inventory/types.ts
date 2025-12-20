@@ -47,6 +47,8 @@ export type Artwork = {
   thumbnail: string;
   dimensions: string;
   images?: string[];
+  tags?: string[];
+  details?: InventoryDetails;
 };
 
 export type Artist = {

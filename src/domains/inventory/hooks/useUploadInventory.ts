@@ -225,6 +225,8 @@ export function useUploadInventory() {
       folder: DEFAULT_UPLOAD_FOLDER,
       thumbnail: images[0]?.uri ?? "",
       images: images.length ? images.map((img) => img.uri) : undefined,
+      tags: selectedTags.length ? selectedTags : undefined,
+      details,
       dimensions: dimensionText,
     };
 
@@ -239,7 +241,7 @@ export function useUploadInventory() {
     setImages([]);
     setDetails(INITIAL_DETAILS);
     setSelectedTags([]);
-  }, [validateDetails, details, images, navigation]);
+  }, [validateDetails, details, images, navigation, selectedTags]);
 
   return {
     step,

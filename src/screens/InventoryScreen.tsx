@@ -389,7 +389,7 @@ export default function InventoryScreen() {
             setMoveTargetId(null);
             setPickerMode("filter");
           } else {
-            setActiveFolder(name);
+            setActiveFolder((prev) => (prev === name ? null : name));
           }
           setShowFolderPicker(false);
         }}

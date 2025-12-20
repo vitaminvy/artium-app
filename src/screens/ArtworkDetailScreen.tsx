@@ -72,6 +72,33 @@ export default function ArtworkDetailScreen() {
         inventoryArtwork.images && inventoryArtwork.images.length > 0
           ? inventoryArtwork.images
           : [inventoryArtwork.thumbnail];
+      const tags =
+        inventoryArtwork.tags && inventoryArtwork.tags.length > 0
+          ? inventoryArtwork.tags
+          : [];
+      const detailSource = inventoryArtwork.details;
+      const parseNum = (value: string | undefined, fallback: number) => {
+        const parsed = parseFloat(value ?? "");
+        return Number.isFinite(parsed) ? parsed : fallback;
+      };
+      const parseIntSafe = (value: string | undefined, fallback: number) => {
+        const parsed = parseInt(value ?? "", 10);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      };
+      const dimension = detailSource
+        ? {
+            h: parseNum(detailSource.dimensions.height, fallbackDetail.dimension.h),
+            w: parseNum(detailSource.dimensions.width, fallbackDetail.dimension.w),
+            d: parseNum(detailSource.dimensions.depth, fallbackDetail.dimension.d),
+            unit: detailSource.dimensions.unit,
+          }
+        : fallbackDetail.dimension;
+      const weightLabel = detailSource?.weight.value
+        ? `${detailSource.weight.value} ${detailSource.weight.unit}`
+        : fallbackDetail.weight;
+      const quantity = detailSource?.quantity
+        ? parseIntSafe(detailSource.quantity, 0)
+        : 0;
       return {
         ...fallbackDetail,
         id: inventoryArtwork.id,
@@ -82,6 +109,17 @@ export default function ArtworkDetailScreen() {
           verified: false,
         },
         price: inventoryArtwork.price ?? fallbackDetail.price,
+        availabilityNote: quantity > 0 ? `Only ${quantity} available. Get yours now!` : fallbackDetail.availabilityNote,
+        dimension,
+        weight: weightLabel,
+        year: detailSource?.year
+          ? parseIntSafe(detailSource.year, inventoryArtwork.year ?? fallbackDetail.year)
+          : inventoryArtwork.year ?? fallbackDetail.year,
+        edition: detailSource?.edition
+          ? parseIntSafe(detailSource.edition, fallbackDetail.edition)
+          : fallbackDetail.edition,
+        materials: detailSource?.materials || fallbackDetail.materials,
+        tags,
         images,
       };
     }

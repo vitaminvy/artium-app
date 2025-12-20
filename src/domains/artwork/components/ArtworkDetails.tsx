@@ -55,23 +55,25 @@ export default function ArtworkDetails({ detail }: ArtworkDetailsProps) {
       </View>
 
       {/* Tags */}
-      <View className="px-4 py-2">
-        <Text className="text-sm font-semibold text-slate-600 mb-3">
-          ABOUT THE ARTWORK
-        </Text>
-        <View className="flex-row flex-wrap gap-3">
-          {detail.tags.map((tag) => (
-            <View
-              key={tag}
-              className="px-4 py-2 rounded-full border border-slate-300"
-            >
-              <Text className="text-sm font-semibold text-slate-800 uppercase">
-                {tag}
-              </Text>
-            </View>
-          ))}
+      {detail.tags.length ? (
+        <View className="px-4 py-2">
+          <Text className="text-sm font-semibold text-slate-600 mb-3">
+            ABOUT THE ARTWORK
+          </Text>
+          <View className="flex-row flex-wrap gap-3">
+            {detail.tags.map((tag) => (
+              <View
+                key={tag}
+                className="px-4 py-2 rounded-full border border-slate-300"
+              >
+                <Text className="text-sm font-semibold text-slate-800 uppercase">
+                  {tag}
+                </Text>
+              </View>
+            ))}
+          </View>
         </View>
-      </View>
+      ) : null}
 
       {/* Dimensions & Materials */}
       <View className="px-4 py-6">
