@@ -378,6 +378,8 @@ export default function InventoryScreen() {
           setShowFolderPicker(false);
           setMoveTargetId(null);
           setPickerMode("filter");
+          setCreatingFolder(false);
+          setNewFolderName("");
         }}
         folders={folders}
         activeFolder={activeFolder}

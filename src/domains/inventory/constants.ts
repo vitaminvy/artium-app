@@ -1,6 +1,6 @@
 import { InventoryDetails } from "./types";
 
-export const STEPS = ["Upload images", "Artwork details", "Tags & Moments"];
+export const STEPS = ["Upload images", "Artwork details", "Artwork Tags"];
 export const MAX_IMAGES = 5;
 
 export const INITIAL_DETAILS: InventoryDetails = {
