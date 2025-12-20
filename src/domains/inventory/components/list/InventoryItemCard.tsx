@@ -42,7 +42,7 @@ export function InventoryItemCard({
       <Pressable
         onPress={onPress}
         onLongPress={onLongPress}
-        className={`flex-row gap-3 rounded-2xl border bg-white p-3 ${
+        className={`flex-row items-center gap-3 rounded-2xl border bg-white p-3 ${
           isSelected ? "border-[#0B73FF] shadow-sm" : "border-slate-200"
         }`}
       >
