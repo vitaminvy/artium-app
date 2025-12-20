@@ -15,6 +15,7 @@ export function useUploadInventory() {
   const [details, setDetails] = useState<InventoryDetails>(INITIAL_DETAILS);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [scrollToError, setScrollToError] = useState(false);
 
   // Computed states
@@ -158,6 +159,9 @@ export function useUploadInventory() {
     setStep(0);
     setImages([]);
     setDetails(INITIAL_DETAILS);
+    setSelectedTags([]);
+    setErrors({});
+    setScrollToError(false);
   }, []);
 
   const goToPreviousTab = useCallback(() => {
@@ -176,6 +180,26 @@ export function useUploadInventory() {
     }
     setShowExitConfirm(true);
   }, [goToPreviousTab, images.length]);
+
+  const handleNextFromDetails = useCallback(() => {
+    const validation = validateDetails();
+    if (Object.keys(validation).length > 0) {
+      setErrors(validation);
+      setStep(1);
+      setScrollToError(true);
+      return false;
+    }
+    setErrors({});
+    setScrollToError(false);
+    setStep(2);
+    return true;
+  }, [validateDetails]);
+
+  const handleToggleTag = useCallback((tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  }, []);
 
   const handleSubmit = useCallback(() => {
     const validation = validateDetails();
@@ -214,6 +238,7 @@ export function useUploadInventory() {
     setStep(0);
     setImages([]);
     setDetails(INITIAL_DETAILS);
+    setSelectedTags([]);
   }, [validateDetails, details, images, navigation]);
 
   return {
@@ -229,6 +254,7 @@ export function useUploadInventory() {
     handlePickImages,
     handleRemoveImage,
     handleCancel,
+    handleNextFromDetails,
     handleSubmit,
     resetForm,
     goToPreviousTab,
@@ -237,5 +263,7 @@ export function useUploadInventory() {
     clearFieldError,
     scrollToError,
     setScrollToError,
+    selectedTags,
+    handleToggleTag,
   };
 }
