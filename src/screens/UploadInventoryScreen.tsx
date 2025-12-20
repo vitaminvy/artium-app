@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import {
   Modal,
   KeyboardAvoidingView,
@@ -16,7 +16,7 @@ import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import { useUploadInventory } from "../domains/inventory/hooks/useUploadInventory";
 import { StepIndicator } from "../domains/inventory/components/ui/StepIndicator";
 import { UploadImagesStep } from "../domains/inventory/components/UploadImagesStep";
-import { ArtworkDetailsStep } from "../domains/inventory/components/ArtworkDetailsStep";
+import { ArtworkDetailsStep, FieldKey } from "../domains/inventory/components/ArtworkDetailsStep";
 import { STEPS } from "../domains/inventory/constants";
 
 export default function UploadInventoryScreen() {
@@ -39,7 +39,13 @@ export default function UploadInventoryScreen() {
     handleSubmit,
     resetForm,
     goToPreviousTab,
+    errors,
+    clearFieldError,
+    scrollToError,
+    setScrollToError,
   } = useUploadInventory();
+  const scrollRef = useRef<ScrollView>(null);
+  const fieldPositions = useRef<Record<FieldKey, number>>({} as any);
 
   // Hide tab bar when this screen is focused
   useFocusEffect(
@@ -48,6 +54,18 @@ export default function UploadInventoryScreen() {
       return () => setHidden(false);
     }, [setHidden])
   );
+
+  useEffect(() => {
+    if (!scrollToError || !errors || !scrollRef.current) return;
+    const firstKey = Object.keys(errors)[0] as FieldKey | undefined;
+    if (firstKey) {
+      const y = fieldPositions.current[firstKey];
+      if (typeof y === "number") {
+        scrollRef.current.scrollTo({ y: Math.max(y - 20, 0), animated: true });
+      }
+    }
+    setScrollToError(false);
+  }, [errors, scrollToError, setScrollToError]);
 
   return (
     <View className="flex-1 bg-[#F8FAFC]">
@@ -70,6 +88,7 @@ export default function UploadInventoryScreen() {
         <StepIndicator step={step} steps={STEPS} />
 
         <ScrollView
+          ref={scrollRef}
           className="flex-1"
           contentContainerStyle={{
             paddingBottom: 120 + insets.bottom,
@@ -86,6 +105,15 @@ export default function UploadInventoryScreen() {
             <ArtworkDetailsStep
               details={details}
               onChangeDetails={setDetails}
+              errors={errors}
+              onFieldLayout={(key, y) => {
+                fieldPositions.current[key] = y;
+              }}
+              onFieldChange={(key) => {
+                if (errors?.[key]) {
+                  clearFieldError(key);
+                }
+              }}
             />
           )}
         </ScrollView>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Dimensions,
   Pressable,
@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import ScreenHeader from "../shared/components/ScreenHeader";
 import UnderlineHome from "../../assets/headers/underline-home.svg";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
+import { useRoute } from "@react-navigation/native";
 import Sidebar from "../shared/components/Sidebar";
 import { useSidebarItems } from "../shared/hooks/useSidebar";
 
@@ -21,11 +22,13 @@ import { ArtistCard } from "../domains/inventory/components/list/ArtistCard";
 import { BulkActions } from "../domains/inventory/components/list/BulkActions";
 import { InventoryEmptyState } from "../domains/inventory/components/list/InventoryEmptyState";
 import { FolderPickerModal } from "../domains/inventory/components/list/FolderPickerModal";
+import { Artwork } from "../domains/inventory/types";
 
 export default function InventoryScreen() {
   const { height: tabBarHeight } = useTabBarVisibility();
   const items = useSidebarItems();
   const [headerHeight, setHeaderHeight] = useState(96);
+  const route = useRoute<any>();
 
   const {
     navigation,
@@ -57,6 +60,8 @@ export default function InventoryScreen() {
     bulkMoveToFolder,
     bulkRemove,
     openDetail,
+    addArtwork,
+    moveSingleToFolder,
 
     // Folder Picker
     showFolderPicker,
@@ -73,10 +78,20 @@ export default function InventoryScreen() {
 
   const screenPadding = 20;
   const gridCardWidth = (Dimensions.get("window").width - screenPadding * 2 - 12) / 2;
+  const [pickerMode, setPickerMode] = useState<"filter" | "move">("filter");
+  const [moveTargetId, setMoveTargetId] = useState<string | null>(null);
   const rootNav = navigation.getParent?.()?.getParent?.() ?? navigation;
   const openUpload = () => {
     rootNav.navigate("Upload");
   };
+
+  useEffect(() => {
+    const incoming: Artwork | undefined = route.params?.newArtwork;
+    if (incoming) {
+      addArtwork(incoming);
+      navigation.setParams?.({ newArtwork: undefined });
+    }
+  }, [route.params?.newArtwork, addArtwork, navigation]);
 
   return (
     <View className="flex-1 bg-white">
@@ -100,7 +115,11 @@ export default function InventoryScreen() {
       >
         <View className="flex-row items-center gap-3 mt-4">
           <Pressable
-            onPress={() => setShowFolderPicker(true)}
+            onPress={() => {
+              setPickerMode("filter");
+              setMoveTargetId(null);
+              setShowFolderPicker(true);
+            }}
             className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 active:opacity-80"
           >
             <Ionicons name="folder-outline" size={18} color="#0F172A" />
@@ -223,37 +242,45 @@ export default function InventoryScreen() {
               viewMode === "list" ? (
                 <View className="gap-3">
                   {artworks.map((item) => (
-                    <InventoryItemCard
-                      key={item.id}
-                      item={item}
-                      variant="list"
-                      isSelected={selectedIds.includes(item.id)}
-                      onPress={() => {
-                        if (hasSelection) toggleSelect(item.id);
-                        else openDetail(item.id);
-                      }}
-                      onLongPress={() => toggleSelect(item.id)}
-                    />
-                  ))}
-                </View>
-              ) : (
-                <View className="flex-row flex-wrap gap-3">
+                  <InventoryItemCard
+                    key={item.id}
+                    item={item}
+                    variant="list"
+                    isSelected={selectedIds.includes(item.id)}
+                    onPress={() => {
+                      if (hasSelection) toggleSelect(item.id);
+                      else openDetail(item.id);
+                    }}
+                    onLongPress={() => {
+                      setPickerMode("move");
+                      setMoveTargetId(item.id);
+                      setShowFolderPicker(true);
+                    }}
+                  />
+                ))}
+              </View>
+            ) : (
+              <View className="flex-row flex-wrap gap-3">
                   {artworks.map((item) => (
                     <InventoryItemCard
                       key={item.id}
-                      item={item}
-                      variant="grid"
-                      isSelected={selectedIds.includes(item.id)}
-                      onPress={() => {
-                        if (hasSelection) toggleSelect(item.id);
-                        else openDetail(item.id);
-                      }}
-                      onLongPress={() => toggleSelect(item.id)}
-                    />
-                  ))}
-                </View>
-              )
-            ) : (
+                    item={item}
+                    variant="grid"
+                    isSelected={selectedIds.includes(item.id)}
+                    onPress={() => {
+                      if (hasSelection) toggleSelect(item.id);
+                      else openDetail(item.id);
+                    }}
+                    onLongPress={() => {
+                      setPickerMode("move");
+                      setMoveTargetId(item.id);
+                      setShowFolderPicker(true);
+                    }}
+                  />
+                ))}
+              </View>
+            )
+          ) : (
               <InventoryEmptyState />
             )
           ) : artists.length ? (
@@ -296,11 +323,21 @@ export default function InventoryScreen() {
 
       <FolderPickerModal
         visible={showFolderPicker}
-        onClose={() => setShowFolderPicker(false)}
+        onClose={() => {
+          setShowFolderPicker(false);
+          setMoveTargetId(null);
+          setPickerMode("filter");
+        }}
         folders={folders}
         activeFolder={activeFolder}
         onSelectFolder={(name) => {
-          setActiveFolder(name);
+          if (pickerMode === "move" && moveTargetId) {
+            moveSingleToFolder(moveTargetId, name);
+            setMoveTargetId(null);
+            setPickerMode("filter");
+          } else {
+            setActiveFolder(name);
+          }
           setShowFolderPicker(false);
         }}
         getFolderCount={getFolderCount}
@@ -312,7 +349,20 @@ export default function InventoryScreen() {
           setCreatingFolder(false);
           setNewFolderName("");
         }}
-        onConfirmCreate={handleConfirmCreateFolder}
+        onConfirmCreate={() => {
+          const created = handleConfirmCreateFolder();
+          if (created) {
+            if (pickerMode === "move" && moveTargetId) {
+              moveSingleToFolder(moveTargetId, created);
+              setMoveTargetId(null);
+              setPickerMode("filter");
+            } else if (pickerMode === "filter") {
+              setActiveFolder(created);
+            }
+            setShowFolderPicker(false);
+          }
+        }}
+        mode={pickerMode}
       />
     </View>
   );

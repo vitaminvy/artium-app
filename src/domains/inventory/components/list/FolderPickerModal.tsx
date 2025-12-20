@@ -23,6 +23,7 @@ type Props = {
   onConfirmCreate: () => void;
   onChangeFolderName: (text: string) => void;
   getFolderCount: (name: string) => number;
+  mode?: "filter" | "move";
 };
 
 export function FolderPickerModal({
@@ -38,7 +39,9 @@ export function FolderPickerModal({
   onConfirmCreate,
   onChangeFolderName,
   getFolderCount,
+  mode = "filter",
 }: Props) {
+  const title = mode === "move" ? "Move to folder" : "Choose folder";
   return (
     <Modal
       visible={visible}
@@ -53,7 +56,7 @@ export function FolderPickerModal({
       >
         <View className="flex-row items-center justify-between mb-3">
           <Text className="text-lg font-semibold text-slate-900">
-            Choose folder
+            {title}
           </Text>
           <Pressable onPress={onClose}>
             <Ionicons name="close" size={22} color="#0F172A" />

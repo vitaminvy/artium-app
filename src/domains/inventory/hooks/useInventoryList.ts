@@ -37,6 +37,7 @@ export function useInventoryList() {
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [creatingFolder, setCreatingFolder] = useState(false);
   const nextFolderIndex = useRef(1);
+  const DEFAULT_UPLOAD_FOLDER = "Unsorted";
 
   const selectedCount = selectedIds.length;
   const hasSelection = selectedCount > 0;
@@ -105,6 +106,14 @@ export function useInventoryList() {
     clearSelection();
   };
 
+  const moveSingleToFolder = (id: string, folder: string) => {
+    ensureFolderExists(folder);
+    setArtworks((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, folder } : item))
+    );
+    setFlashMessage(`Moved to ${folder}`);
+  };
+
   const bulkRemove = () => {
     setArtworks((prev) => prev.filter((item) => !selectedIds.includes(item.id)));
     setFlashMessage(`Removed ${selectedCount} item(s)`);
@@ -114,7 +123,7 @@ export function useInventoryList() {
   // --- Folder Management ---
   const handleConfirmCreateFolder = () => {
     const name = newFolderName.trim();
-    if (!name) return;
+    if (!name) return null;
     
     const suffix = nextFolderIndex.current++;
     const palette = ["#E0F2FE", "#F7FEE7", "#FFECE5", "#F3E8FF"];
@@ -131,6 +140,29 @@ export function useInventoryList() {
     setActiveFolder(name);
     setNewFolderName("");
     setCreatingFolder(false);
+    return name;
+  };
+
+  const ensureFolderExists = (folderName: string) => {
+    setFolders((prev) => {
+      const exists = prev.some((f) => f.name === folderName);
+      if (exists) return prev;
+      const suffix = nextFolderIndex.current++;
+      const tone = "#F8FAFC";
+      return [
+        ...prev,
+        { id: `fd-${Date.now()}-${suffix}`, name: folderName, count: 0, tone },
+      ];
+    });
+  };
+
+  const addArtwork = (newArtwork: Artwork) => {
+    ensureFolderExists(newArtwork.folder || DEFAULT_UPLOAD_FOLDER);
+    setArtworks((prev) => [newArtwork, ...prev]);
+    setFlashMessage(`Added "${newArtwork.title}" to inventory`);
+    setActiveFolder(null);
+    setTab("artworks");
+    setViewMode("grid");
   };
 
   const getFolderCount = (folderName: string) =>
@@ -164,9 +196,12 @@ export function useInventoryList() {
     // Bulk Actions
     bulkUpdateStatus,
     bulkMoveToFolder,
+    moveSingleToFolder,
     bulkRemove,
     openDetail,
-    
+    addArtwork,
+    setFlashMessage,
+
     // Folder Picker
     showFolderPicker,
     setShowFolderPicker,
