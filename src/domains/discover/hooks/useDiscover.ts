@@ -34,12 +34,23 @@ export function useDiscover(): UseDiscoverResult {
       try {
         setLoading(true);
         // Fetch trending and all artworks in parallel
-        const [trending, all] = await Promise.all([
+        const [trendingArtworks, allArtworks] = await Promise.all([
           getTrendingArtworks(),
           getArtworks()
         ]);
-        setTopPicks(trending);
-        setArtworks(all);
+
+        // Create a set of trending IDs for quick lookup
+        const trendingIds = new Set(trendingArtworks.map(art => art.id));
+
+        // Enrich the 'allArtworks' list with the trending status
+        const enrichedArtworks = allArtworks.map(art => ({
+          ...art,
+          isTrending: trendingIds.has(art.id),
+        }));
+
+        setTopPicks(trendingArtworks);
+        setArtworks(enrichedArtworks); // Set the enriched list
+        
       } catch (e: any) {
         setError(e);
       } finally {

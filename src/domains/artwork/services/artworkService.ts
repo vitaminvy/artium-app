@@ -75,7 +75,7 @@ const _getArtistById = async (id: string): Promise<ArtistData> => {
 };
 
 // Helper to combine artworks and artists
-const _combineArtworksWithArtists = async (artworksFromDB: ArtworkDoc[]): Promise<DiscoverArtwork[]> => {
+const _combineArtworksWithArtists = async (artworksFromDB: ArtworkDoc[], defaultIsTrending: boolean = false): Promise<DiscoverArtwork[]> => {
   if (artworksFromDB.length === 0) {
     return [];
   }
@@ -98,15 +98,15 @@ const _combineArtworksWithArtists = async (artworksFromDB: ArtworkDoc[]): Promis
 
   return artworksFromDB.map(art => {
     const artist = artistsMap.get(art.artistId) || { name: "Unknown Artist", avatar: "", verified: false };
-    return {
-      id: art.id,
-      title: art.title,
-      artist: artist.name,
-      artistAvatar: artist.avatar,
-      image: art.images?.[0] || "",
-      price: art.price,
-    };
-  });
+        return {
+            id: art.id,
+            title: art.title,
+            artist: artist.name,
+            artistAvatar: artist.avatar,
+            image: art.images?.[0] || "",
+            price: art.price,
+            isTrending: defaultIsTrending, // Apply the trending flag here
+          };  });
 };
 
 
@@ -120,7 +120,7 @@ export const getArtworks = async (): Promise<DiscoverArtwork[]> => {
     const artworksFromDB = artworkSnapshots.docs.map(
       doc => ({ id: doc.id, ...doc.data() } as ArtworkDoc)
     );
-    return await _combineArtworksWithArtists(artworksFromDB);
+    return await _combineArtworksWithArtists(artworksFromDB, false);
   } catch (error) {
     console.error("Error getting artworks for discover:", error);
     throw error;
@@ -142,7 +142,7 @@ export const getTrendingArtworks = async (count: number = 10): Promise<DiscoverA
     const artworksFromDB = artworkSnapshots.docs.map(
       doc => ({ id: doc.id, ...doc.data() } as ArtworkDoc)
     );
-    return await _combineArtworksWithArtists(artworksFromDB);
+    return await _combineArtworksWithArtists(artworksFromDB, true);
   } catch (error) {
     console.error("Error getting trending artworks:", error);
     // Firestore will throw an error if the index is missing.

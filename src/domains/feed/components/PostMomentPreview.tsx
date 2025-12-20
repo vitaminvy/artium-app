@@ -14,14 +14,16 @@ type Props = {
   onVideoDuration?: (durationMs: number) => void;
 };
 
-function PostMomentPreview({ media, onRemoveImage, onClear, onVideoDuration }: Props) {
+function PostMomentPreview({
+  media,
+  onRemoveImage,
+  onClear,
+  onVideoDuration,
+}: Props) {
   const isVideo = media?.type === "video";
-  const player = useVideoPlayer(
-    isVideo ? media.uri : null,
-    (p) => {
-      p.loop = false;
-    }
-  );
+  const player = useVideoPlayer(isVideo ? media.uri : null, (p) => {
+    p.loop = false;
+  });
 
   useEffect(() => {
     if (isVideo) {
@@ -36,13 +38,16 @@ function PostMomentPreview({ media, onRemoveImage, onClear, onVideoDuration }: P
 
   useEffect(() => {
     if (!isVideo) return;
-    const sub = player.addListener?.("sourceLoad", (payload: VideoSourceLoadPayload) => {
-      if (!payload?.duration && payload?.duration !== 0) return;
-      const ms = payload.duration * 1000;
-      if (ms && onVideoDuration) {
-        onVideoDuration(ms);
+    const sub = player.addListener?.(
+      "sourceLoad",
+      (payload: VideoSourceLoadPayload) => {
+        if (!payload?.duration && payload?.duration !== 0) return;
+        const ms = payload.duration * 1000;
+        if (ms && onVideoDuration) {
+          onVideoDuration(ms);
+        }
       }
-    });
+    );
     return () => {
       sub?.remove?.();
     };
@@ -75,7 +80,11 @@ function PostMomentPreview({ media, onRemoveImage, onClear, onVideoDuration }: P
             hitSlop={UI_SIZES.CLOSE_BUTTON_DEFAULT}
             className="absolute top-3 right-3 h-9 w-9 rounded-full bg-black/55 items-center justify-center active:opacity-80"
           >
-            <Ionicons name="close" size={UI_SIZES.CLOSE_ICON_LARGE} color="#fff" />
+            <Ionicons
+              name="close"
+              size={UI_SIZES.CLOSE_ICON_LARGE}
+              color="#fff"
+            />
           </Pressable>
         </View>
       </View>
@@ -112,7 +121,11 @@ function PostMomentPreview({ media, onRemoveImage, onClear, onVideoDuration }: P
                   hitSlop={UI_SIZES.CLOSE_BUTTON_DEFAULT}
                   className="absolute top-2 right-2 h-8 w-8 rounded-full bg-black/60 items-center justify-center active:opacity-80"
                 >
-                  <Ionicons name="close" size={UI_SIZES.CLOSE_ICON_DEFAULT} color="#fff" />
+                  <Ionicons
+                    name="close"
+                    size={UI_SIZES.CLOSE_ICON_DEFAULT}
+                    color="#fff"
+                  />
                 </Pressable>
               </View>
             );
