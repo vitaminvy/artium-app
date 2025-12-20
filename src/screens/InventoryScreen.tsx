@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Animated,
   Dimensions,
   Pressable,
   ScrollView,
@@ -30,6 +31,7 @@ export default function InventoryScreen() {
   const [headerHeight, setHeaderHeight] = useState(96);
   const route = useRoute<any>();
   const lastOffset = useRef(0);
+  const toastY = useRef(new Animated.Value(-120)).current;
 
   const {
     navigation,
@@ -63,6 +65,7 @@ export default function InventoryScreen() {
     openDetail,
     addArtwork,
     moveSingleToFolder,
+    setFlashMessage,
 
     // Folder Picker
     showFolderPicker,
@@ -101,6 +104,24 @@ export default function InventoryScreen() {
     [setHidden]
   );
 
+  useEffect(() => {
+    if (!flashMessage) return;
+    toastY.setValue(-120);
+    Animated.sequence([
+      Animated.timing(toastY, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.delay(2200),
+      Animated.timing(toastY, {
+        toValue: -120,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => setFlashMessage(null));
+  }, [flashMessage, setFlashMessage, toastY]);
+
   return (
     <View className="flex-1 bg-white">
       <ScreenHeader
@@ -112,6 +133,32 @@ export default function InventoryScreen() {
         onHeightChange={setHeaderHeight}
         underlineSource={UnderlineHome}
       />
+
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          left: screenPadding,
+          right: screenPadding,
+          top: Math.max(headerHeight - 6, 24),
+          transform: [{ translateY: toastY }],
+          zIndex: 30,
+          elevation: 8,
+        }}
+      >
+        {flashMessage ? (
+          <View className="rounded-2xl border border-[#0B73FF] bg-white px-4 py-3 shadow-lg shadow-[#0B73FF]/30">
+            <View className="flex-row items-center gap-2">
+              <View className="h-8 w-8 rounded-full bg-[#E0F2FE] items-center justify-center">
+                <Ionicons name="checkmark-done" size={18} color="#0B73FF" />
+              </View>
+              <Text className="text-sm font-semibold text-slate-900 flex-1">
+                {flashMessage}
+              </Text>
+            </View>
+          </View>
+        ) : null}
+      </Animated.View>
 
       <ScrollView
         className="flex-1"
@@ -157,21 +204,6 @@ export default function InventoryScreen() {
             </Pressable>
           </View>
         </View>
-
-        {flashMessage ? (
-          <View className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <View className="flex-row items-center gap-2">
-              <Ionicons
-                name="checkmark-circle-outline"
-                size={18}
-                color="#0B73FF"
-              />
-              <Text className="text-sm font-semibold text-slate-800">
-                {flashMessage}
-              </Text>
-            </View>
-          </View>
-        ) : null}
 
         <View className="mt-6 rounded-3xl border border-slate-200 bg-white p-4">
           <View className="flex-row items-center justify-between gap-3">
