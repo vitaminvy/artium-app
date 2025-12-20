@@ -80,8 +80,8 @@ export function useInventoryList() {
     );
   };
 
-  const openDetail = (id: string) => {
-    navigation.navigate("ArtworkDetail" as never, { id } as never);
+  const openDetail = (artwork: Artwork) => {
+    navigation.navigate("ArtworkDetail" as never, { id: artwork.id, artwork } as never);
   };
 
   const clearSelection = () => setSelectedIds([]);

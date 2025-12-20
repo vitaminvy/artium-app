@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
   Pressable,
@@ -25,10 +25,11 @@ import { FolderPickerModal } from "../domains/inventory/components/list/FolderPi
 import { Artwork } from "../domains/inventory/types";
 
 export default function InventoryScreen() {
-  const { height: tabBarHeight } = useTabBarVisibility();
+  const { height: tabBarHeight, setHidden } = useTabBarVisibility();
   const items = useSidebarItems();
   const [headerHeight, setHeaderHeight] = useState(96);
   const route = useRoute<any>();
+  const lastOffset = useRef(0);
 
   const {
     navigation,
@@ -93,6 +94,13 @@ export default function InventoryScreen() {
     }
   }, [route.params?.newArtwork, addArtwork, navigation]);
 
+  useEffect(
+    () => () => {
+      setHidden(false);
+    },
+    [setHidden]
+  );
+
   return (
     <View className="flex-1 bg-white">
       <ScreenHeader
@@ -112,6 +120,17 @@ export default function InventoryScreen() {
           paddingHorizontal: screenPadding,
         }}
         keyboardShouldPersistTaps="handled"
+        scrollEventThrottle={16}
+        onScroll={(e) => {
+          const y = e.nativeEvent.contentOffset.y;
+          const diff = y - lastOffset.current;
+          if ((diff > 6 && y > 24) || y > 120) {
+            setHidden(true);
+          } else if (diff < -6) {
+            setHidden(false);
+          }
+          lastOffset.current = y;
+        }}
       >
         <View className="flex-row items-center gap-3 mt-4">
           <Pressable
@@ -249,7 +268,7 @@ export default function InventoryScreen() {
                     isSelected={selectedIds.includes(item.id)}
                     onPress={() => {
                       if (hasSelection) toggleSelect(item.id);
-                      else openDetail(item.id);
+                      else openDetail(item);
                     }}
                     onLongPress={() => {
                       setPickerMode("move");
@@ -269,7 +288,7 @@ export default function InventoryScreen() {
                     isSelected={selectedIds.includes(item.id)}
                     onPress={() => {
                       if (hasSelection) toggleSelect(item.id);
-                      else openDetail(item.id);
+                      else openDetail(item);
                     }}
                     onLongPress={() => {
                       setPickerMode("move");

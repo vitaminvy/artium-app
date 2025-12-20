@@ -91,7 +91,7 @@ export default function UploadInventoryScreen() {
           ref={scrollRef}
           className="flex-1"
           contentContainerStyle={{
-            paddingBottom: 120 + insets.bottom,
+            paddingBottom: 20 + insets.bottom,
           }}
           keyboardShouldPersistTaps="handled"
         >

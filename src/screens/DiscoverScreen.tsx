@@ -1,5 +1,5 @@
-import React, { useCallback, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import ScreenHeader from "../shared/components/ScreenHeader";
 import UnderlineHome from "../../assets/headers/underline-home.svg";
@@ -9,6 +9,7 @@ import { DiscoverTab } from "../domains/discover/types";
 import { TabChip } from "../domains/discover/components/ui/DiscoverShared";
 import ChangeLocationSheet from "../domains/discover/components/sheets/ChangeLocationSheet";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
+import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 
 // Import Refactored Tabs
 import DiscoverArtworksTab from "../domains/discover/components/tabs/DiscoverArtworksTab";
@@ -32,6 +33,29 @@ export default function DiscoverScreen() {
   const { tab, setTab, topPicks, artworks, profiles, moments, events } =
     useDiscover();
   const isGuest = status !== "authenticated";
+  const { setHidden } = useTabBarVisibility();
+  const lastOffset = useRef(0);
+
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const y = e.nativeEvent.contentOffset.y;
+      const diff = y - lastOffset.current;
+      if ((diff > 6 && y > 16) || y > 120) {
+        setHidden(true);
+      } else if (diff < -6) {
+        setHidden(false);
+      }
+      lastOffset.current = y;
+    },
+    [setHidden]
+  );
+
+  useEffect(
+    () => () => {
+      setHidden(false);
+    },
+    [setHidden]
+  );
 
   const [showLocationSheet, setShowLocationSheet] = useState(false);
   const [locationText, setLocationText] = useState("Albuquerque, NM, USA");
@@ -43,15 +67,15 @@ export default function DiscoverScreen() {
 
     switch (tab) {
       case "topPicks":
-        return <DiscoverArtworksTab data={topPicks} onCardPress={onCardPress} />;
+        return <DiscoverArtworksTab data={topPicks} onCardPress={onCardPress} onScroll={handleScroll} />;
       case "artworks":
-        return <DiscoverArtworksTab data={artworks} onCardPress={onCardPress} />;
+        return <DiscoverArtworksTab data={artworks} onCardPress={onCardPress} onScroll={handleScroll} />;
       case "profiles":
-        return <DiscoverProfilesTab data={profiles} onCardPress={onCardPress} />;
+        return <DiscoverProfilesTab data={profiles} onCardPress={onCardPress} onScroll={handleScroll} />;
       case "events":
-        return <DiscoverEventsTab data={events} onCardPress={onCardPress} />;
+        return <DiscoverEventsTab data={events} onCardPress={onCardPress} onScroll={handleScroll} />;
       case "moments":
-        return <DiscoverMomentsTab data={moments} onCardPress={onCardPress} />;
+        return <DiscoverMomentsTab data={moments} onCardPress={onCardPress} onScroll={handleScroll} />;
       case "nearby":
         return (
           <DiscoverNearbyTab
@@ -63,6 +87,7 @@ export default function DiscoverScreen() {
             onOpenLocationSheet={() => setShowLocationSheet(true)}
             onSwitchTab={setTab}
             onCardPress={onCardPress}
+            onScroll={handleScroll}
           />
         );
       default:

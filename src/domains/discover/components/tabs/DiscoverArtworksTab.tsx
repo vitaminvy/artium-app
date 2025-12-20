@@ -1,5 +1,5 @@
 import React from "react";
-import { FlatList, ListRenderItemInfo } from "react-native";
+import { FlatList, ListRenderItemInfo, NativeScrollEvent, NativeSyntheticEvent } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Artwork } from "../../types";
 import ArtworkCard from "../cards/ArtworkCard";
@@ -7,9 +7,10 @@ import ArtworkCard from "../cards/ArtworkCard";
 type Props = {
   data: Artwork[];
   onCardPress?: (item: Artwork) => void;
+  onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
 };
 
-export default function DiscoverArtworksTab({ data, onCardPress }: Props) {
+export default function DiscoverArtworksTab({ data, onCardPress, onScroll }: Props) {
   const navigation = useNavigation();
 
   const renderItem = ({ item }: ListRenderItemInfo<Artwork>) => (
@@ -37,6 +38,8 @@ export default function DiscoverArtworksTab({ data, onCardPress }: Props) {
       }}
       columnWrapperStyle={{ columnGap: 12 }}
       showsVerticalScrollIndicator={false}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
     />
   );
 }

@@ -19,6 +19,7 @@ type Props = {
   onOpenLocationSheet: () => void;
   onSwitchTab: (tab: DiscoverTab) => void;
   onCardPress?: () => void;
+  onScroll?: (e: any) => void;
 };
 
 export default function DiscoverNearbyTab({
@@ -30,6 +31,7 @@ export default function DiscoverNearbyTab({
   onOpenLocationSheet,
   onSwitchTab,
   onCardPress,
+  onScroll,
 }: Props) {
   const navigation = useNavigation();
 
@@ -58,6 +60,8 @@ export default function DiscoverNearbyTab({
       className="flex-1"
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 120 }}
       showsVerticalScrollIndicator={false}
+      scrollEventThrottle={16}
+      onScroll={onScroll}
     >
       <View className="px-4 py-3 flex-row items-center justify-between">
         <View className="flex-row items-center gap-2">

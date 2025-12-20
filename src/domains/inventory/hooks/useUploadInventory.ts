@@ -200,6 +200,7 @@ export function useUploadInventory() {
       status: "Available",
       folder: DEFAULT_UPLOAD_FOLDER,
       thumbnail: images[0]?.uri ?? "",
+      images: images.length ? images.map((img) => img.uri) : undefined,
       dimensions: dimensionText,
     };
 
