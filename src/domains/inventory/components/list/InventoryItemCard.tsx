@@ -117,7 +117,12 @@ export function InventoryItemCard({
       </View>
       <View className="flex-row items-start justify-between">
         <View className="flex-1 pr-2">
-          <Text className="text-[15px] font-semibold text-slate-900">
+          <Text
+            className="text-[15px] font-semibold text-slate-900"
+            numberOfLines={2}
+            ellipsizeMode="tail"
+            style={{ minHeight: 40 }}
+          >
             {item.title}
           </Text>
           <Text className="text-xs text-slate-500 mt-0.5">
