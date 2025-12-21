@@ -12,6 +12,7 @@ type PostDoc = {
   content: string;
   createdAt: any; // Firestore timestamp
   metrics: { likes: number; comments: number; shares: number };
+  mediaUrl?: string; // Add optional mediaUrl
 };
 
 /**
@@ -92,6 +93,8 @@ export const getFeedPosts = async (): Promise<FeedPost[]> => {
         createdAt: createdAtTimestamp.getTime(),
         relativeTime: "Just now",
         metrics: post.metrics || { likes: 0, comments: 0, shares: 0 },
+        // Add the media object if mediaUrl exists
+        media: post.mediaUrl ? { type: 'image', items: [{ uri: post.mediaUrl }] } : undefined,
       };
     });
 
