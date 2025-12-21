@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where, orderBy, doc, updateDoc, increment, addDoc, serverTimestamp, writeBatch } from "firebase/firestore";
+import { collection, getDocs, query, where, orderBy, doc, updateDoc, increment, addDoc, serverTimestamp, writeBatch,getDoc } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 import { FeedPost, FeedAuthor } from "../../types";
 
@@ -18,7 +18,7 @@ type PostDoc = {
 /**
  * Fetches posts for the feed and enriches them with author data from both artists and users collections.
  */
-export const getFeedPosts = async (): Promise<FeedPost[]> => {
+export const getFeedPosts = async (currentUserId: string | null): Promise<FeedPost[]> => {
   try {
     const postQuery = query(
       collection(firestore, POSTS_COLLECTION),
@@ -38,7 +38,7 @@ export const getFeedPosts = async (): Promise<FeedPost[]> => {
     const authorsMap = new Map<string, FeedAuthor>();
 
     if (authorIds.length > 0) {
-      // First, try to find authors in the 'artists' collection
+      // Fetch authors from 'artists' collection
       const artistQuery = query(
         collection(firestore, ARTISTS_COLLECTION),
         where("__name__", "in", authorIds)
@@ -55,14 +55,13 @@ export const getFeedPosts = async (): Promise<FeedPost[]> => {
         });
       });
 
-      // Find which authors were not in the 'artists' collection
       const missingAuthorIds = authorIds.filter(id => !authorsMap.has(id));
 
-      // If there are missing authors, look for them in the 'users' collection
       if (missingAuthorIds.length > 0) {
+        // Fallback to 'users' collection
         const userQuery = query(
           collection(firestore, USERS_COLLECTION),
-          where("uid", "in", missingAuthorIds) // Assuming 'uid' field exists in users collection
+          where("uid", "in", missingAuthorIds)
         );
         const userSnapshots = await getDocs(userQuery);
         userSnapshots.forEach((doc) => {
@@ -70,12 +69,28 @@ export const getFeedPosts = async (): Promise<FeedPost[]> => {
           authorsMap.set(data.uid, {
             id: data.uid,
             name: data.displayName,
-            handle: data.displayName.replace(/\s+/g, "").toLowerCase(),
+            handle: (data.displayName || '').replace(/\s+/g, "").toLowerCase(),
             avatar: data.photoURL,
-            verified: false, // Regular users are not verified artists
+            verified: false,
           });
         });
       }
+    }
+
+    // --- NEW: Check which posts the current user has liked ---
+    const likedPostIds = new Set<string>();
+    if (currentUserId && postsFromDB.length > 0) {
+      const postIds = postsFromDB.map(post => post.id);
+      // Create a promise for each like check
+      const likeChecks = postIds.map(postId => 
+        getDoc(doc(firestore, POSTS_COLLECTION, postId, "likes", currentUserId))
+      );
+      const likeSnapshots = await Promise.all(likeChecks);
+      likeSnapshots.forEach((likeSnap, index) => {
+        if (likeSnap.exists()) {
+          likedPostIds.add(postIds[index]);
+        }
+      });
     }
 
     const feedPosts: FeedPost[] = postsFromDB.map((post) => {
@@ -84,7 +99,7 @@ export const getFeedPosts = async (): Promise<FeedPost[]> => {
         name: "Unknown User",
         handle: "unknown",
       };
-      const createdAtTimestamp = post.createdAt.toDate();
+      const createdAtTimestamp = post.createdAt ? post.createdAt.toDate() : new Date();
       
       return {
         id: post.id,
@@ -93,8 +108,8 @@ export const getFeedPosts = async (): Promise<FeedPost[]> => {
         createdAt: createdAtTimestamp.getTime(),
         relativeTime: "Just now",
         metrics: post.metrics || { likes: 0, comments: 0, shares: 0 },
-        // Add the media object if mediaUrl exists
-        media: post.mediaUrl ? { type: 'image', items: [{ uri: post.mediaUrl }] } : undefined,
+        media: post.mediaUrl ? { type: 'image', items: [{ uri: post.mediaUrl }], placeholderColor: '#CBD5E1', aspectRatio: 1 } : undefined,
+        liked: likedPostIds.has(post.id), // Set liked status based on check
       };
     });
 

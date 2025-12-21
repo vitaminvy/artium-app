@@ -10,7 +10,7 @@ type UseFeedResult = {
   error: Error | null;
   explorePosts: FeedPost[];
   followingPosts: FeedPost[];
-  toggleLike: (id: string) => void;
+  toggleLike: (id: string, isCurrentlyLiked: boolean) => Promise<void>;
   createReshare: (targetId: string, note: string) => void;
   commentsByPost: Record<string, FeedComment[]>;
   addComment: (postId: string, content: string) => void;
@@ -60,14 +60,14 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
   const fetchPosts = useCallback(async () => {
     try {
       setLoading(true);
-      const fetchedPosts = await getFeedPosts();
+      const fetchedPosts = await getFeedPosts(currentUser?.uid || null);
       setPosts(attachRelativeTime(fetchedPosts));
     } catch (e: any) {
       setError(e);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     fetchPosts();
@@ -106,6 +106,7 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
     // Call backend service
     try {
       if (currentUser) {
+        console.log(`Calling togglePostLike with: postId=${id}, userId=${currentUser.uid}, isCurrentlyLiked=${isCurrentlyLiked}`);
         await togglePostLike(id, currentUser.uid, isCurrentlyLiked);
       }
     } catch (error) {
@@ -184,8 +185,9 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
     let mediaUrl: string | undefined;
     if (post.media?.type === "video") {
       mediaUrl = post.media.uri;
-    } else if (post.media?.type === "image" && post.media.items && post.media.items.length > 0) {
-      mediaUrl = post.media.items[0].uri;
+    } else if (post.media?.type === "image" && "items" in post.media && post.media.items && post.media.items.length > 0) {
+     const firstItem = post.media.items[0];
+      mediaUrl = typeof firstItem === 'string' ? firstItem : firstItem.uri;''
     }
     
     await createPost({

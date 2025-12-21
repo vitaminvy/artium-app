@@ -13,7 +13,7 @@ import { FEED_MESSAGES } from "../../constants/messages";
 
 type Props = {
   post: FeedPost;
-  onPressLike: (id: string) => void;
+  onPressLike: (id: string, isCurrentlyLiked: boolean) => void | Promise<void>;
   onPressReshare: (post: FeedPost) => void;
   onPressComment?: (post: FeedPost) => void;
   onPressCard?: (post: FeedPost) => void;
