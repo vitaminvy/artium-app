@@ -1,8 +1,7 @@
 // Feed Screen
 // src/screens/FeedScreen.tsx
 import React from "react";
-import { View, Pressable, Text, Keyboard } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { View, Text, Keyboard } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import FeedTabs from "../domains/feed/components/ui/FeedTabs";
 import FeedExploreTab from "../domains/feed/components/tabs/FeedExploreTab";
@@ -29,13 +28,18 @@ import { usePostMoment } from "../domains/feed/hooks/usePostMoment";
 import ImageViewing from "react-native-image-viewing";
 import { useRef, useEffect } from "react";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
+import { useAuth } from "../domains/auth/contexts/AuthContext";
+import Loader from "../shared/components/Loader";
 
 export default function FeedScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<FeedStackParamList>>();
+  const { currentUser: user } = useAuth(); // Get the authenticated user
   const {
     tab,
     setTab,
+    loading,
+    error,
     explorePosts,
     followingPosts,
     toggleLike,
@@ -43,21 +47,18 @@ export default function FeedScreen() {
     commentsByPost,
     addComment,
     addMomentPost,
-  } = useFeed();
+  } = useFeed(user);
   const postMoment = usePostMoment({
-    onPublish: addMomentPost,
+    onPublish: async (post) => {
+      await addMomentPost({ content: post.content, media: post.media });
+    },
     onShared: () => {
-      // Ensure Feed tab is focused after sharing
       navigation.getParent()?.navigate("Feed");
     },
   });
-  // Note: Subscription to postMomentOpen is handled inside usePostMoment hook
-  const [selectedPost, setSelectedPost] = React.useState<
-    FeedPost | undefined
-  >();
-  const [commentTarget, setCommentTarget] = React.useState<
-    FeedPost | undefined
-  >();
+
+  const [selectedPost, setSelectedPost] = React.useState<FeedPost | undefined>();
+  const [commentTarget, setCommentTarget] = React.useState<FeedPost | undefined>();
   const viewerKeyRef = useRef(0);
   const [viewerState, setViewerState] = React.useState<{
     visible: boolean;
@@ -106,7 +107,6 @@ export default function FeedScreen() {
     onScroll: (event) => {
       const y = event.contentOffset.y;
       const diff = y - lastOffset.value;
-      // Nhạy hơn cho cuộn chậm: ngưỡng nhỏ và auto-ẩn khi đã vượt xa
       if ((diff > 6 && y > 16) || y > 120) {
         tabsAnim.value = withTiming(0, { duration: 140 });
         runOnJS(setHidden)(true);
@@ -118,29 +118,21 @@ export default function FeedScreen() {
     },
   });
 
-  useEffect(
-    () => () => {
-      setHidden(false);
-    },
-    [setHidden]
-  );
+  useEffect(() => () => {
+    setHidden(false);
+  }, [setHidden]);
 
   const tabAnimatedStyle = useAnimatedStyle(() => ({
     height: interpolate(tabsAnim.value, [0, 1], [0, TAB_HEIGHT]),
     opacity: tabsAnim.value,
     overflow: "hidden",
-    transform: [
-      {
-        translateY: interpolate(tabsAnim.value, [0, 1], [-TAB_HEIGHT / 2, 0]),
-      },
-    ],
+    transform: [{ translateY: interpolate(tabsAnim.value, [0, 1], [-TAB_HEIGHT / 2, 0]) }],
     pointerEvents: tabsAnim.value === 0 ? "none" : "auto",
   }));
 
   const handleOpenViewer = React.useCallback((images: { uri: string }[], index: number) => {
     viewerKeyRef.current += 1;
     const key = `viewer-${viewerKeyRef.current}-${images.length}-${index}`;
-    // Set images/index first, then flip visible on next frame to avoid race
     setViewerState({ visible: false, images, initialIndex: index, key });
     requestAnimationFrame(() => {
       setViewerState((prev) => ({ ...prev, visible: true }));
@@ -150,23 +142,25 @@ export default function FeedScreen() {
   const handleCloseViewer = React.useCallback(() => {
     setViewerState((prev) => ({ ...prev, visible: false }));
   }, []);
-
-  return (
-    <View className="flex-1 bg-white">
-      <ScreenHeader
-        title={FEED_STRINGS.HEADER_TITLE}
-        badgeLabel="Blog"
-        actionType="notifications"
-        onPressAction={() => {
-          // TODO: Navigate to notifications screen
-        }}
-        underlineSource={UnderlineHome}
-      />
-
-      <Animated.View style={[{ overflow: "hidden" }, tabAnimatedStyle]}>
-        <FeedTabs tab={tab} onChange={setTab} />
-      </Animated.View>
-
+  
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <View className="flex-1 justify-center items-center">
+          <Loader />
+        </View>
+      );
+    }
+    if (error) {
+      return (
+        <View className="flex-1 justify-center items-center p-4">
+          <Text className="text-lg text-red-500 text-center">
+            Failed to load feed. Please try again later.
+          </Text>
+        </View>
+      );
+    }
+    return (
       <View className="flex-1">
         <View style={{ flex: 1, display: tab === "explore" ? "flex" : "none" }}>
           <FeedExploreTab
@@ -193,6 +187,26 @@ export default function FeedScreen() {
           />
         </View>
       </View>
+    );
+  };
+
+  return (
+    <View className="flex-1 bg-white">
+      <ScreenHeader
+        title={FEED_STRINGS.HEADER_TITLE}
+        badgeLabel="Blog"
+        actionType="notifications"
+        onPressAction={() => {
+          // TODO: Navigate to notifications screen
+        }}
+        underlineSource={UnderlineHome}
+      />
+
+      <Animated.View style={[{ overflow: "hidden" }, tabAnimatedStyle]}>
+        <FeedTabs tab={tab} onChange={setTab} />
+      </Animated.View>
+
+      {renderContent()}
 
       <ReshareSheet
         visible={!!selectedPost}

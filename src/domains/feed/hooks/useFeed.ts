@@ -1,18 +1,20 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { User as AuthUser } from "firebase/auth"; // Import Firebase user type
 import { FeedComment, FeedPost, FeedTab } from "../types";
-import { feedMockData } from "../mockData";
-import { CURRENT_USER } from "../constants";
+import { createPost, getFeedPosts, togglePostLike } from "./services/feedService";
 
 type UseFeedResult = {
   tab: FeedTab;
   setTab: (tab: FeedTab) => void;
+  loading: boolean;
+  error: Error | null;
   explorePosts: FeedPost[];
   followingPosts: FeedPost[];
   toggleLike: (id: string) => void;
   createReshare: (targetId: string, note: string) => void;
   commentsByPost: Record<string, FeedComment[]>;
   addComment: (postId: string, content: string) => void;
-  addMomentPost: (post: FeedPost) => void;
+  addMomentPost: (post: Omit<FeedPost, 'id' | 'author' | 'createdAt' | 'metrics' | 'relativeTime'>) => Promise<void>;
 };
 
 const formatTimeAgo = (createdAt: number) => {
@@ -44,27 +46,47 @@ function sortByCreatedAt(posts: FeedPost[]) {
   return [...posts].sort((a, b) => b.createdAt - a.createdAt);
 }
 
-export function useFeed(): UseFeedResult {
-  const [tab, setTab] = useState<FeedTab>(feedMockData.defaultTab ?? "explore");
-  const [posts, setPosts] = useState<FeedPost[]>(() =>
-    attachRelativeTime(feedMockData.posts)
-  );
+export function useFeed(currentUser: AuthUser | null): UseFeedResult {
+  const [tab, setTab] = useState<FeedTab>("explore");
+  
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
   const [commentsByPost, setCommentsByPost] = useState<
     Record<string, FeedComment[]>
   >({});
 
+  const fetchPosts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const fetchedPosts = await getFeedPosts();
+      setPosts(attachRelativeTime(fetchedPosts));
+    } catch (e: any) {
+      setError(e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
+
   const explorePosts = useMemo(() => sortByCreatedAt(posts), [posts]);
 
   const followingPosts = useMemo(() => {
+    if (!currentUser) return [];
     const filtered = posts.filter(
-      (post) => post.author.isFollowed || post.author.isMe
+      (post) => post.author.isFollowed || post.author.id === currentUser.uid
     );
     const sorted = sortByCreatedAt(filtered);
-    sorted.sort((a, b) => Number(!!b.author.isMe) - Number(!!a.author.isMe));
+    sorted.sort((a, b) => Number(b.author.id === currentUser.uid) - Number(a.author.id === currentUser.uid));
     return sorted;
-  }, [posts]);
+  }, [posts, currentUser]);
 
-  const toggleLike = useCallback((id: string) => {
+  const toggleLike = useCallback(async (id: string) => {
+    // Optimistic UI update
     setPosts((prev) => {
       const idx = prev.findIndex((p) => p.id === id);
       if (idx === -1) return prev;
@@ -80,110 +102,61 @@ export function useFeed(): UseFeedResult {
       };
       return next;
     });
+
+    // Call backend service
+    try {
+      const originalPost = posts.find((p) => p.id === id);
+      if (originalPost) {
+        await togglePostLike(id, originalPost.liked ?? false);
+      }
+    } catch (error) {
+      console.error("Failed to update like status on backend:", error);
+      // Revert UI on failure
+      setPosts((prev) => {
+        const idx = prev.findIndex((p) => p.id === id);
+        if (idx === -1) return prev;
+        const next = [...prev];
+        const target = prev[idx];
+        next[idx] = {
+          ...target,
+          liked: !target.liked,
+          metrics: {
+            ...target.metrics,
+            likes: target.metrics.likes + (target.liked ? 1 : -1),
+          },
+        };
+        return next;
+      });
+    }
+  }, [posts]);
+  
+  const addComment = useCallback((postId: string, content: string) => {
+    console.log("addComment to be implemented with backend call");
   }, []);
-
-  const addComment = useCallback(
-    (postId: string, content: string) => {
-      if (!content.trim()) return;
-      const newComment: FeedComment = {
-        id: `cmt-${Date.now()}`,
-        author: CURRENT_USER,
-        content: content.trim(),
-        createdAt: Date.now(),
-        relativeTime: "Just now",
-      };
-
-      setCommentsByPost((prev) => ({
-        ...prev,
-        [postId]: [newComment, ...(prev[postId] ?? [])],
-      }));
-
-      setPosts((prev) =>
-        prev.map((post) =>
-          post.id === postId
-            ? {
-                ...post,
-                metrics: {
-                  ...post.metrics,
-                  comments: post.metrics.comments + 1,
-                },
-              }
-            : post
-        )
-      );
-    },
-    []
-  );
 
   const createReshare = useCallback((targetId: string, note: string) => {
-    setPosts((prev) => {
-      const target = prev.find((p) => p.id === targetId);
-      if (!target) return prev;
+    console.log("createReshare to be implemented with backend call");
+  }, []);
 
-      const nowTs = Date.now();
-
-      const quote: FeedPost["quote"] = {
-        authorName: target.author.name,
-        handle: target.author.handle,
-        content: target.content,
-        createdAt: target.createdAt,
-        relativeTime: target.relativeTime ?? formatTimeAgo(target.createdAt),
-        media: target.media,
-      };
-
-      const newPost: FeedPost = {
-        id: `reshare-${nowTs}`,
-        author: CURRENT_USER,
-        content: note.trim(),
-        createdAt: nowTs,
-        relativeTime: "Just now",
-        quote,
-        isReshare: true,
-        resharedFrom: target.author,
-        metrics: {
-          likes: 0,
-          comments: 0,
-          shares: 0,
-        },
-        liked: false,
-        reshared: false,
-      };
-
-      return [
-        newPost,
-        ...prev.map((post) =>
-          post.id === targetId
-            ? {
-                ...post,
-                metrics: {
-                  ...post.metrics,
-                  shares: post.metrics.shares + 1,
-                },
-              }
-            : post
-        ),
-      ];
+  const addMomentPost = useCallback(async (post: Omit<FeedPost, 'id' | 'author' | 'createdAt' | 'metrics' | 'relativeTime'>) => {
+    if (!currentUser) {
+      throw new Error("User must be logged in to create a post.");
+    }
+    
+    await createPost({
+      authorId: currentUser.uid,
+      content: post.content,
     });
-  }, []);
+    
+    await fetchPosts();
 
-  const addMomentPost = useCallback((post: FeedPost) => {
-    const normalized: FeedPost = {
-      ...post,
-      relativeTime: post.relativeTime ?? formatTimeAgo(post.createdAt),
-      quote: post.quote
-        ? {
-            ...post.quote,
-            relativeTime:
-              post.quote.relativeTime ?? formatTimeAgo(post.quote.createdAt),
-          }
-        : undefined,
-    };
-    setPosts((prev) => [normalized, ...prev]);
-  }, []);
+  }, [currentUser, fetchPosts]);
 
   return {
     tab,
     setTab,
+    loading,
+    error,
     explorePosts,
     followingPosts,
     toggleLike,
