@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Keyboard,
   Modal,
@@ -34,6 +34,38 @@ type AddressForm = {
   city: string;
   phone: string;
 };
+
+type AddressFieldKey =
+  | "firstName"
+  | "lastName"
+  | "email"
+  | "country"
+  | "postalCode"
+  | "address1"
+  | "state"
+  | "phone";
+
+const REQUIRED_FIELDS: AddressFieldKey[] = [
+  "firstName",
+  "lastName",
+  "email",
+  "country",
+  "postalCode",
+  "address1",
+  "state",
+  "phone",
+];
+
+const FIELD_ORDER: AddressFieldKey[] = [
+  "firstName",
+  "lastName",
+  "email",
+  "country",
+  "postalCode",
+  "address1",
+  "state",
+  "phone",
+];
 
 const createEmptyAddress = (): AddressForm => ({
   firstName: "",
@@ -87,6 +119,10 @@ export default function CheckoutScreen() {
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("artium");
   const [promoCode, setPromoCode] = useState("");
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [errors, setErrors] = useState<Partial<Record<AddressFieldKey, string>>>(
+    {}
+  );
+  const [scrollToError, setScrollToError] = useState(false);
   const [addressByMethod, setAddressByMethod] = useState<Record<DeliveryMethod, AddressForm>>({
     artium: createEmptyAddress(),
     seller: createEmptyAddress(),
@@ -94,6 +130,10 @@ export default function CheckoutScreen() {
   const [form, setForm] = useState<AddressForm>(createEmptyAddress());
 
   const sheetRef = useRef<BottomSheetModal>(null);
+  const scrollRef = useRef<any>(null);
+  const fieldPositions = useRef<Record<AddressFieldKey, number>>(
+    {} as Record<AddressFieldKey, number>
+  );
   const firstNameRef = useRef<TextInput>(null);
   const lastNameRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
@@ -113,16 +153,60 @@ export default function CheckoutScreen() {
 
   const openAddressSheet = () => {
     setForm(currentAddress);
+    setErrors({});
     sheetRef.current?.present();
   };
 
   const handleSaveAddress = () => {
+    const nextErrors: Partial<Record<AddressFieldKey, string>> = {};
+    REQUIRED_FIELDS.forEach((key) => {
+      if (!form[key].trim()) {
+        nextErrors[key] = "This field is required.";
+      }
+    });
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      setScrollToError(true);
+      return;
+    }
+
+    setErrors({});
     setAddressByMethod((prev) => ({
       ...prev,
       [deliveryMethod]: form,
     }));
     sheetRef.current?.dismiss();
   };
+
+  const handleFieldLayout = (key: AddressFieldKey, y: number) => {
+    fieldPositions.current[key] = y;
+  };
+
+  const handleFormChange = (key: keyof AddressForm, value: string) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    if (key in errors) {
+      setErrors((prev) => {
+        if (!prev[key as AddressFieldKey]) return prev;
+        const next = { ...prev };
+        delete next[key as AddressFieldKey];
+        return next;
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!scrollToError || !scrollRef.current) return;
+    const firstKey = FIELD_ORDER.find((key) => errors[key]);
+    if (!firstKey) {
+      setScrollToError(false);
+      return;
+    }
+    const y = fieldPositions.current[firstKey];
+    if (typeof y === "number") {
+      scrollRef.current.scrollTo({ y: Math.max(y - 16, 0), animated: true });
+    }
+    setScrollToError(false);
+  }, [errors, scrollToError]);
 
   const backdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -181,7 +265,10 @@ export default function CheckoutScreen() {
             <Text className="text-[14px] font-semibold text-slate-500">DELIVERY METHOD</Text>
             <View className="flex-row gap-3 mt-4">
               <Pressable
-                onPress={() => setDeliveryMethod("artium")}
+                onPress={() => {
+                  setDeliveryMethod("artium");
+                  setErrors({});
+                }}
                 className={`flex-1 rounded-xl border px-1 py-3 items-center ${
                   deliveryMethod === "artium"
                     ? "border-[#0B73FF] bg-[#EFF6FF]"
@@ -197,7 +284,10 @@ export default function CheckoutScreen() {
                 </Text>
               </Pressable>
               <Pressable
-                onPress={() => setDeliveryMethod("seller")}
+                onPress={() => {
+                  setDeliveryMethod("seller");
+                  setErrors({});
+                }}
                 className={`flex-1 rounded-xl border px-1 py-3 items-center ${
                   deliveryMethod === "seller"
                     ? "border-[#0B73FF] bg-[#EFF6FF]"
@@ -349,6 +439,7 @@ export default function CheckoutScreen() {
           enablePanDownToClose
         >
           <BottomSheetScrollView
+            ref={scrollRef}
             contentContainerStyle={{
               paddingHorizontal: 20,
               paddingTop: 8,
@@ -364,117 +455,141 @@ export default function CheckoutScreen() {
               </Pressable>
             </View>
 
-            <SheetField
-              label="First Name"
-              required
-              inputRef={firstNameRef}
-              value={form.firstName}
-              onChangeText={(value) => setForm((prev) => ({ ...prev, firstName: value }))}
-              placeholder="Enter first name"
-              returnKeyType="next"
-              blurOnSubmit={false}
-              onSubmitEditing={() => lastNameRef.current?.focus()}
-            />
-            <SheetField
-              label="Last Name"
-              required
-              inputRef={lastNameRef}
-              value={form.lastName}
-              onChangeText={(value) => setForm((prev) => ({ ...prev, lastName: value }))}
-              placeholder="Enter last name"
-              returnKeyType="next"
-              blurOnSubmit={false}
-              onSubmitEditing={() => emailRef.current?.focus()}
-            />
-            <SheetField
-              label="Email Address"
-              required
-              inputRef={emailRef}
-              value={form.email}
-              onChangeText={(value) => setForm((prev) => ({ ...prev, email: value }))}
-              placeholder="example@email.com"
-              keyboardType="email-address"
-              returnKeyType="next"
-              blurOnSubmit={false}
-              onSubmitEditing={() => countryRef.current?.focus()}
-            />
-            <SheetSelectField
-              label="Country"
-              required
-              inputRef={countryRef}
-              value={form.country}
-              placeholder="Select Country"
-              onChangeText={(value) => setForm((prev) => ({ ...prev, country: value }))}
-              returnKeyType="next"
-              blurOnSubmit={false}
-              onSubmitEditing={() => postalRef.current?.focus()}
-            />
-            <SheetField
-              label="Postal / Zip code"
-              required
-              inputRef={postalRef}
-              value={form.postalCode}
-              onChangeText={(value) => setForm((prev) => ({ ...prev, postalCode: value }))}
-              placeholder="Enter postal code"
-              keyboardType="numeric"
-              returnKeyType="next"
-              blurOnSubmit={false}
-              onSubmitEditing={() => address1Ref.current?.focus()}
-            />
-            <SheetField
-              label="Address Line 1"
-              required
-              inputRef={address1Ref}
-              value={form.address1}
-              onChangeText={(value) => setForm((prev) => ({ ...prev, address1: value }))}
-              placeholder="Street address"
-              returnKeyType="next"
-              blurOnSubmit={false}
-              onSubmitEditing={() => address2Ref.current?.focus()}
-            />
+            <View onLayout={(e) => handleFieldLayout("firstName", e.nativeEvent.layout.y)}>
+              <SheetField
+                label="First Name"
+                required
+                inputRef={firstNameRef}
+                value={form.firstName}
+                onChangeText={(value) => handleFormChange("firstName", value)}
+                placeholder="Enter first name"
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => lastNameRef.current?.focus()}
+                error={errors.firstName}
+              />
+            </View>
+            <View onLayout={(e) => handleFieldLayout("lastName", e.nativeEvent.layout.y)}>
+              <SheetField
+                label="Last Name"
+                required
+                inputRef={lastNameRef}
+                value={form.lastName}
+                onChangeText={(value) => handleFormChange("lastName", value)}
+                placeholder="Enter last name"
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => emailRef.current?.focus()}
+                error={errors.lastName}
+              />
+            </View>
+            <View onLayout={(e) => handleFieldLayout("email", e.nativeEvent.layout.y)}>
+              <SheetField
+                label="Email Address"
+                required
+                inputRef={emailRef}
+                value={form.email}
+                onChangeText={(value) => handleFormChange("email", value)}
+                placeholder="example@email.com"
+                keyboardType="email-address"
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => countryRef.current?.focus()}
+                error={errors.email}
+              />
+            </View>
+            <View onLayout={(e) => handleFieldLayout("country", e.nativeEvent.layout.y)}>
+              <SheetSelectField
+                label="Country"
+                required
+                inputRef={countryRef}
+                value={form.country}
+                placeholder="Select Country"
+                onChangeText={(value) => handleFormChange("country", value)}
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => postalRef.current?.focus()}
+                error={errors.country}
+              />
+            </View>
+            <View onLayout={(e) => handleFieldLayout("postalCode", e.nativeEvent.layout.y)}>
+              <SheetField
+                label="Postal / Zip code"
+                required
+                inputRef={postalRef}
+                value={form.postalCode}
+                onChangeText={(value) => handleFormChange("postalCode", value)}
+                placeholder="Enter postal code"
+                keyboardType="numeric"
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => address1Ref.current?.focus()}
+                error={errors.postalCode}
+              />
+            </View>
+            <View onLayout={(e) => handleFieldLayout("address1", e.nativeEvent.layout.y)}>
+              <SheetField
+                label="Address Line 1"
+                required
+                inputRef={address1Ref}
+                value={form.address1}
+                onChangeText={(value) => handleFormChange("address1", value)}
+                placeholder="Street address"
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => address2Ref.current?.focus()}
+                error={errors.address1}
+              />
+            </View>
             <SheetField
               label="Address Line 2"
               inputRef={address2Ref}
               value={form.address2}
-              onChangeText={(value) => setForm((prev) => ({ ...prev, address2: value }))}
+              onChangeText={(value) => handleFormChange("address2", value)}
               placeholder="Apt, suite, etc"
               returnKeyType="next"
               blurOnSubmit={false}
               onSubmitEditing={() => stateRef.current?.focus()}
             />
-            <SheetSelectField
-              label="State / District / Province"
-              required
-              inputRef={stateRef}
-              value={form.state}
-              placeholder="Select State / District / Province"
-              onChangeText={(value) => setForm((prev) => ({ ...prev, state: value }))}
-              returnKeyType="next"
-              blurOnSubmit={false}
-              onSubmitEditing={() => cityRef.current?.focus()}
-            />
+            <View onLayout={(e) => handleFieldLayout("state", e.nativeEvent.layout.y)}>
+              <SheetSelectField
+                label="State / District / Province"
+                required
+                inputRef={stateRef}
+                value={form.state}
+                placeholder="Select State / District / Province"
+                onChangeText={(value) => handleFormChange("state", value)}
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => cityRef.current?.focus()}
+                error={errors.state}
+              />
+            </View>
             <SheetSelectField
               label="City"
               inputRef={cityRef}
               value={form.city}
               placeholder="Select City"
-              onChangeText={(value) => setForm((prev) => ({ ...prev, city: value }))}
+              onChangeText={(value) => handleFormChange("city", value)}
               returnKeyType="next"
               blurOnSubmit={false}
               onSubmitEditing={() => phoneRef.current?.focus()}
             />
-            <SheetField
-              label="Phone Number"
-              required
-              inputRef={phoneRef}
-              value={form.phone}
-              onChangeText={(value) => setForm((prev) => ({ ...prev, phone: value }))}
-              placeholder="+1 (123) 456 7890"
-              keyboardType="phone-pad"
-              helper="We will only use your phone number for delivery purposes."
-              returnKeyType="done"
-              onSubmitEditing={() => phoneRef.current?.blur()}
-            />
+            <View onLayout={(e) => handleFieldLayout("phone", e.nativeEvent.layout.y)}>
+              <SheetField
+                label="Phone Number"
+                required
+                inputRef={phoneRef}
+                value={form.phone}
+                onChangeText={(value) => handleFormChange("phone", value)}
+                placeholder="+1 (123) 456 7890"
+                keyboardType="phone-pad"
+                helper="We will only use your phone number for delivery purposes."
+                returnKeyType="done"
+                onSubmitEditing={() => phoneRef.current?.blur()}
+                error={errors.phone}
+              />
+            </View>
 
             <Pressable
               onPress={handleSaveAddress}
@@ -552,6 +667,7 @@ type SheetFieldProps = {
   returnKeyType?: "next" | "done";
   blurOnSubmit?: boolean;
   onSubmitEditing?: () => void;
+  error?: string;
   onChangeText: (value: string) => void;
 };
 
@@ -566,6 +682,7 @@ function SheetField({
   returnKeyType,
   blurOnSubmit,
   onSubmitEditing,
+  error,
   onChangeText,
 }: SheetFieldProps) {
   return (
@@ -588,6 +705,7 @@ function SheetField({
           style={{ fontSize: 15, color: "#0F172A", padding: 0 }}
         />
       </View>
+      {error ? <Text className="text-[11px] text-rose-500">{error}</Text> : null}
       {helper ? <Text className="text-[11px] text-slate-400">{helper}</Text> : null}
     </View>
   );
@@ -602,6 +720,7 @@ type SheetSelectFieldProps = {
   returnKeyType?: "next" | "done";
   blurOnSubmit?: boolean;
   onSubmitEditing?: () => void;
+  error?: string;
   onChangeText: (value: string) => void;
 };
 
@@ -614,6 +733,7 @@ function SheetSelectField({
   returnKeyType,
   blurOnSubmit,
   onSubmitEditing,
+  error,
   onChangeText,
 }: SheetSelectFieldProps) {
   return (
@@ -636,6 +756,7 @@ function SheetSelectField({
         />
         <Ionicons name="chevron-down" size={18} color="#94A3B8" />
       </View>
+      {error ? <Text className="text-[11px] text-rose-500">{error}</Text> : null}
     </View>
   );
 }
