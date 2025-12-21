@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   View,
   Text,
   Pressable,
@@ -342,13 +344,13 @@ export default function CheckoutScreen() {
           </View>
 
           <Pressable
-            className="rounded-3xl bg-slate-100 border border-slate-200 px-4 py-4 flex-row items-center gap-3"
+            className="rounded-3xl bg-slate-100 border border-slate-200 px-2 py-2 flex-row items-center gap-3"
             style={cardShadow}
           >
             <View className="h-9 w-9 rounded-full bg-[#E0F2FE] items-center justify-center">
               <Ionicons name="shield-checkmark-outline" size={20} color="#0B73FF" />
             </View>
-            <Text className="flex-1 text-sm text-slate-700">
+            <Text className="flex-1 text-[11px] text-slate-700">
               You are protected by Artium Satisfaction Guarantee
             </Text>
             <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
@@ -437,23 +439,34 @@ export default function CheckoutScreen() {
           handleIndicatorStyle={{ backgroundColor: "#CBD5E1", width: 40 }}
           backgroundStyle={{ backgroundColor: "white" }}
           enablePanDownToClose
+          enableContentPanningGesture={false}
         >
-          <BottomSheetScrollView
-            ref={scrollRef}
-            contentContainerStyle={{
-              paddingHorizontal: 20,
-              paddingTop: 8,
-              paddingBottom: Math.max(insets.bottom, 16) + 32,
-              gap: 18,
-            }}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View className="flex-row items-center justify-between">
-              <Text className="text-xl font-bold text-slate-900">{addressTitle}</Text>
-              <Pressable onPress={() => sheetRef.current?.dismiss()} hitSlop={8}>
-                <Ionicons name="close-outline" size={26} color="#0F172A" />
-              </Pressable>
+          <View className="flex-1">
+            <View className="px-5 pt-2 pb-3 border-b border-slate-100 bg-white">
+              <View className="flex-row items-center justify-between">
+                <Text className="text-xl font-bold text-slate-900">
+                  {addressTitle}
+                </Text>
+                <Pressable onPress={() => sheetRef.current?.dismiss()} hitSlop={8}>
+                  <Ionicons name="close-outline" size={26} color="#0F172A" />
+                </Pressable>
+              </View>
             </View>
+
+            <KeyboardAvoidingView
+              behavior={Platform.OS === "ios" ? "padding" : undefined}
+              style={{ flex: 1 }}
+            >
+              <BottomSheetScrollView
+                ref={scrollRef}
+                contentContainerStyle={{
+                  paddingHorizontal: 20,
+                  paddingTop: 12,
+                  paddingBottom: Math.max(insets.bottom, 16) + 32,
+                  gap: 18,
+                }}
+                keyboardShouldPersistTaps="handled"
+              >
 
             <View onLayout={(e) => handleFieldLayout("firstName", e.nativeEvent.layout.y)}>
               <SheetField
@@ -597,7 +610,9 @@ export default function CheckoutScreen() {
             >
               <Text className="text-base font-semibold text-white">Save</Text>
             </Pressable>
-          </BottomSheetScrollView>
+              </BottomSheetScrollView>
+            </KeyboardAvoidingView>
+          </View>
         </BottomSheetModal>
 
         <Modal
