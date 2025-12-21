@@ -5,6 +5,8 @@ type TabBarVisibilityContextValue = {
   setHidden: (hidden: boolean) => void;
   height: number;
   setHeight: (height: number) => void;
+  lastTab: string | null;
+  setLastTab: (tab: string | null) => void;
 };
 
 const TabBarVisibilityContext = createContext<TabBarVisibilityContextValue>({
@@ -14,6 +16,9 @@ const TabBarVisibilityContext = createContext<TabBarVisibilityContextValue>({
   height: 72,
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   setHeight: () => {},
+  lastTab: null,
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  setLastTab: () => {},
 });
 
 export function TabBarVisibilityProvider({
@@ -23,6 +28,7 @@ export function TabBarVisibilityProvider({
 }) {
   const [hidden, setHidden] = useState(false);
   const [height, setHeight] = useState(72);
+  const [lastTab, setLastTab] = useState<string | null>(null);
 
   const value = useMemo(
     () => ({
@@ -30,8 +36,10 @@ export function TabBarVisibilityProvider({
       setHidden,
       height,
       setHeight,
+      lastTab,
+      setLastTab,
     }),
-    [hidden, height]
+    [hidden, height, lastTab]
   );
 
   return (

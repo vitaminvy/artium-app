@@ -1,14 +1,16 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import WelcomeScreen from "../../screens/WelcomeScreen";
-import SignInScreen from "../../screens/SignInScreen";
+import LoginScreen from "../../screens/LoginScreen";
 import SignUpScreen from "../../screens/SignUpScreen";
-import TabNavigator from "./TabNavigator";
+import ForgotPasswordScreen from "../../screens/ForgotPasswordScreen";
+import DiscoverScreen from "../../screens/DiscoverScreen";
 
 export type AuthStackParamList = {
   Welcome: undefined;
-  SignIn: undefined;
+  Discover: undefined;
+  LogIn: undefined;
   SignUp: undefined;
-  Tabs: undefined;
+  ForgotPassword: undefined;
 };
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
@@ -17,9 +19,10 @@ export default function AuthStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
-      <Stack.Screen name="SignIn" component={SignInScreen} />
+      <Stack.Screen name="Discover" component={DiscoverScreen} />
+      <Stack.Screen name="LogIn" component={LoginScreen} />
       <Stack.Screen name="SignUp" component={SignUpScreen} />
-      <Stack.Screen name="Tabs" component={TabNavigator} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
     </Stack.Navigator>
   );
 }

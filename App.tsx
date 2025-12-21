@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useEffect, useRef, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 
 import AppEntry from "./src/app";
 import { useAuthBootstrap } from "./src/domains/auth/hooks/useAuthBootstrap";
@@ -11,6 +12,7 @@ import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
 } from "react-native-reanimated";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
 
 // Ensure error handler is registered once
 LogBox.ignoreAllLogs(false);
@@ -75,39 +77,41 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <BottomSheetModalProvider>
-        <AppEntry authStatus={auth.status} />
+      <KeyboardProvider>
+        <BottomSheetModalProvider>
+          <AppEntry />
 
-        {splashVisible && (
-          <Animated.View
-            style={[
-              StyleSheet.absoluteFillObject,
-              {
-                backgroundColor: "white",
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: fade,
-                transform: [{ translateY: slideUp }],
-              },
-            ]}
-          >
-            <SafeAreaView
-              style={{
-                flex: 1,
-                width: "100%",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
+          {splashVisible && (
+            <Animated.View
+              style={[
+                StyleSheet.absoluteFillObject,
+                {
+                  backgroundColor: "white",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: fade,
+                  transform: [{ translateY: slideUp }],
+                },
+              ]}
             >
-              <Image
-                source={require("./assets/logos/logo-full-text-light-mode.png")}
-                resizeMode="contain"
-                style={{ width: 240, height: 90 }}
-              />
-            </SafeAreaView>
-          </Animated.View>
-        )}
-      </BottomSheetModalProvider>
+              <SafeAreaView
+                style={{
+                  flex: 1,
+                  width: "100%",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Image
+                  source={require("./assets/logos/logo-full-text-light-mode.png")}
+                  resizeMode="contain"
+                  style={{ width: 240, height: 90 }}
+                />
+              </SafeAreaView>
+            </Animated.View>
+          )}
+        </BottomSheetModalProvider>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }

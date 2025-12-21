@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "artium",
+    "name": "Artium",
     "slug": "artium",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -13,7 +13,12 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ngovanthinh.artium.dev",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,15 +26,29 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.artium"
     },
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
     "plugins": [
+      "expo-web-browser",
       "expo-secure-store",
-      "expo-video"
-    ]
+      "expo-video",
+      "expo-image-picker",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.300008030002-39obokvd8jlv0k7pklb39h9vum8outmu"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "6481e52d-f627-4420-bce1-04fac3d9c7e7"
+      }
+    }
   }
 }

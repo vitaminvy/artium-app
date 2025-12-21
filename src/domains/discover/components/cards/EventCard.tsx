@@ -14,7 +14,12 @@ const cardShadow = {
   elevation: 4,
 };
 
-export default function EventCard({ item }: { item: EventItem }) {
+type Props = {
+  item: EventItem;
+  onPress?: () => void;
+};
+
+export default function EventCard({ item, onPress }: Props) {
   const date = new Date(item.datetime);
   const month = date.toLocaleString("en-US", { month: "short" }).toUpperCase();
   const day = date.getDate();
@@ -60,12 +65,16 @@ export default function EventCard({ item }: { item: EventItem }) {
     },
   };
 
+  const Container = onPress ? Pressable : View;
+
   return (
-    <View
+    <Container
       className="rounded-3xl bg-white border border-slate-100 overflow-hidden"
       style={[cardShadow, { position: "relative" as const }]}
+      onPress={onPress}
     >
-      <View className="relative">
+      <View pointerEvents={onPress ? "none" : "auto"}>
+        <View className="relative">
         <Image
           source={{ uri: item.image }}
           className="h-40 w-full"
@@ -79,9 +88,9 @@ export default function EventCard({ item }: { item: EventItem }) {
             {day}
           </Text>
         </View>
-      </View>
+        </View>
 
-      <View className="px-4 py-4 gap-2">
+        <View className="px-4 py-4 gap-2">
         <View className="flex-row items-center gap-2">
           {item.status ? (
             <Badge
@@ -230,7 +239,8 @@ export default function EventCard({ item }: { item: EventItem }) {
             </View>
           </Modal>
         ) : null}
+        </View>
       </View>
-    </View>
+    </Container>
   );
 }

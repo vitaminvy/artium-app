@@ -17,10 +17,11 @@ import { BottomSheetModalProvider, BottomSheetModal, BottomSheetBackdrop } from 
 import type { BottomSheetBackdropProps } from "@gorhom/bottom-sheet";
 
 import { discoverMockData } from "../domains/discover/mockData";
-import { Artwork } from "../domains/discover/types";
+import { Artwork as DiscoverArtwork } from "../domains/discover/types";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import ReshareSheet from "../domains/feed/components/sheets/ReshareSheet";
 import { FeedPost } from "../domains/feed/types";
+import { Artwork as InventoryArtwork } from "../domains/inventory/types";
 
 // Domain Imports
 import { ArtworkDetail } from "../domains/artwork/types";
@@ -57,36 +58,96 @@ export default function ArtworkDetailScreen() {
   // Bottom Sheet Refs
   const optionsSheetRef = useRef<BottomSheetModal>(null);
 
-  const currentArtwork: Artwork | undefined = useMemo(() => {
+  const inventoryArtwork: InventoryArtwork | undefined = route?.params?.artwork;
+
+  const currentArtwork: DiscoverArtwork | undefined = useMemo(() => {
+    if (inventoryArtwork) return undefined;
     const all = [...discoverMockData.artworks, ...discoverMockData.moments];
     return all.find((item) => item.id === route?.params?.id);
-  }, [route?.params?.id]);
+  }, [route?.params?.id, inventoryArtwork]);
 
   const detail: ArtworkDetail = useMemo(() => {
-    if (!currentArtwork) return fallbackDetail;
-    return {
-      ...fallbackDetail,
-      id: currentArtwork.id,
-      title: currentArtwork.title,
-      artist: {
-        name: currentArtwork.artist,
-        avatar:
-          currentArtwork.artistAvatar ??
-          "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=200&q=80",
-        verified: true,
-      },
-      price: currentArtwork.price ?? fallbackDetail.price,
-      images: [currentArtwork.image, ...fallbackDetail.images.slice(1)],
-    };
-  }, [currentArtwork]);
+    if (inventoryArtwork) {
+      const images =
+        inventoryArtwork.images && inventoryArtwork.images.length > 0
+          ? inventoryArtwork.images
+          : [inventoryArtwork.thumbnail];
+      const tags =
+        inventoryArtwork.tags && inventoryArtwork.tags.length > 0
+          ? inventoryArtwork.tags
+          : [];
+      const detailSource = inventoryArtwork.details;
+      const parseNum = (value: string | undefined, fallback: number) => {
+        const parsed = parseFloat(value ?? "");
+        return Number.isFinite(parsed) ? parsed : fallback;
+      };
+      const parseIntSafe = (value: string | undefined, fallback: number) => {
+        const parsed = parseInt(value ?? "", 10);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      };
+      const dimension = detailSource
+        ? {
+            h: parseNum(detailSource.dimensions.height, fallbackDetail.dimension.h),
+            w: parseNum(detailSource.dimensions.width, fallbackDetail.dimension.w),
+            d: parseNum(detailSource.dimensions.depth, fallbackDetail.dimension.d),
+            unit: detailSource.dimensions.unit,
+          }
+        : fallbackDetail.dimension;
+      const weightLabel = detailSource?.weight.value
+        ? `${detailSource.weight.value} ${detailSource.weight.unit}`
+        : fallbackDetail.weight;
+      const quantity = detailSource?.quantity
+        ? parseIntSafe(detailSource.quantity, 0)
+        : 0;
+      return {
+        ...fallbackDetail,
+        id: inventoryArtwork.id,
+        title: inventoryArtwork.title,
+        artist: {
+          name: inventoryArtwork.artist,
+          avatar: fallbackDetail.artist.avatar,
+          verified: false,
+        },
+        price: inventoryArtwork.price ?? fallbackDetail.price,
+        availabilityNote: quantity > 0 ? `Only ${quantity} available. Get yours now!` : fallbackDetail.availabilityNote,
+        dimension,
+        weight: weightLabel,
+        year: detailSource?.year
+          ? parseIntSafe(detailSource.year, inventoryArtwork.year ?? fallbackDetail.year)
+          : inventoryArtwork.year ?? fallbackDetail.year,
+        edition: detailSource?.edition
+          ? parseIntSafe(detailSource.edition, fallbackDetail.edition)
+          : fallbackDetail.edition,
+        materials: detailSource?.materials || fallbackDetail.materials,
+        tags,
+        images,
+      };
+    }
+    if (currentArtwork) {
+      return {
+        ...fallbackDetail,
+        id: currentArtwork.id,
+        title: currentArtwork.title,
+        artist: {
+          name: currentArtwork.artist,
+          avatar:
+            currentArtwork.artistAvatar ??
+            "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=200&q=80",
+          verified: true,
+        },
+        price: currentArtwork.price ?? fallbackDetail.price,
+        images: [currentArtwork.image, ...fallbackDetail.images.slice(1)],
+      };
+    }
+    return fallbackDetail;
+  }, [currentArtwork, inventoryArtwork]);
 
-  const similarWorks = useMemo(
-    () =>
-      discoverMockData.artworks
-        .filter((item) => item.id !== detail.id)
-        .slice(0, 6),
-    [detail.id]
-  );
+  const similarWorks = useMemo(() => {
+    if (inventoryArtwork) return [];
+    return discoverMockData.artworks
+      .filter((item) => item.id !== detail.id)
+      .slice(0, 6);
+  }, [detail.id, inventoryArtwork]);
 
   const reshareTarget: FeedPost = useMemo(
     () => ({

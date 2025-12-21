@@ -172,7 +172,7 @@ export default function ReshareSheet({
             <Text className="text-[13px] text-slate-800 mb-2 leading-5">
               {target.content}
             </Text>
-            {target.media ? (
+            {target.media && "url" in target.media && target.media.url ? (
               <View
                 className="rounded-xl overflow-hidden"
                 style={{
@@ -180,13 +180,11 @@ export default function ReshareSheet({
                   aspectRatio: target.media.aspectRatio ?? 1,
                 }}
               >
-                {target.media.url ? (
-                  <Animated.Image
-                    source={{ uri: target.media.url }}
-                    style={{ width: "100%", height: "100%" }}
-                    resizeMode="cover"
-                  />
-                ) : null}
+                <Animated.Image
+                  source={{ uri: target.media.url }}
+                  style={{ width: "100%", height: "100%" }}
+                  resizeMode="cover"
+                />
               </View>
             ) : null}
           </View>

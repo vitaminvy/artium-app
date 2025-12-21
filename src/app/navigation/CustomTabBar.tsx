@@ -5,15 +5,19 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 
-import { TAB_META, TabParamList } from "./tabTypes";
+import { TAB_META, TabParamList, UploadOption } from "./tabTypes";
 import UploadActionSheet from "./UploadActionSheet";
+import { requestPostMomentSheet } from "../../shared/utils/postMomentBridge";
 import { useTabBarVisibility } from "./TabBarVisibilityContext";
 
 export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const [showUploadSheet, setShowUploadSheet] = useState(false);
   const translateY = useRef(new Animated.Value(0)).current;
-  const { hidden, setHeight, height } = useTabBarVisibility();
+  const { hidden, setHeight, height, setLastTab } = useTabBarVisibility();
+  const previousTabRef = useRef<string | null>(null);
+
+  const currentTab = state.routes[state.index].name;
 
   useEffect(() => {
     Animated.timing(translateY, {
@@ -22,6 +26,20 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
       useNativeDriver: true,
     }).start();
   }, [hidden, translateY, height]);
+
+  useEffect(() => {
+    // Track the last non-upload tab so we can restore it when exiting upload flows
+    const prev = previousTabRef.current;
+    if (prev && currentTab === "Upload") {
+      setLastTab(prev);
+    }
+    if (currentTab !== prev) {
+      if (currentTab !== "Upload") {
+        setLastTab(currentTab);
+      }
+      previousTabRef.current = currentTab;
+    }
+  }, [currentTab, setLastTab]);
 
   const focusedOptions = descriptors[state.routes[state.index].key]?.options;
   if (
@@ -134,7 +152,16 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
 
       <UploadActionSheet 
         visible={showUploadSheet} 
-        onClose={() => setShowUploadSheet(false)} 
+        onClose={() => setShowUploadSheet(false)}
+        onSelectOption={(option: UploadOption) => {
+          if (option.key === "moment") {
+            requestPostMomentSheet();
+            return;
+          }
+          if (option.targetTab) {
+            navigation.navigate(option.targetTab);
+          }
+        }}
       />
     </>
   );

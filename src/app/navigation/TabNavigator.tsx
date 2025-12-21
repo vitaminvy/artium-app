@@ -19,9 +19,10 @@ export default function TabNavigator() {
   return (
     <TabBarVisibilityProvider>
       <Tab.Navigator
-        initialRouteName="Discover"
+        initialRouteName="Home"
         screenOptions={{
           headerShown: false,
+          lazy: false, // mount tabs eagerly so global sheets can open anywhere
         }}
         tabBar={(props) => <CustomTabBar {...props} />}
       >

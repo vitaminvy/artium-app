@@ -1,15 +1,20 @@
 import React from "react";
-import { FlatList, ListRenderItemInfo } from "react-native";
+import { FlatList, ListRenderItemInfo, NativeScrollEvent, NativeSyntheticEvent } from "react-native";
 import { ArtistProfile } from "../../types";
 import ProfileCard from "../cards/ProfileCard";
 
 type Props = {
   data: ArtistProfile[];
+  onCardPress?: (item: ArtistProfile) => void;
+  onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
 };
 
-export default function DiscoverProfilesTab({ data }: Props) {
+export default function DiscoverProfilesTab({ data, onCardPress, onScroll }: Props) {
   const renderItem = ({ item }: ListRenderItemInfo<ArtistProfile>) => (
-    <ProfileCard item={item} />
+    <ProfileCard
+      item={item}
+      onPress={onCardPress ? () => onCardPress(item) : undefined}
+    />
   );
 
   return (
@@ -26,6 +31,8 @@ export default function DiscoverProfilesTab({ data }: Props) {
       }}
       columnWrapperStyle={{ columnGap: 12 }}
       showsVerticalScrollIndicator={false}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
     />
   );
 }

@@ -1,14 +1,16 @@
 import React from "react";
-import { FlatList, ListRenderItemInfo } from "react-native";
+import { FlatList, ListRenderItemInfo, NativeScrollEvent, NativeSyntheticEvent } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Artwork } from "../../types";
 import MomentCard from "../cards/MomentCard";
 
 type Props = {
   data: Artwork[];
+  onCardPress?: (item: Artwork) => void;
+  onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
 };
 
-export default function DiscoverMomentsTab({ data }: Props) {
+export default function DiscoverMomentsTab({ data, onCardPress, onScroll }: Props) {
   const navigation = useNavigation();
 
   return (
@@ -19,7 +21,9 @@ export default function DiscoverMomentsTab({ data }: Props) {
         <MomentCard
           item={item}
           onPress={() =>
-            (navigation.navigate as any)("ArtworkDetail", { id: item.id })
+            onCardPress
+              ? onCardPress(item)
+              : (navigation.navigate as any)("ArtworkDetail", { id: item.id })
           }
         />
       )}
@@ -30,6 +34,8 @@ export default function DiscoverMomentsTab({ data }: Props) {
         rowGap: 16,
       }}
       showsVerticalScrollIndicator={false}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
     />
   );
 }

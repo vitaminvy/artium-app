@@ -3,7 +3,6 @@
 import React from "react";
 import { View, Pressable, Text, Keyboard } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import FeedTabs from "../domains/feed/components/ui/FeedTabs";
 import FeedExploreTab from "../domains/feed/components/tabs/FeedExploreTab";
@@ -23,10 +22,15 @@ import Animated, {
   withTiming,
   interpolate,
   useAnimatedScrollHandler,
+  runOnJS,
 } from "react-native-reanimated";
+import PostMomentSheet from "../domains/feed/components/PostMomentSheet";
+import { usePostMoment } from "../domains/feed/hooks/usePostMoment";
+import ImageViewing from "react-native-image-viewing";
+import { useRef, useEffect } from "react";
+import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 
 export default function FeedScreen() {
-  const insets = useSafeAreaInsets();
   const navigation =
     useNavigation<NativeStackNavigationProp<FeedStackParamList>>();
   const {
@@ -38,16 +42,33 @@ export default function FeedScreen() {
     createReshare,
     commentsByPost,
     addComment,
+    addMomentPost,
   } = useFeed();
+  const postMoment = usePostMoment({
+    onPublish: addMomentPost,
+    onShared: () => {
+      // Ensure Feed tab is focused after sharing
+      navigation.getParent()?.navigate("Feed");
+    },
+  });
+  // Note: Subscription to postMomentOpen is handled inside usePostMoment hook
   const [selectedPost, setSelectedPost] = React.useState<
     FeedPost | undefined
   >();
   const [commentTarget, setCommentTarget] = React.useState<
     FeedPost | undefined
   >();
+  const viewerKeyRef = useRef(0);
+  const [viewerState, setViewerState] = React.useState<{
+    visible: boolean;
+    images: { uri: string }[];
+    initialIndex: number;
+    key: string;
+  }>({ visible: false, images: [], initialIndex: 0, key: "viewer-0" });
   const TAB_HEIGHT = 52;
   const tabsAnim = useSharedValue(1);
   const lastOffset = useSharedValue(0);
+  const { setHidden } = useTabBarVisibility();
 
   const openReshare = React.useCallback((post: FeedPost) => {
     setSelectedPost(post);
@@ -88,12 +109,21 @@ export default function FeedScreen() {
       // Nhạy hơn cho cuộn chậm: ngưỡng nhỏ và auto-ẩn khi đã vượt xa
       if ((diff > 6 && y > 16) || y > 120) {
         tabsAnim.value = withTiming(0, { duration: 140 });
+        runOnJS(setHidden)(true);
       } else if (diff < -6) {
         tabsAnim.value = withTiming(1, { duration: 140 });
+        runOnJS(setHidden)(false);
       }
       lastOffset.value = y;
     },
   });
+
+  useEffect(
+    () => () => {
+      setHidden(false);
+    },
+    [setHidden]
+  );
 
   const tabAnimatedStyle = useAnimatedStyle(() => ({
     height: interpolate(tabsAnim.value, [0, 1], [0, TAB_HEIGHT]),
@@ -107,13 +137,29 @@ export default function FeedScreen() {
     pointerEvents: tabsAnim.value === 0 ? "none" : "auto",
   }));
 
+  const handleOpenViewer = React.useCallback((images: { uri: string }[], index: number) => {
+    viewerKeyRef.current += 1;
+    const key = `viewer-${viewerKeyRef.current}-${images.length}-${index}`;
+    // Set images/index first, then flip visible on next frame to avoid race
+    setViewerState({ visible: false, images, initialIndex: index, key });
+    requestAnimationFrame(() => {
+      setViewerState((prev) => ({ ...prev, visible: true }));
+    });
+  }, []);
+
+  const handleCloseViewer = React.useCallback(() => {
+    setViewerState((prev) => ({ ...prev, visible: false }));
+  }, []);
+
   return (
     <View className="flex-1 bg-white">
       <ScreenHeader
         title={FEED_STRINGS.HEADER_TITLE}
         badgeLabel="Blog"
         actionType="notifications"
-        onPressAction={() => console.log("Open notifications")}
+        onPressAction={() => {
+          // TODO: Navigate to notifications screen
+        }}
         underlineSource={UnderlineHome}
       />
 
@@ -129,7 +175,9 @@ export default function FeedScreen() {
             onToggleReshare={openReshare}
             onPressComment={openComments}
             onPressCard={openDetail}
+            onPressImage={handleOpenViewer}
             scrollHandler={scrollHandler}
+            isTabActive={tab === "explore"}
           />
         </View>
         <View style={{ flex: 1, display: tab === "following" ? "flex" : "none" }}>
@@ -139,7 +187,9 @@ export default function FeedScreen() {
             onToggleReshare={openReshare}
             onPressComment={openComments}
             onPressCard={openDetail}
+            onPressImage={handleOpenViewer}
             scrollHandler={scrollHandler}
+            isTabActive={tab === "following"}
           />
         </View>
       </View>
@@ -157,6 +207,34 @@ export default function FeedScreen() {
         comments={commentTarget ? (commentsByPost[commentTarget.id] ?? []) : []}
         onClose={closeComments}
         onSubmit={submitComment}
+      />
+
+      <PostMomentSheet
+        visible={postMoment.state.visible}
+        text={postMoment.state.text}
+        media={postMoment.state.media}
+        canShare={postMoment.state.canShare}
+        onChangeText={postMoment.actions.setText}
+        onPickImage={postMoment.actions.pickImage}
+        onPickVideo={postMoment.actions.pickVideo}
+        onRemoveMedia={postMoment.actions.removeMedia}
+        onRemoveImageAt={postMoment.actions.removeImageAt}
+        onVideoDuration={postMoment.actions.setVideoDuration}
+        onShare={postMoment.actions.share}
+        onClose={postMoment.actions.close}
+        isVideoActive={postMoment.state.media?.type === "video"}
+      />
+
+      <ImageViewing
+        key={viewerState.key}
+        images={viewerState.images}
+        imageIndex={viewerState.initialIndex}
+        visible={viewerState.visible}
+        onRequestClose={handleCloseViewer}
+        swipeToCloseEnabled
+        doubleTapToZoomEnabled
+        backgroundColor="black"
+        animationType="none"
       />
     </View>
   );

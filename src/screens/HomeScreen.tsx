@@ -1,7 +1,5 @@
-// Main Home/Feed Screen
-// src/screens/HomeScreen.tsx
 import React, { useState } from "react";
-import { View, Text, Pressable, Image, DevSettings } from "react-native";
+import { View, Text, Pressable, Image } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -10,46 +8,53 @@ import ScreenHeader from "../shared/components/ScreenHeader";
 import Sidebar from "../shared/components/Sidebar";
 import { SidebarKey, useSidebarItems } from "../shared/hooks/useSidebar";
 import UnderlineHome from "../../assets/headers/underline-home.svg";
-import { tokenStorage } from "../domains/auth/services/tokenStorage";
+import { doSignOut } from "../domains/auth/services/firebaseAuth"; // Import doSignOut
 import { TabParamList } from "../app/navigation/tabTypes";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
-import { navigationRef } from "../app/navigation/navigationRef";
 
 type HomeScreenNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<HomeStackParamList, "HomeMain">,
   BottomTabNavigationProp<TabParamList>
 >;
-
 export default function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const items = useSidebarItems();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(96);
-  const [activeKey, setActiveKey] = useState<SidebarKey>(
-    items[0]?.key ?? "home"
-  );
-
-  const navigateToProfile = () => {
-    navigation.navigate("Profile");
-  };
-
+  const [activeKey, setActiveKey] = useState<SidebarKey>("home");
   const goToDiscoverTab = () => {
-    // Use root navigation ref to navigate to Discover tab
-    if (navigationRef.isReady()) {
-      navigationRef.navigate("Discover" as never);
-    }
+    navigation.navigate("Discover");
   };
 
-  const handleSidebarSelect = (key: SidebarKey) => {
+  const handleSidebarSelect = (key: SidebarKey | "more") => {
     setSidebarOpen(false);
-    setActiveKey(key);
 
-    if (key === "profile") {
-      navigateToProfile();
+    if (key === "more") {
+      console.log("Sidebar selected:", key);
       return;
     }
 
-    console.log("Selected sidebar item:", key);
+    setActiveKey(key);
+
+    if (key === "inventory") {
+      navigation.navigate("Inventory");
+      return;
+    }
+
+    if (key === "profile") {
+      navigation.navigate("Profile");
+      return;
+    }
+
+    console.log("Sidebar selected:", key);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await doSignOut();
+    } catch (error) {
+      console.error("Failed to log out:", error);
+    }
   };
 
   return (
@@ -78,15 +83,11 @@ export default function HomeScreen() {
         >
           <Text className="text-white font-semibold">Go to Discover</Text>
         </Pressable>
-
         <Pressable
-          onPress={async () => {
-            await tokenStorage.remove();
-            DevSettings.reload(); // reload app so auth bootstrap can show Welcome
-          }}
+          onPress={handleLogout}
           className="mt-4 px-4 py-2 rounded-lg border border-slate-300"
         >
-          <Text className="text-slate-700 text-sm">Đăng xuất</Text>
+          <Text className="text-slate-700 text-sm">Log out</Text>
         </Pressable>
       </View>
 
