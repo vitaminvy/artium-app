@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Keyboard,
   Modal,
   View,
@@ -9,6 +10,7 @@ import {
   Image,
   TextInput,
   ViewStyle,
+  useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -40,6 +42,14 @@ type AddressForm = {
   state: string;
   city: string;
   phone: string;
+};
+
+type SelectionType = "country" | "state" | "city";
+
+type LocationErrors = {
+  countries?: string;
+  states?: string;
+  cities?: string;
 };
 
 type AddressFieldKey =
@@ -107,10 +117,13 @@ type CheckoutRouteParams = {
   artwork?: ArtworkDetail;
 };
 
+const LOCATION_API = "https://countriesnow.space/api/v0.1";
+
 export default function CheckoutScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const { setHidden } = useTabBarVisibility();
 
   useFocusEffect(
@@ -131,6 +144,16 @@ export default function CheckoutScreen() {
     {}
   );
   const [scrollToError, setScrollToError] = useState(false);
+  const [countries, setCountries] = useState<string[]>([]);
+  const [states, setStates] = useState<string[]>([]);
+  const [cities, setCities] = useState<string[]>([]);
+  const [loadingCountries, setLoadingCountries] = useState(false);
+  const [loadingStates, setLoadingStates] = useState(false);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [locationErrors, setLocationErrors] = useState<LocationErrors>({});
+  const [selectionVisible, setSelectionVisible] = useState(false);
+  const [selectionType, setSelectionType] = useState<SelectionType | null>(null);
+  const [selectionQuery, setSelectionQuery] = useState("");
   const [addressByMethod, setAddressByMethod] = useState<Record<DeliveryMethod, AddressForm>>({
     artium: createEmptyAddress(),
     seller: createEmptyAddress(),
@@ -156,6 +179,10 @@ export default function CheckoutScreen() {
   const phoneRef = useRef<TextInput>(null);
   const snapPoints = useMemo(() => ["90%"], []);
   const guaranteeSnapPoints = useMemo(() => ["80%"], []);
+  const loadingCountriesRef = useRef(false);
+  const countriesLoadedRef = useRef(false);
+  const selectionModalMaxHeight = Math.min(windowHeight * 0.65, 520);
+  const selectionListMaxHeight = Math.max(selectionModalMaxHeight - 76, 200);
 
   const currentAddress = addressByMethod[deliveryMethod];
   const isFormDirty = useMemo(
@@ -168,6 +195,194 @@ export default function CheckoutScreen() {
   const hasAddress = Object.values(currentAddress).some((value) => value.trim().length > 0);
   const addressTitle = deliveryMethod === "artium" ? "Shipping Address" : "Pick up / ship address";
   const artworkImage = detail.images?.[0] ?? fallbackDetail.images[0];
+
+  const selectionOptions = useMemo(() => {
+    const normalizedQuery = selectionQuery.trim().toLowerCase();
+    const list =
+      selectionType === "country"
+        ? countries
+        : selectionType === "state"
+          ? states
+          : selectionType === "city"
+            ? cities
+            : [];
+    if (!normalizedQuery) return list;
+    return list.filter((item) =>
+      item.toLowerCase().includes(normalizedQuery)
+    );
+  }, [countries, states, cities, selectionQuery, selectionType]);
+
+  const selectionLoading =
+    selectionType === "country"
+      ? loadingCountries
+      : selectionType === "state"
+        ? loadingStates
+        : selectionType === "city"
+          ? loadingCities
+          : false;
+
+  const selectionError =
+    selectionType === "country"
+      ? locationErrors.countries
+      : selectionType === "state"
+        ? locationErrors.states
+        : selectionType === "city"
+          ? locationErrors.cities
+          : undefined;
+
+  const selectionTitle =
+    selectionType === "country"
+      ? "Select Country"
+      : selectionType === "state"
+        ? "Select State / Province"
+        : selectionType === "city"
+          ? "Select City"
+          : "";
+
+  const loadCountries = useCallback(async () => {
+    if (loadingCountriesRef.current || countriesLoadedRef.current) return;
+    loadingCountriesRef.current = true;
+    setLoadingCountries(true);
+    setLocationErrors((prev) => ({ ...prev, countries: undefined }));
+    try {
+      const res = await fetch(`${LOCATION_API}/countries`);
+      const json = await res.json();
+      if (!res.ok || json?.error) {
+        throw new Error(json?.msg || "Failed to load countries");
+      }
+      const list = Array.isArray(json?.data)
+        ? json.data
+            .map((item: any) => item?.country ?? item?.name)
+            .filter(Boolean)
+        : [];
+      setCountries(list);
+      if (list.length > 0) {
+        countriesLoadedRef.current = true;
+      }
+    } catch (err: any) {
+      setLocationErrors((prev) => ({
+        ...prev,
+        countries: err?.message || "Unable to load countries",
+      }));
+    } finally {
+      loadingCountriesRef.current = false;
+      setLoadingCountries(false);
+    }
+  }, []);
+
+  const loadStates = useCallback(
+    async (countryName: string) => {
+      if (!countryName || loadingStates) return;
+      setLoadingStates(true);
+      setLocationErrors((prev) => ({ ...prev, states: undefined }));
+      try {
+        const res = await fetch(`${LOCATION_API}/countries/states`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ country: countryName }),
+        });
+        const json = await res.json();
+        if (!res.ok || json?.error) {
+          throw new Error(json?.msg || "Failed to load states");
+        }
+        const list = Array.isArray(json?.data?.states)
+          ? json.data.states.map((item: any) => item?.name).filter(Boolean)
+          : [];
+        setStates(list);
+      } catch (err: any) {
+        setLocationErrors((prev) => ({
+          ...prev,
+          states: err?.message || "Unable to load states",
+        }));
+      } finally {
+        setLoadingStates(false);
+      }
+    },
+    [loadingStates]
+  );
+
+  const loadCities = useCallback(
+    async (countryName: string, stateName: string) => {
+      if (!countryName || !stateName || loadingCities) return;
+      setLoadingCities(true);
+      setLocationErrors((prev) => ({ ...prev, cities: undefined }));
+      try {
+        const res = await fetch(`${LOCATION_API}/countries/state/cities`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ country: countryName, state: stateName }),
+        });
+        const json = await res.json();
+        if (!res.ok || json?.error) {
+          throw new Error(json?.msg || "Failed to load cities");
+        }
+        const list = Array.isArray(json?.data)
+          ? json.data.filter(Boolean)
+          : [];
+        setCities(list);
+      } catch (err: any) {
+        setLocationErrors((prev) => ({
+          ...prev,
+          cities: err?.message || "Unable to load cities",
+        }));
+      } finally {
+        setLoadingCities(false);
+      }
+    },
+    [loadingCities]
+  );
+
+  const openSelection = (type: SelectionType) => {
+    Keyboard.dismiss();
+    if (type === "state" && !form.country.trim()) {
+      setErrors((prev) => ({
+        ...prev,
+        country: "Select a country first.",
+      }));
+      setScrollToError(true);
+      return;
+    }
+    if (type === "city" && !form.state.trim()) {
+      setErrors((prev) => ({
+        ...prev,
+        state: "Select a state first.",
+      }));
+      setScrollToError(true);
+      return;
+    }
+    setSelectionType(type);
+    setSelectionQuery("");
+    if (type === "country" && countries.length === 0 && !loadingCountries) {
+      void loadCountries();
+    }
+    if (type === "state" && states.length === 0 && !loadingStates) {
+      void loadStates(form.country);
+    }
+    if (type === "city" && cities.length === 0 && !loadingCities) {
+      void loadCities(form.country, form.state);
+    }
+    setSelectionVisible(true);
+  };
+
+  const handleSelectOption = (value: string) => {
+    if (!selectionType) return;
+    if (selectionType === "country") {
+      handleFormChange("country", value);
+      handleFormChange("state", "");
+      handleFormChange("city", "");
+      setStates([]);
+      setCities([]);
+      void loadStates(value);
+    } else if (selectionType === "state") {
+      handleFormChange("state", value);
+      handleFormChange("city", "");
+      setCities([]);
+      void loadCities(form.country, value);
+    } else if (selectionType === "city") {
+      handleFormChange("city", value);
+    }
+    setSelectionVisible(false);
+  };
 
   const openAddressSheet = () => {
     setForm(currentAddress);
@@ -252,6 +467,10 @@ export default function CheckoutScreen() {
     }
     setScrollToError(false);
   }, [errors, scrollToError]);
+
+  useEffect(() => {
+    void loadCountries();
+  }, [loadCountries]);
 
   const backdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -571,6 +790,8 @@ export default function CheckoutScreen() {
                 value={form.country}
                 placeholder="Select Country"
                 onChangeText={(value) => handleFormChange("country", value)}
+                onPress={() => openSelection("country")}
+                loading={loadingCountries}
                 returnKeyType="next"
                 blurOnSubmit={false}
                 onSubmitEditing={() => postalRef.current?.focus()}
@@ -624,6 +845,9 @@ export default function CheckoutScreen() {
                 value={form.state}
                 placeholder="Select State / District / Province"
                 onChangeText={(value) => handleFormChange("state", value)}
+                onPress={() => openSelection("state")}
+                loading={loadingStates}
+                disabled={!form.country.trim()}
                 returnKeyType="next"
                 blurOnSubmit={false}
                 onSubmitEditing={() => cityRef.current?.focus()}
@@ -636,6 +860,9 @@ export default function CheckoutScreen() {
               value={form.city}
               placeholder="Select City"
               onChangeText={(value) => handleFormChange("city", value)}
+              onPress={() => openSelection("city")}
+              loading={loadingCities}
+              disabled={!form.state.trim()}
               returnKeyType="next"
               blurOnSubmit={false}
               onSubmitEditing={() => phoneRef.current?.focus()}
@@ -728,6 +955,70 @@ export default function CheckoutScreen() {
             </BottomSheetScrollView>
           </View>
         </BottomSheetModal>
+
+        <Modal
+          visible={selectionVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setSelectionVisible(false)}
+        >
+          <View className="flex-1 bg-black/40 items-center justify-center px-4">
+            <View
+              className="w-full max-w-[360px] rounded-3xl bg-white px-4 py-4"
+              style={{ maxHeight: selectionModalMaxHeight }}
+            >
+              <View className="flex-row items-center gap-3 border-b border-slate-200 pb-2">
+                <TextInput
+                  value={selectionQuery}
+                  onChangeText={setSelectionQuery}
+                  placeholder="Search here..."
+                  placeholderTextColor="#94A3B8"
+                  className="flex-1 text-base text-slate-900"
+                />
+                <Pressable onPress={() => setSelectionVisible(false)} hitSlop={8}>
+                  <Ionicons name="close-outline" size={22} color="#0F172A" />
+                </Pressable>
+              </View>
+
+              <ScrollView
+                className="mt-3"
+                style={{ maxHeight: selectionListMaxHeight }}
+                contentContainerStyle={{ paddingBottom: 8 }}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                {selectionLoading ? (
+                  <View className="py-6 items-center">
+                    <ActivityIndicator color="#0B73FF" />
+                    <Text className="text-sm text-slate-500 mt-2">
+                      Loading...
+                    </Text>
+                  </View>
+                ) : selectionError ? (
+                  <View className="py-6 items-center">
+                    <Text className="text-sm text-rose-500 text-center">
+                      {selectionError}
+                    </Text>
+                  </View>
+                ) : selectionOptions.length === 0 ? (
+                  <View className="py-6 items-center">
+                    <Text className="text-sm text-slate-500">No results found</Text>
+                  </View>
+                ) : (
+                  selectionOptions.map((item) => (
+                    <Pressable
+                      key={item}
+                      onPress={() => handleSelectOption(item)}
+                      className="py-4 border-b border-slate-100"
+                    >
+                      <Text className="text-base text-slate-900">{item}</Text>
+                    </Pressable>
+                  ))
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
 
         <Modal
           visible={showSheetExitConfirm}
@@ -902,6 +1193,9 @@ type SheetSelectFieldProps = {
   blurOnSubmit?: boolean;
   onSubmitEditing?: () => void;
   error?: string;
+  loading?: boolean;
+  disabled?: boolean;
+  onPress?: () => void;
   onChangeText: (value: string) => void;
 };
 
@@ -915,6 +1209,9 @@ function SheetSelectField({
   blurOnSubmit,
   onSubmitEditing,
   error,
+  loading,
+  disabled,
+  onPress,
   onChangeText,
 }: SheetSelectFieldProps) {
   return (
@@ -923,20 +1220,37 @@ function SheetSelectField({
         <Text className="text-[12px] font-semibold text-slate-600 uppercase">{label}</Text>
         {required ? <Text className="text-[12px] font-semibold text-red-500">*</Text> : null}
       </View>
-      <View className="rounded-2xl border border-slate-200 px-4 py-3 bg-white flex-row items-center">
-        <BottomSheetTextInput
-          ref={inputRef}
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor="#94A3B8"
-          returnKeyType={returnKeyType}
-          blurOnSubmit={blurOnSubmit}
-          onSubmitEditing={onSubmitEditing}
-          style={{ fontSize: 15, color: "#0F172A", padding: 0, flex: 1 }}
-        />
-        <Ionicons name="chevron-down" size={18} color="#94A3B8" />
-      </View>
+      <Pressable
+        onPress={onPress}
+        disabled={disabled}
+        className={`rounded-2xl border px-4 py-3 flex-row items-center ${
+          disabled ? "border-slate-200 bg-slate-100" : "border-slate-200 bg-white"
+        }`}
+      >
+        <View pointerEvents="none" className="flex-1">
+          <BottomSheetTextInput
+            ref={inputRef}
+            value={value}
+            onChangeText={onChangeText}
+            placeholder={placeholder}
+            placeholderTextColor="#94A3B8"
+            editable={false}
+            returnKeyType={returnKeyType}
+            blurOnSubmit={blurOnSubmit}
+            onSubmitEditing={onSubmitEditing}
+            style={{
+              fontSize: 15,
+              color: disabled ? "#94A3B8" : "#0F172A",
+              padding: 0,
+            }}
+          />
+        </View>
+        {loading ? (
+          <ActivityIndicator size="small" color="#94A3B8" />
+        ) : (
+          <Ionicons name="chevron-down" size={18} color="#94A3B8" />
+        )}
+      </Pressable>
       {error ? <Text className="text-[11px] text-rose-500">{error}</Text> : null}
     </View>
   );
