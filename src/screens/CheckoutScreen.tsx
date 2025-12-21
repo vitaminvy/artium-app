@@ -1,27 +1,17 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback } from "react";
 import {
-  ActivityIndicator,
+  Image,
   Keyboard,
   Modal,
-  View,
-  Text,
   Pressable,
   ScrollView,
-  Image,
+  Text,
   TextInput,
+  View,
   ViewStyle,
-  useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetModalProvider,
-  BottomSheetScrollView,
-  BottomSheetTextInput,
-  BottomSheetFooter,
-} from "@gorhom/bottom-sheet";
-import type { BottomSheetBackdropProps, BottomSheetFooterProps } from "@gorhom/bottom-sheet";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -29,73 +19,14 @@ import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import { fallbackDetail } from "../domains/artwork/mockData";
 import type { ArtworkDetail } from "../domains/artwork/types";
 
-type DeliveryMethod = "artium" | "seller";
+import { useCheckoutForm } from "../domains/checkout/hooks/useCheckoutForm";
+import { AddressSheet } from "../domains/checkout/components/sheets/AddressSheet";
+import { GuaranteeSheet } from "../domains/checkout/components/sheets/GuaranteeSheet";
+import { SummaryRow } from "../domains/checkout/components/ui/SummaryRow";
 
-type AddressForm = {
-  firstName: string;
-  lastName: string;
-  email: string;
-  country: string;
-  postalCode: string;
-  address1: string;
-  address2: string;
-  state: string;
-  city: string;
-  phone: string;
+type CheckoutRouteParams = {
+  artwork?: ArtworkDetail;
 };
-
-type SelectionType = "country" | "state" | "city";
-
-type LocationErrors = {
-  countries?: string;
-  states?: string;
-  cities?: string;
-};
-
-type AddressFieldKey =
-  | "firstName"
-  | "lastName"
-  | "email"
-  | "country"
-  | "postalCode"
-  | "address1"
-  | "state"
-  | "phone";
-
-const REQUIRED_FIELDS: AddressFieldKey[] = [
-  "firstName",
-  "lastName",
-  "email",
-  "country",
-  "postalCode",
-  "address1",
-  "state",
-  "phone",
-];
-
-const FIELD_ORDER: AddressFieldKey[] = [
-  "firstName",
-  "lastName",
-  "email",
-  "country",
-  "postalCode",
-  "address1",
-  "state",
-  "phone",
-];
-
-const createEmptyAddress = (): AddressForm => ({
-  firstName: "",
-  lastName: "",
-  email: "",
-  country: "",
-  postalCode: "",
-  address1: "",
-  address2: "",
-  state: "",
-  city: "",
-  phone: "",
-});
 
 const cardShadow: ViewStyle = {
   shadowColor: "#000",
@@ -113,17 +44,10 @@ const bottomBarShadow: ViewStyle = {
   elevation: 8,
 };
 
-type CheckoutRouteParams = {
-  artwork?: ArtworkDetail;
-};
-
-const LOCATION_API = "https://countriesnow.space/api/v0.1";
-
 export default function CheckoutScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const insets = useSafeAreaInsets();
-  const { height: windowHeight } = useWindowDimensions();
   const { setHidden } = useTabBarVisibility();
 
   useFocusEffect(
@@ -135,355 +59,24 @@ export default function CheckoutScreen() {
 
   const detail: ArtworkDetail =
     (route.params as CheckoutRouteParams | undefined)?.artwork ?? fallbackDetail;
-
-  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("artium");
-  const [promoCode, setPromoCode] = useState("");
-  const [showExitConfirm, setShowExitConfirm] = useState(false);
-  const [showSheetExitConfirm, setShowSheetExitConfirm] = useState(false);
-  const [errors, setErrors] = useState<Partial<Record<AddressFieldKey, string>>>(
-    {}
-  );
-  const [scrollToError, setScrollToError] = useState(false);
-  const [countries, setCountries] = useState<string[]>([]);
-  const [states, setStates] = useState<string[]>([]);
-  const [cities, setCities] = useState<string[]>([]);
-  const [loadingCountries, setLoadingCountries] = useState(false);
-  const [loadingStates, setLoadingStates] = useState(false);
-  const [loadingCities, setLoadingCities] = useState(false);
-  const [locationErrors, setLocationErrors] = useState<LocationErrors>({});
-  const [selectionVisible, setSelectionVisible] = useState(false);
-  const [selectionType, setSelectionType] = useState<SelectionType | null>(null);
-  const [selectionQuery, setSelectionQuery] = useState("");
-  const [addressByMethod, setAddressByMethod] = useState<Record<DeliveryMethod, AddressForm>>({
-    artium: createEmptyAddress(),
-    seller: createEmptyAddress(),
-  });
-  const [form, setForm] = useState<AddressForm>(createEmptyAddress());
-
-  const sheetRef = useRef<BottomSheetModal>(null);
-  const guaranteeSheetRef = useRef<BottomSheetModal>(null);
-  const initialFormRef = useRef<AddressForm>(createEmptyAddress());
-  const scrollRef = useRef<any>(null);
-  const fieldPositions = useRef<Record<AddressFieldKey, number>>(
-    {} as Record<AddressFieldKey, number>
-  );
-  const firstNameRef = useRef<TextInput>(null);
-  const lastNameRef = useRef<TextInput>(null);
-  const emailRef = useRef<TextInput>(null);
-  const countryRef = useRef<TextInput>(null);
-  const postalRef = useRef<TextInput>(null);
-  const address1Ref = useRef<TextInput>(null);
-  const address2Ref = useRef<TextInput>(null);
-  const stateRef = useRef<TextInput>(null);
-  const cityRef = useRef<TextInput>(null);
-  const phoneRef = useRef<TextInput>(null);
-  const snapPoints = useMemo(() => ["90%"], []);
-  const guaranteeSnapPoints = useMemo(() => ["80%"], []);
-  const loadingCountriesRef = useRef(false);
-  const countriesLoadedRef = useRef(false);
-  const selectionModalMaxHeight = Math.min(windowHeight * 0.65, 520);
-  const selectionListMaxHeight = Math.max(selectionModalMaxHeight - 76, 200);
-
-  const currentAddress = addressByMethod[deliveryMethod];
-  const isFormDirty = useMemo(
-    () =>
-      (Object.keys(form) as Array<keyof AddressForm>).some(
-        (key) => form[key] !== initialFormRef.current[key]
-      ),
-    [form]
-  );
-  const hasAddress = Object.values(currentAddress).some((value) => value.trim().length > 0);
-  const addressTitle = deliveryMethod === "artium" ? "Shipping Address" : "Pick up / ship address";
   const artworkImage = detail.images?.[0] ?? fallbackDetail.images[0];
 
-  const selectionOptions = useMemo(() => {
-    const normalizedQuery = selectionQuery.trim().toLowerCase();
-    const list =
-      selectionType === "country"
-        ? countries
-        : selectionType === "state"
-          ? states
-          : selectionType === "city"
-            ? cities
-            : [];
-    if (!normalizedQuery) return list;
-    return list.filter((item) =>
-      item.toLowerCase().includes(normalizedQuery)
-    );
-  }, [countries, states, cities, selectionQuery, selectionType]);
-
-  const selectionLoading =
-    selectionType === "country"
-      ? loadingCountries
-      : selectionType === "state"
-        ? loadingStates
-        : selectionType === "city"
-          ? loadingCities
-          : false;
-
-  const selectionError =
-    selectionType === "country"
-      ? locationErrors.countries
-      : selectionType === "state"
-        ? locationErrors.states
-        : selectionType === "city"
-          ? locationErrors.cities
-          : undefined;
-
-  const selectionTitle =
-    selectionType === "country"
-      ? "Select Country"
-      : selectionType === "state"
-        ? "Select State / Province"
-        : selectionType === "city"
-          ? "Select City"
-          : "";
-
-  const loadCountries = useCallback(async () => {
-    if (loadingCountriesRef.current || countriesLoadedRef.current) return;
-    loadingCountriesRef.current = true;
-    setLoadingCountries(true);
-    setLocationErrors((prev) => ({ ...prev, countries: undefined }));
-    try {
-      const res = await fetch(`${LOCATION_API}/countries`);
-      const json = await res.json();
-      if (!res.ok || json?.error) {
-        throw new Error(json?.msg || "Failed to load countries");
-      }
-      const list = Array.isArray(json?.data)
-        ? json.data
-            .map((item: any) => item?.country ?? item?.name)
-            .filter(Boolean)
-        : [];
-      setCountries(list);
-      if (list.length > 0) {
-        countriesLoadedRef.current = true;
-      }
-    } catch (err: any) {
-      setLocationErrors((prev) => ({
-        ...prev,
-        countries: err?.message || "Unable to load countries",
-      }));
-    } finally {
-      loadingCountriesRef.current = false;
-      setLoadingCountries(false);
-    }
-  }, []);
-
-  const loadStates = useCallback(
-    async (countryName: string) => {
-      if (!countryName || loadingStates) return;
-      setLoadingStates(true);
-      setLocationErrors((prev) => ({ ...prev, states: undefined }));
-      try {
-        const res = await fetch(`${LOCATION_API}/countries/states`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ country: countryName }),
-        });
-        const json = await res.json();
-        if (!res.ok || json?.error) {
-          throw new Error(json?.msg || "Failed to load states");
-        }
-        const list = Array.isArray(json?.data?.states)
-          ? json.data.states.map((item: any) => item?.name).filter(Boolean)
-          : [];
-        setStates(list);
-      } catch (err: any) {
-        setLocationErrors((prev) => ({
-          ...prev,
-          states: err?.message || "Unable to load states",
-        }));
-      } finally {
-        setLoadingStates(false);
-      }
-    },
-    [loadingStates]
-  );
-
-  const loadCities = useCallback(
-    async (countryName: string, stateName: string) => {
-      if (!countryName || !stateName || loadingCities) return;
-      setLoadingCities(true);
-      setLocationErrors((prev) => ({ ...prev, cities: undefined }));
-      try {
-        const res = await fetch(`${LOCATION_API}/countries/state/cities`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ country: countryName, state: stateName }),
-        });
-        const json = await res.json();
-        if (!res.ok || json?.error) {
-          throw new Error(json?.msg || "Failed to load cities");
-        }
-        const list = Array.isArray(json?.data)
-          ? json.data.filter(Boolean)
-          : [];
-        setCities(list);
-      } catch (err: any) {
-        setLocationErrors((prev) => ({
-          ...prev,
-          cities: err?.message || "Unable to load cities",
-        }));
-      } finally {
-        setLoadingCities(false);
-      }
-    },
-    [loadingCities]
-  );
-
-  const openSelection = (type: SelectionType) => {
-    Keyboard.dismiss();
-    if (type === "state" && !form.country.trim()) {
-      setErrors((prev) => ({
-        ...prev,
-        country: "Select a country first.",
-      }));
-      setScrollToError(true);
-      return;
-    }
-    if (type === "city" && !form.state.trim()) {
-      setErrors((prev) => ({
-        ...prev,
-        state: "Select a state first.",
-      }));
-      setScrollToError(true);
-      return;
-    }
-    setSelectionType(type);
-    setSelectionQuery("");
-    if (type === "country" && countries.length === 0 && !loadingCountries) {
-      void loadCountries();
-    }
-    if (type === "state" && states.length === 0 && !loadingStates) {
-      void loadStates(form.country);
-    }
-    if (type === "city" && cities.length === 0 && !loadingCities) {
-      void loadCities(form.country, form.state);
-    }
-    setSelectionVisible(true);
-  };
-
-  const handleSelectOption = (value: string) => {
-    if (!selectionType) return;
-    if (selectionType === "country") {
-      handleFormChange("country", value);
-      handleFormChange("state", "");
-      handleFormChange("city", "");
-      setStates([]);
-      setCities([]);
-      void loadStates(value);
-    } else if (selectionType === "state") {
-      handleFormChange("state", value);
-      handleFormChange("city", "");
-      setCities([]);
-      void loadCities(form.country, value);
-    } else if (selectionType === "city") {
-      handleFormChange("city", value);
-    }
-    setSelectionVisible(false);
-  };
-
-  const openAddressSheet = () => {
-    setForm(currentAddress);
-    setErrors({});
-    setShowSheetExitConfirm(false);
-    initialFormRef.current = { ...currentAddress };
-    sheetRef.current?.present();
-  };
-
-  const handleRequestCloseSheet = () => {
-    Keyboard.dismiss();
-    if (isFormDirty) {
-      setShowSheetExitConfirm(true);
-      return;
-    }
-    sheetRef.current?.dismiss();
-  };
-
-  const renderGuaranteeFooter = useCallback(
-    (props: BottomSheetFooterProps) => (
-      <BottomSheetFooter {...props} bottomInset={Math.max(insets.bottom, 16)}>
-        <View className="px-6 pb-2 bg-white">
-          <Pressable
-            onPress={() => guaranteeSheetRef.current?.dismiss()}
-            className="rounded-full border border-slate-200 py-3 items-center active:opacity-80"
-          >
-            <Text className="text-base font-semibold text-slate-900">Close</Text>
-          </Pressable>
-        </View>
-      </BottomSheetFooter>
-    ),
-    [insets.bottom]
-  );
-
-  const handleSaveAddress = () => {
-    const nextErrors: Partial<Record<AddressFieldKey, string>> = {};
-    REQUIRED_FIELDS.forEach((key) => {
-      if (!form[key].trim()) {
-        nextErrors[key] = "This field is required.";
-      }
-    });
-    if (Object.keys(nextErrors).length > 0) {
-      setErrors(nextErrors);
-      setScrollToError(true);
-      return;
-    }
-
-    setErrors({});
-    setAddressByMethod((prev) => ({
-      ...prev,
-      [deliveryMethod]: form,
-    }));
-    sheetRef.current?.dismiss();
-  };
-
-  const handleFieldLayout = (key: AddressFieldKey, y: number) => {
-    fieldPositions.current[key] = y;
-  };
-
-  const handleFormChange = (key: keyof AddressForm, value: string) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-    if (key in errors) {
-      setErrors((prev) => {
-        if (!prev[key as AddressFieldKey]) return prev;
-        const next = { ...prev };
-        delete next[key as AddressFieldKey];
-        return next;
-      });
-    }
-  };
-
-  useEffect(() => {
-    if (!scrollToError || !scrollRef.current) return;
-    const firstKey = FIELD_ORDER.find((key) => errors[key]);
-    if (!firstKey) {
-      setScrollToError(false);
-      return;
-    }
-    const y = fieldPositions.current[firstKey];
-    if (typeof y === "number") {
-      scrollRef.current.scrollTo({ y: Math.max(y - 16, 0), animated: true });
-    }
-    setScrollToError(false);
-  }, [errors, scrollToError]);
-
-  useEffect(() => {
-    void loadCountries();
-  }, [loadCountries]);
-
-  const backdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        pressBehavior="close"
-        appearsOnIndex={0}
-        disappearsOnIndex={-1}
-        opacity={0.35}
-      />
-    ),
-    []
-  );
+  const {
+    deliveryMethod,
+    promoCode,
+    setPromoCode,
+    showExitConfirm,
+    setShowExitConfirm,
+    currentAddress,
+    hasAddress,
+    addressTitle,
+    addressSheetRef,
+    guaranteeSheetRef,
+    openAddressSheet,
+    openGuaranteeSheet,
+    handleSaveAddress,
+    handleDeliveryMethodChange,
+  } = useCheckoutForm();
 
   const addressName = [currentAddress.firstName, currentAddress.lastName]
     .filter(Boolean)
@@ -491,13 +84,18 @@ export default function CheckoutScreen() {
   const addressLine = [currentAddress.address1, currentAddress.address2]
     .filter(Boolean)
     .join(", ");
-  const addressLocation = [currentAddress.city, currentAddress.state, currentAddress.postalCode]
+  const addressLocation = [
+    currentAddress.city,
+    currentAddress.state,
+    currentAddress.postalCode,
+  ]
     .filter(Boolean)
     .join(", ");
 
   return (
     <BottomSheetModalProvider>
       <View className="flex-1 bg-[#F1F5F9]">
+        {/* Custom Header */}
         <View
           className="bg-white px-4 pb-3 border-b border-slate-100"
           style={{ paddingTop: Math.max(insets.top, 12) }}
@@ -506,10 +104,13 @@ export default function CheckoutScreen() {
             <Pressable onPress={() => setShowExitConfirm(true)} hitSlop={8}>
               <Ionicons name="close" size={24} color="#0F172A" />
             </Pressable>
-            <Text className="text-[18px] font-semibold text-slate-900">Checkout</Text>
+            <Text className="text-[18px] font-semibold text-slate-900">
+              Checkout
+            </Text>
           </View>
         </View>
 
+        {/* Timer Banner */}
         <View className="bg-slate-200 px-4 py-2">
           <Text className="text-sm text-slate-700 text-center">
             Your order is reserved for 19:55 minutes
@@ -525,43 +126,31 @@ export default function CheckoutScreen() {
           }}
           showsVerticalScrollIndicator={false}
         >
-          <View className="rounded-3xl border border-slate-200 bg-white p-4" style={cardShadow}>
-            <Text className="text-[14px] font-semibold text-slate-500">DELIVERY METHOD</Text>
+          {/* Delivery Method Section */}
+          <View
+            className="rounded-3xl border border-slate-200 bg-white p-4"
+            style={cardShadow}
+          >
+            <Text className="text-[14px] font-semibold text-slate-500">
+              DELIVERY METHOD
+            </Text>
             <View className="flex-row gap-3 mt-4">
               <Pressable
-                onPress={() => {
-                  setDeliveryMethod("artium");
-                  setErrors({});
-                }}
-                className={`flex-1 rounded-xl border px-1 py-3 items-center ${
-                  deliveryMethod === "artium"
-                    ? "border-[#0B73FF] bg-[#EFF6FF]"
-                    : "border-slate-200 bg-white"
-                }`}
+                onPress={() => handleDeliveryMethodChange("artium")}
+                className={`flex-1 rounded-xl border px-1 py-3 items-center ${deliveryMethod === "artium" ? "border-[#0B73FF] bg-[#EFF6FF]" : "border-slate-200 bg-white"}`}
               >
                 <Text
-                  className={`text-sm font-semibold ${
-                    deliveryMethod === "artium" ? "text-[#0B73FF]" : "text-slate-800"
-                  }`}
+                  className={`text-sm font-semibold ${deliveryMethod === "artium" ? "text-[#0B73FF]" : "text-slate-800"}`}
                 >
                   Ship by Artium
                 </Text>
               </Pressable>
               <Pressable
-                onPress={() => {
-                  setDeliveryMethod("seller");
-                  setErrors({});
-                }}
-                className={`flex-1 rounded-xl border px-1 py-3 items-center ${
-                  deliveryMethod === "seller"
-                    ? "border-[#0B73FF] bg-[#EFF6FF]"
-                    : "border-slate-200 bg-white"
-                }`}
+                onPress={() => handleDeliveryMethodChange("seller")}
+                className={`flex-1 rounded-xl border px-1 py-3 items-center ${deliveryMethod === "seller" ? "border-[#0B73FF] bg-[#EFF6FF]" : "border-slate-200 bg-white"}`}
               >
                 <Text
-                  className={`text-sm font-semibold ${
-                    deliveryMethod === "seller" ? "text-[#0B73FF]" : "text-slate-800"
-                  }`}
+                  className={`text-sm font-semibold ${deliveryMethod === "seller" ? "text-[#0B73FF]" : "text-slate-800"}`}
                 >
                   Pick up / Ship by seller
                 </Text>
@@ -588,30 +177,40 @@ export default function CheckoutScreen() {
                     </Text>
                   ) : null}
                   {currentAddress.email ? (
-                    <Text className="text-sm text-slate-500">{currentAddress.email}</Text>
+                    <Text className="text-sm text-slate-500">
+                      {currentAddress.email}
+                    </Text>
                   ) : null}
                   {addressLine ? (
                     <Text className="text-sm text-slate-500">{addressLine}</Text>
                   ) : null}
                   {addressLocation ? (
-                    <Text className="text-sm text-slate-500">{addressLocation}</Text>
+                    <Text className="text-sm text-slate-500">
+                      {addressLocation}
+                    </Text>
                   ) : null}
                 </View>
               ) : (
                 <Text className="text-sm text-slate-500 mt-3">
-                  Add your contact information and shipping address here for delivery purpose.
+                  Add your contact information and shipping address here for
+                  delivery purpose.
                 </Text>
               )}
             </Pressable>
           </View>
 
+          {/* Guarantee Section */}
           <Pressable
-            onPress={() => guaranteeSheetRef.current?.present()}
+            onPress={openGuaranteeSheet}
             className="rounded-3xl bg-slate-100 border border-slate-200 px-2 py-2 flex-row items-center gap-3"
             style={cardShadow}
           >
             <View className="h-9 w-9 rounded-full bg-[#E0F2FE] items-center justify-center">
-              <Ionicons name="shield-checkmark-outline" size={20} color="#0B73FF" />
+              <Ionicons
+                name="shield-checkmark-outline"
+                size={20}
+                color="#0B73FF"
+              />
             </View>
             <Text className="flex-1 text-[11px] text-slate-700">
               You are protected by Artium Satisfaction Guarantee
@@ -619,8 +218,14 @@ export default function CheckoutScreen() {
             <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
           </Pressable>
 
-          <View className="rounded-3xl border border-slate-200 bg-white p-4" style={cardShadow}>
-            <Text className="text-[14px] font-semibold text-slate-500">ORDER SUMMARY</Text>
+          {/* Order Summary Section */}
+          <View
+            className="rounded-3xl border border-slate-200 bg-white p-4"
+            style={cardShadow}
+          >
+            <Text className="text-[14px] font-semibold text-slate-500">
+              ORDER SUMMARY
+            </Text>
 
             <View className="flex-row items-center gap-3 mt-4">
               <Image
@@ -632,12 +237,16 @@ export default function CheckoutScreen() {
                 <Text className="text-base font-semibold text-slate-900">
                   {detail.title}
                 </Text>
-                <Text className="text-sm text-slate-500 mt-1">{detail.artist.name}</Text>
+                <Text className="text-sm text-slate-500 mt-1">
+                  {detail.artist.name}
+                </Text>
               </View>
             </View>
 
             <View className="mt-5">
-              <Text className="text-sm text-slate-600 mb-3">Have a promo code?</Text>
+              <Text className="text-sm text-slate-600 mb-3">
+                Have a promo code?
+              </Text>
               <View className="rounded-2xl border border-slate-200 px-4 py-3">
                 <TextInput
                   value={promoCode}
@@ -656,7 +265,11 @@ export default function CheckoutScreen() {
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-2">
                   <Text className="text-sm text-slate-600">Shipping Fee</Text>
-                  <Ionicons name="information-circle-outline" size={14} color="#94A3B8" />
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={14}
+                    color="#94A3B8"
+                  />
                 </View>
                 <Text className="text-sm text-slate-900">-</Text>
               </View>
@@ -670,18 +283,18 @@ export default function CheckoutScreen() {
             </View>
 
             <View className="mt-5 rounded-2xl border border-slate-200 px-4 py-4 flex-row items-center justify-between">
-              <Text className="text-base font-semibold text-slate-900">Total</Text>
+              <Text className="text-base font-semibold text-slate-900">
+                Total
+              </Text>
               <Text className="text-base font-semibold text-slate-900">-</Text>
             </View>
           </View>
         </ScrollView>
 
+        {/* Sticky Bottom Bar */}
         <View
           className="absolute left-0 right-0 bottom-0 border-t border-slate-100 bg-white"
-          style={[
-            bottomBarShadow,
-            { paddingBottom: Math.max(insets.bottom, 12) },
-          ]}
+          style={[bottomBarShadow, { paddingBottom: Math.max(insets.bottom, 12) }]}
         >
           <View className="flex-row items-center justify-between px-4 py-3">
             <View>
@@ -694,384 +307,17 @@ export default function CheckoutScreen() {
           </View>
         </View>
 
-        <BottomSheetModal
-          ref={sheetRef}
-          snapPoints={snapPoints}
-          index={0}
-          backdropComponent={backdrop}
-          handleIndicatorStyle={{ backgroundColor: "#CBD5E1", width: 40 }}
-          backgroundStyle={{ backgroundColor: "white" }}
-          enablePanDownToClose
-          enableContentPanningGesture={false}
-          keyboardBehavior="extend"
-          keyboardBlurBehavior="none"
-          enableBlurKeyboardOnGesture={false}
-          enableDynamicSizing={false}
-          topInset={0}
-          bottomInset={0}
-          onDismiss={() => setShowSheetExitConfirm(false)}
-        >
-          <View className="flex-1">
-            <View className="px-5 pt-2 pb-3 border-b border-slate-100 bg-white">
-              <View className="flex-row items-center justify-between">
-                <Text className="text-xl font-bold text-slate-900">
-                  {addressTitle}
-                </Text>
-                <Pressable
-                  onPress={() => handleRequestCloseSheet()}
-                  hitSlop={8}
-                >
-                  <Ionicons name="close-outline" size={26} color="#0F172A" />
-                </Pressable>
-              </View>
-            </View>
+        {/* Sheets */}
+        <AddressSheet
+          sheetRef={addressSheetRef}
+          initialAddress={currentAddress}
+          title={addressTitle}
+          onSave={handleSaveAddress}
+        />
 
-            <BottomSheetScrollView
-              ref={scrollRef}
-              style={{ flex: 1 }}
-              contentContainerStyle={{
-                paddingHorizontal: 20,
-                paddingTop: 12,
-                paddingBottom: Math.max(insets.bottom, 16) + 32,
-                gap: 18,
-              }}
-              keyboardShouldPersistTaps="always"
-              keyboardDismissMode="none"
-            >
+        <GuaranteeSheet sheetRef={guaranteeSheetRef} />
 
-            <View onLayout={(e) => handleFieldLayout("firstName", e.nativeEvent.layout.y)}>
-              <SheetField
-                label="First Name"
-                required
-                inputRef={firstNameRef}
-                value={form.firstName}
-                onChangeText={(value) => handleFormChange("firstName", value)}
-                placeholder="Enter first name"
-                returnKeyType="next"
-                blurOnSubmit={false}
-                onSubmitEditing={() => lastNameRef.current?.focus()}
-                error={errors.firstName}
-              />
-            </View>
-            <View onLayout={(e) => handleFieldLayout("lastName", e.nativeEvent.layout.y)}>
-              <SheetField
-                label="Last Name"
-                required
-                inputRef={lastNameRef}
-                value={form.lastName}
-                onChangeText={(value) => handleFormChange("lastName", value)}
-                placeholder="Enter last name"
-                returnKeyType="next"
-                blurOnSubmit={false}
-                onSubmitEditing={() => emailRef.current?.focus()}
-                error={errors.lastName}
-              />
-            </View>
-            <View onLayout={(e) => handleFieldLayout("email", e.nativeEvent.layout.y)}>
-              <SheetField
-                label="Email Address"
-                required
-                inputRef={emailRef}
-                value={form.email}
-                onChangeText={(value) => handleFormChange("email", value)}
-                placeholder="example@email.com"
-                keyboardType="email-address"
-                returnKeyType="next"
-                blurOnSubmit={false}
-                onSubmitEditing={() => countryRef.current?.focus()}
-                error={errors.email}
-              />
-            </View>
-            <View onLayout={(e) => handleFieldLayout("country", e.nativeEvent.layout.y)}>
-              <SheetSelectField
-                label="Country"
-                required
-                inputRef={countryRef}
-                value={form.country}
-                placeholder="Select Country"
-                onChangeText={(value) => handleFormChange("country", value)}
-                onPress={() => openSelection("country")}
-                loading={loadingCountries}
-                returnKeyType="next"
-                blurOnSubmit={false}
-                onSubmitEditing={() => postalRef.current?.focus()}
-                error={errors.country}
-              />
-            </View>
-            <View onLayout={(e) => handleFieldLayout("postalCode", e.nativeEvent.layout.y)}>
-              <SheetField
-                label="Postal / Zip code"
-                required
-                inputRef={postalRef}
-                value={form.postalCode}
-                onChangeText={(value) => handleFormChange("postalCode", value)}
-                placeholder="Enter postal code"
-                keyboardType="numeric"
-                returnKeyType="next"
-                blurOnSubmit={false}
-                onSubmitEditing={() => address1Ref.current?.focus()}
-                error={errors.postalCode}
-              />
-            </View>
-            <View onLayout={(e) => handleFieldLayout("address1", e.nativeEvent.layout.y)}>
-              <SheetField
-                label="Address Line 1"
-                required
-                inputRef={address1Ref}
-                value={form.address1}
-                onChangeText={(value) => handleFormChange("address1", value)}
-                placeholder="Street address"
-                returnKeyType="next"
-                blurOnSubmit={false}
-                onSubmitEditing={() => address2Ref.current?.focus()}
-                error={errors.address1}
-              />
-            </View>
-            <SheetField
-              label="Address Line 2"
-              inputRef={address2Ref}
-              value={form.address2}
-              onChangeText={(value) => handleFormChange("address2", value)}
-              placeholder="Apt, suite, etc"
-              returnKeyType="next"
-              blurOnSubmit={false}
-              onSubmitEditing={() => stateRef.current?.focus()}
-            />
-            <View onLayout={(e) => handleFieldLayout("state", e.nativeEvent.layout.y)}>
-              <SheetSelectField
-                label="State / District / Province"
-                required
-                inputRef={stateRef}
-                value={form.state}
-                placeholder="Select State / District / Province"
-                onChangeText={(value) => handleFormChange("state", value)}
-                onPress={() => openSelection("state")}
-                loading={loadingStates}
-                disabled={!form.country.trim()}
-                returnKeyType="next"
-                blurOnSubmit={false}
-                onSubmitEditing={() => cityRef.current?.focus()}
-                error={errors.state}
-              />
-            </View>
-            <SheetSelectField
-              label="City"
-              inputRef={cityRef}
-              value={form.city}
-              placeholder="Select City"
-              onChangeText={(value) => handleFormChange("city", value)}
-              onPress={() => openSelection("city")}
-              loading={loadingCities}
-              disabled={!form.state.trim()}
-              returnKeyType="next"
-              blurOnSubmit={false}
-              onSubmitEditing={() => phoneRef.current?.focus()}
-            />
-            <View onLayout={(e) => handleFieldLayout("phone", e.nativeEvent.layout.y)}>
-              <SheetField
-                label="Phone Number"
-                required
-                inputRef={phoneRef}
-                value={form.phone}
-                onChangeText={(value) => handleFormChange("phone", value)}
-                placeholder="+1 (123) 456 7890"
-                keyboardType="phone-pad"
-                helper="We will only use your phone number for delivery purposes."
-                returnKeyType="done"
-                onSubmitEditing={() => phoneRef.current?.blur()}
-                error={errors.phone}
-              />
-            </View>
-
-            <Pressable
-              onPress={handleSaveAddress}
-              className="rounded-full bg-[#0B73FF] py-4 items-center active:opacity-90"
-            >
-              <Text className="text-base font-semibold text-white">Save</Text>
-            </Pressable>
-            </BottomSheetScrollView>
-          </View>
-        </BottomSheetModal>
-
-        <BottomSheetModal
-          ref={guaranteeSheetRef}
-          snapPoints={guaranteeSnapPoints}
-          index={0}
-          backdropComponent={backdrop}
-          handleIndicatorStyle={{ backgroundColor: "#CBD5E1", width: 40 }}
-          backgroundStyle={{ backgroundColor: "white" }}
-          enablePanDownToClose
-          enableContentPanningGesture={false}
-          enableDynamicSizing={false}
-          footerComponent={renderGuaranteeFooter}
-        >
-          <View className="flex-1">
-            <View className="px-6 pt-3 pb-3 border-b border-slate-100 bg-white">
-              <View className="flex-row items-center justify-between">
-                <Text className="text-xl font-bold text-slate-900">
-                  Artium satisfaction guarantee
-                </Text>
-                <Pressable
-                  onPress={() => guaranteeSheetRef.current?.dismiss()}
-                  hitSlop={8}
-                >
-                  <Ionicons name="close-outline" size={26} color="#0F172A" />
-                </Pressable>
-              </View>
-            </View>
-
-            <BottomSheetScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{
-                paddingHorizontal: 24,
-                paddingTop: 16,
-                paddingBottom: Math.max(insets.bottom, 16) + 120,
-                gap: 28,
-              }}
-              showsVerticalScrollIndicator={false}
-            >
-              <GuaranteeItem
-                icon="lock-closed-outline"
-                title="100% money-back guarantee"
-                description="Return your purchase for any reason within 48 hours after delivery. The buyer is responsible for all return shipping costs. The refund will be in your account 5-7 days after Artium successfully receives the artwork."
-              />
-
-              <GuaranteeItem
-                icon="car-outline"
-                title="Artium offers insured, flat-rate shipping"
-                description={
-                  <Text className="text-sm text-slate-500 leading-5">
-                    Artium insures your order. If you select ship, shipping fee is calculated based on order subtotal (after discounts), and shows in the final total at checkout, with a flat fee of 5% for domestic, 8% for international. Oversized artworks will incur a flat fee of 10% for domestic, 15% for international shipping. If you select pick up in-person, it's free. Total at checkout excludes local customs duties, taxes, and import fees; your carrier may collect these on delivery.{" "}
-                    <Text className="text-[#0B73FF] font-semibold">Learn more</Text>
-                  </Text>
-                }
-              />
-
-              <GuaranteeItem
-                icon="shield-checkmark-outline"
-                title="Certificate of Authenticity included"
-                description="All artworks are authenticated by the Artium team. You will receive a certificate of authenticity from the artist when you purchase a work through Artium."
-              />
-            </BottomSheetScrollView>
-          </View>
-        </BottomSheetModal>
-
-        <Modal
-          visible={selectionVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setSelectionVisible(false)}
-        >
-          <View className="flex-1 bg-black/40 items-center justify-center px-4">
-            <View
-              className="w-full max-w-[360px] rounded-3xl bg-white px-4 py-4"
-              style={{ maxHeight: selectionModalMaxHeight }}
-            >
-              <View className="flex-row items-center gap-3 border-b border-slate-200 pb-2">
-                <TextInput
-                  value={selectionQuery}
-                  onChangeText={setSelectionQuery}
-                  placeholder="Search here..."
-                  placeholderTextColor="#94A3B8"
-                  className="flex-1 text-base text-slate-900"
-                />
-                <Pressable onPress={() => setSelectionVisible(false)} hitSlop={8}>
-                  <Ionicons name="close-outline" size={22} color="#0F172A" />
-                </Pressable>
-              </View>
-
-              <ScrollView
-                className="mt-3"
-                style={{ maxHeight: selectionListMaxHeight }}
-                contentContainerStyle={{ paddingBottom: 8 }}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-              >
-                {selectionLoading ? (
-                  <View className="py-6 items-center">
-                    <ActivityIndicator color="#0B73FF" />
-                    <Text className="text-sm text-slate-500 mt-2">
-                      Loading...
-                    </Text>
-                  </View>
-                ) : selectionError ? (
-                  <View className="py-6 items-center">
-                    <Text className="text-sm text-rose-500 text-center">
-                      {selectionError}
-                    </Text>
-                  </View>
-                ) : selectionOptions.length === 0 ? (
-                  <View className="py-6 items-center">
-                    <Text className="text-sm text-slate-500">No results found</Text>
-                  </View>
-                ) : (
-                  selectionOptions.map((item) => (
-                    <Pressable
-                      key={item}
-                      onPress={() => handleSelectOption(item)}
-                      className="py-4 border-b border-slate-100"
-                    >
-                      <Text className="text-base text-slate-900">{item}</Text>
-                    </Pressable>
-                  ))
-                )}
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
-
-        <Modal
-          visible={showSheetExitConfirm}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowSheetExitConfirm(false)}
-        >
-          <View className="flex-1 bg-black/40 items-center justify-center px-6">
-            <View className="w-full rounded-[28px] bg-white p-6">
-              <View className="flex-row justify-end">
-                <Pressable
-                  onPress={() => setShowSheetExitConfirm(false)}
-                  hitSlop={12}
-                  className="h-10 w-10 items-center justify-center rounded-full"
-                >
-                  <Ionicons name="close" size={22} color="#0F172A" />
-                </Pressable>
-              </View>
-
-              <View className="mt-2 mb-5">
-                <Text className="text-2xl font-bold text-slate-900 text-center">
-                  Are you sure{"\n"}you want to exit?
-                </Text>
-                <Text className="mt-3 text-base text-slate-500 text-center">
-                  If you leave this page, your information won't be saved.
-                </Text>
-              </View>
-
-              <View className="gap-3">
-                <Pressable
-                  onPress={() => {
-                    setShowSheetExitConfirm(false);
-                    sheetRef.current?.dismiss();
-                  }}
-                  className="rounded-full border border-rose-500 py-3 items-center active:opacity-80"
-                >
-                  <Text className="text-base font-semibold text-rose-500">
-                    Yes, exit flow
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setShowSheetExitConfirm(false)}
-                  className="rounded-full border border-slate-200 py-3 items-center active:opacity-80"
-                >
-                  <Text className="text-base font-semibold text-slate-700">
-                    Cancel
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        </Modal>
-
+        {/* Exit Flow Modal */}
         <Modal
           visible={showExitConfirm}
           transparent
@@ -1125,171 +371,5 @@ export default function CheckoutScreen() {
         </Modal>
       </View>
     </BottomSheetModalProvider>
-  );
-}
-
-type SheetFieldProps = {
-  label: string;
-  value: string;
-  placeholder?: string;
-  required?: boolean;
-  keyboardType?: "default" | "numeric" | "email-address" | "phone-pad";
-  helper?: string;
-  inputRef?: React.Ref<TextInput>;
-  returnKeyType?: "next" | "done";
-  blurOnSubmit?: boolean;
-  onSubmitEditing?: () => void;
-  error?: string;
-  onChangeText: (value: string) => void;
-};
-
-function SheetField({
-  label,
-  value,
-  placeholder,
-  required,
-  keyboardType,
-  helper,
-  inputRef,
-  returnKeyType,
-  blurOnSubmit,
-  onSubmitEditing,
-  error,
-  onChangeText,
-}: SheetFieldProps) {
-  return (
-    <View className="gap-3">
-      <View className="flex-row items-center gap-1">
-        <Text className="text-[12px] font-semibold text-slate-600 uppercase">{label}</Text>
-        {required ? <Text className="text-[12px] font-semibold text-red-500">*</Text> : null}
-      </View>
-      <View className="rounded-2xl border border-slate-200 px-4 py-3 bg-white">
-        <BottomSheetTextInput
-          ref={inputRef}
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor="#94A3B8"
-          keyboardType={keyboardType}
-          returnKeyType={returnKeyType}
-          blurOnSubmit={blurOnSubmit}
-          onSubmitEditing={onSubmitEditing}
-          style={{ fontSize: 15, color: "#0F172A", padding: 0 }}
-        />
-      </View>
-      {error ? <Text className="text-[11px] text-rose-500">{error}</Text> : null}
-      {helper ? <Text className="text-[11px] text-slate-400">{helper}</Text> : null}
-    </View>
-  );
-}
-
-type SheetSelectFieldProps = {
-  label: string;
-  value: string;
-  placeholder?: string;
-  required?: boolean;
-  inputRef?: React.Ref<TextInput>;
-  returnKeyType?: "next" | "done";
-  blurOnSubmit?: boolean;
-  onSubmitEditing?: () => void;
-  error?: string;
-  loading?: boolean;
-  disabled?: boolean;
-  onPress?: () => void;
-  onChangeText: (value: string) => void;
-};
-
-function SheetSelectField({
-  label,
-  value,
-  placeholder,
-  required,
-  inputRef,
-  returnKeyType,
-  blurOnSubmit,
-  onSubmitEditing,
-  error,
-  loading,
-  disabled,
-  onPress,
-  onChangeText,
-}: SheetSelectFieldProps) {
-  return (
-    <View className="gap-3">
-      <View className="flex-row items-center gap-1">
-        <Text className="text-[12px] font-semibold text-slate-600 uppercase">{label}</Text>
-        {required ? <Text className="text-[12px] font-semibold text-red-500">*</Text> : null}
-      </View>
-      <Pressable
-        onPress={onPress}
-        disabled={disabled}
-        className={`rounded-2xl border px-4 py-3 flex-row items-center ${
-          disabled ? "border-slate-200 bg-slate-100" : "border-slate-200 bg-white"
-        }`}
-      >
-        <View pointerEvents="none" className="flex-1">
-          <BottomSheetTextInput
-            ref={inputRef}
-            value={value}
-            onChangeText={onChangeText}
-            placeholder={placeholder}
-            placeholderTextColor="#94A3B8"
-            editable={false}
-            returnKeyType={returnKeyType}
-            blurOnSubmit={blurOnSubmit}
-            onSubmitEditing={onSubmitEditing}
-            style={{
-              fontSize: 15,
-              color: disabled ? "#94A3B8" : "#0F172A",
-              padding: 0,
-            }}
-          />
-        </View>
-        {loading ? (
-          <ActivityIndicator size="small" color="#94A3B8" />
-        ) : (
-          <Ionicons name="chevron-down" size={18} color="#94A3B8" />
-        )}
-      </Pressable>
-      {error ? <Text className="text-[11px] text-rose-500">{error}</Text> : null}
-    </View>
-  );
-}
-
-type SummaryRowProps = {
-  label: string;
-  value: string;
-};
-
-function SummaryRow({ label, value }: SummaryRowProps) {
-  return (
-    <View className="flex-row items-center justify-between">
-      <Text className="text-sm text-slate-600">{label}</Text>
-      <Text className="text-sm text-slate-900">{value}</Text>
-    </View>
-  );
-}
-
-type GuaranteeItemProps = {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  description: React.ReactNode;
-};
-
-function GuaranteeItem({ icon, title, description }: GuaranteeItemProps) {
-  return (
-    <View className="flex-row gap-4">
-      <View className="h-10 w-10 rounded-full items-center justify-center bg-[#E0F2FE]">
-        <Ionicons name={icon} size={20} color="#0B73FF" />
-      </View>
-      <View className="flex-1 gap-2">
-        <Text className="text-base font-semibold text-slate-900">{title}</Text>
-        {typeof description === "string" ? (
-          <Text className="text-sm text-slate-500 leading-5">{description}</Text>
-        ) : (
-          description
-        )}
-      </View>
-    </View>
   );
 }
