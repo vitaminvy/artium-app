@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Image,
   Keyboard,
@@ -23,6 +23,7 @@ import { useCheckoutForm } from "../domains/checkout/hooks/useCheckoutForm";
 import { AddressSheet } from "../domains/checkout/components/sheets/AddressSheet";
 import { GuaranteeSheet } from "../domains/checkout/components/sheets/GuaranteeSheet";
 import { SummaryRow } from "../domains/checkout/components/ui/SummaryRow";
+import { useReservationTimer } from "../domains/checkout/hooks/useReservationTimer";
 
 type CheckoutRouteParams = {
   artwork?: ArtworkDetail;
@@ -77,6 +78,20 @@ export default function CheckoutScreen() {
     handleSaveAddress,
     handleDeliveryMethodChange,
   } = useCheckoutForm();
+  const { remainingSeconds, isExpired } = useReservationTimer(15 * 60);
+  const hasAutoExitedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isExpired || hasAutoExitedRef.current) return;
+    hasAutoExitedRef.current = true;
+    navigation.goBack();
+  }, [isExpired, navigation]);
+
+  const reservationLabel = useMemo(() => {
+    const minutes = Math.floor(remainingSeconds / 60);
+    const seconds = remainingSeconds % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }, [remainingSeconds]);
 
   const addressName = [currentAddress.firstName, currentAddress.lastName]
     .filter(Boolean)
@@ -113,7 +128,7 @@ export default function CheckoutScreen() {
         {/* Timer Banner */}
         <View className="bg-slate-200 px-4 py-2">
           <Text className="text-sm text-slate-700 text-center">
-            Your order is reserved for 19:55 minutes
+            Your order is reserved for {reservationLabel} minutes
           </Text>
         </View>
 
