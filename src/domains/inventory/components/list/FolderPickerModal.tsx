@@ -117,6 +117,8 @@ export function FolderPickerModal({
                     className="text-slate-900"
                     style={{ paddingVertical: 0, textAlignVertical: "center" }}
                     autoFocus
+                    returnKeyType="done"
+                    onSubmitEditing={onConfirmCreate}
                   />
                 </View>
                 <View className="mt-3 flex-row items-center gap-2">

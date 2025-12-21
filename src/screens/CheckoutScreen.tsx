@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
+  Keyboard,
   Modal,
   View,
   Text,
@@ -93,6 +94,16 @@ export default function CheckoutScreen() {
   const [form, setForm] = useState<AddressForm>(createEmptyAddress());
 
   const sheetRef = useRef<BottomSheetModal>(null);
+  const firstNameRef = useRef<TextInput>(null);
+  const lastNameRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
+  const countryRef = useRef<TextInput>(null);
+  const postalRef = useRef<TextInput>(null);
+  const address1Ref = useRef<TextInput>(null);
+  const address2Ref = useRef<TextInput>(null);
+  const stateRef = useRef<TextInput>(null);
+  const cityRef = useRef<TextInput>(null);
+  const phoneRef = useRef<TextInput>(null);
   const snapPoints = useMemo(() => ["90%"], []);
 
   const currentAddress = addressByMethod[deliveryMethod];
@@ -278,6 +289,8 @@ export default function CheckoutScreen() {
                   onChangeText={setPromoCode}
                   placeholder="Enter code"
                   placeholderTextColor="#94A3B8"
+                  returnKeyType="done"
+                  onSubmitEditing={() => Keyboard.dismiss()}
                   style={{ fontSize: 15, color: "#0F172A", padding: 0 }}
                 />
               </View>
@@ -354,74 +367,113 @@ export default function CheckoutScreen() {
             <SheetField
               label="First Name"
               required
+              inputRef={firstNameRef}
               value={form.firstName}
               onChangeText={(value) => setForm((prev) => ({ ...prev, firstName: value }))}
               placeholder="Enter first name"
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => lastNameRef.current?.focus()}
             />
             <SheetField
               label="Last Name"
               required
+              inputRef={lastNameRef}
               value={form.lastName}
               onChangeText={(value) => setForm((prev) => ({ ...prev, lastName: value }))}
               placeholder="Enter last name"
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => emailRef.current?.focus()}
             />
             <SheetField
               label="Email Address"
               required
+              inputRef={emailRef}
               value={form.email}
               onChangeText={(value) => setForm((prev) => ({ ...prev, email: value }))}
               placeholder="example@email.com"
               keyboardType="email-address"
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => countryRef.current?.focus()}
             />
             <SheetSelectField
               label="Country"
               required
+              inputRef={countryRef}
               value={form.country}
               placeholder="Select Country"
               onChangeText={(value) => setForm((prev) => ({ ...prev, country: value }))}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => postalRef.current?.focus()}
             />
             <SheetField
               label="Postal / Zip code"
               required
+              inputRef={postalRef}
               value={form.postalCode}
               onChangeText={(value) => setForm((prev) => ({ ...prev, postalCode: value }))}
               placeholder="Enter postal code"
               keyboardType="numeric"
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => address1Ref.current?.focus()}
             />
             <SheetField
               label="Address Line 1"
               required
+              inputRef={address1Ref}
               value={form.address1}
               onChangeText={(value) => setForm((prev) => ({ ...prev, address1: value }))}
               placeholder="Street address"
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => address2Ref.current?.focus()}
             />
             <SheetField
               label="Address Line 2"
+              inputRef={address2Ref}
               value={form.address2}
               onChangeText={(value) => setForm((prev) => ({ ...prev, address2: value }))}
               placeholder="Apt, suite, etc"
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => stateRef.current?.focus()}
             />
             <SheetSelectField
               label="State / District / Province"
               required
+              inputRef={stateRef}
               value={form.state}
               placeholder="Select State / District / Province"
               onChangeText={(value) => setForm((prev) => ({ ...prev, state: value }))}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => cityRef.current?.focus()}
             />
             <SheetSelectField
               label="City"
+              inputRef={cityRef}
               value={form.city}
               placeholder="Select City"
               onChangeText={(value) => setForm((prev) => ({ ...prev, city: value }))}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => phoneRef.current?.focus()}
             />
             <SheetField
               label="Phone Number"
               required
+              inputRef={phoneRef}
               value={form.phone}
               onChangeText={(value) => setForm((prev) => ({ ...prev, phone: value }))}
               placeholder="+1 (123) 456 7890"
               keyboardType="phone-pad"
               helper="We will only use your phone number for delivery purposes."
+              returnKeyType="done"
+              onSubmitEditing={() => phoneRef.current?.blur()}
             />
 
             <Pressable
@@ -496,6 +548,10 @@ type SheetFieldProps = {
   required?: boolean;
   keyboardType?: "default" | "numeric" | "email-address" | "phone-pad";
   helper?: string;
+  inputRef?: React.Ref<TextInput>;
+  returnKeyType?: "next" | "done";
+  blurOnSubmit?: boolean;
+  onSubmitEditing?: () => void;
   onChangeText: (value: string) => void;
 };
 
@@ -506,6 +562,10 @@ function SheetField({
   required,
   keyboardType,
   helper,
+  inputRef,
+  returnKeyType,
+  blurOnSubmit,
+  onSubmitEditing,
   onChangeText,
 }: SheetFieldProps) {
   return (
@@ -516,11 +576,15 @@ function SheetField({
       </View>
       <View className="rounded-2xl border border-slate-200 px-4 py-3 bg-white">
         <BottomSheetTextInput
+          ref={inputRef}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
           placeholderTextColor="#94A3B8"
           keyboardType={keyboardType}
+          returnKeyType={returnKeyType}
+          blurOnSubmit={blurOnSubmit}
+          onSubmitEditing={onSubmitEditing}
           style={{ fontSize: 15, color: "#0F172A", padding: 0 }}
         />
       </View>
@@ -534,6 +598,10 @@ type SheetSelectFieldProps = {
   value: string;
   placeholder?: string;
   required?: boolean;
+  inputRef?: React.Ref<TextInput>;
+  returnKeyType?: "next" | "done";
+  blurOnSubmit?: boolean;
+  onSubmitEditing?: () => void;
   onChangeText: (value: string) => void;
 };
 
@@ -542,6 +610,10 @@ function SheetSelectField({
   value,
   placeholder,
   required,
+  inputRef,
+  returnKeyType,
+  blurOnSubmit,
+  onSubmitEditing,
   onChangeText,
 }: SheetSelectFieldProps) {
   return (
@@ -552,10 +624,14 @@ function SheetSelectField({
       </View>
       <View className="rounded-2xl border border-slate-200 px-4 py-3 bg-white flex-row items-center">
         <BottomSheetTextInput
+          ref={inputRef}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
           placeholderTextColor="#94A3B8"
+          returnKeyType={returnKeyType}
+          blurOnSubmit={blurOnSubmit}
+          onSubmitEditing={onSubmitEditing}
           style={{ fontSize: 15, color: "#0F172A", padding: 0, flex: 1 }}
         />
         <Ionicons name="chevron-down" size={18} color="#94A3B8" />
