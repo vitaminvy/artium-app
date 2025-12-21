@@ -1,9 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   View,
   Text,
   Pressable,
@@ -13,8 +11,15 @@ import {
   ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetModalProvider, BottomSheetScrollView, BottomSheetTextInput } from "@gorhom/bottom-sheet";
-import type { BottomSheetBackdropProps } from "@gorhom/bottom-sheet";
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetModalProvider,
+  BottomSheetScrollView,
+  BottomSheetTextInput,
+  BottomSheetFooter,
+} from "@gorhom/bottom-sheet";
+import type { BottomSheetBackdropProps, BottomSheetFooterProps } from "@gorhom/bottom-sheet";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -121,6 +126,7 @@ export default function CheckoutScreen() {
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("artium");
   const [promoCode, setPromoCode] = useState("");
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showSheetExitConfirm, setShowSheetExitConfirm] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<AddressFieldKey, string>>>(
     {}
   );
@@ -132,6 +138,8 @@ export default function CheckoutScreen() {
   const [form, setForm] = useState<AddressForm>(createEmptyAddress());
 
   const sheetRef = useRef<BottomSheetModal>(null);
+  const guaranteeSheetRef = useRef<BottomSheetModal>(null);
+  const initialFormRef = useRef<AddressForm>(createEmptyAddress());
   const scrollRef = useRef<any>(null);
   const fieldPositions = useRef<Record<AddressFieldKey, number>>(
     {} as Record<AddressFieldKey, number>
@@ -147,8 +155,16 @@ export default function CheckoutScreen() {
   const cityRef = useRef<TextInput>(null);
   const phoneRef = useRef<TextInput>(null);
   const snapPoints = useMemo(() => ["90%"], []);
+  const guaranteeSnapPoints = useMemo(() => ["80%"], []);
 
   const currentAddress = addressByMethod[deliveryMethod];
+  const isFormDirty = useMemo(
+    () =>
+      (Object.keys(form) as Array<keyof AddressForm>).some(
+        (key) => form[key] !== initialFormRef.current[key]
+      ),
+    [form]
+  );
   const hasAddress = Object.values(currentAddress).some((value) => value.trim().length > 0);
   const addressTitle = deliveryMethod === "artium" ? "Shipping Address" : "Pick up / ship address";
   const artworkImage = detail.images?.[0] ?? fallbackDetail.images[0];
@@ -156,8 +172,35 @@ export default function CheckoutScreen() {
   const openAddressSheet = () => {
     setForm(currentAddress);
     setErrors({});
+    setShowSheetExitConfirm(false);
+    initialFormRef.current = { ...currentAddress };
     sheetRef.current?.present();
   };
+
+  const handleRequestCloseSheet = () => {
+    Keyboard.dismiss();
+    if (isFormDirty) {
+      setShowSheetExitConfirm(true);
+      return;
+    }
+    sheetRef.current?.dismiss();
+  };
+
+  const renderGuaranteeFooter = useCallback(
+    (props: BottomSheetFooterProps) => (
+      <BottomSheetFooter {...props} bottomInset={Math.max(insets.bottom, 16)}>
+        <View className="px-6 pb-2 bg-white">
+          <Pressable
+            onPress={() => guaranteeSheetRef.current?.dismiss()}
+            className="rounded-full border border-slate-200 py-3 items-center active:opacity-80"
+          >
+            <Text className="text-base font-semibold text-slate-900">Close</Text>
+          </Pressable>
+        </View>
+      </BottomSheetFooter>
+    ),
+    [insets.bottom]
+  );
 
   const handleSaveAddress = () => {
     const nextErrors: Partial<Record<AddressFieldKey, string>> = {};
@@ -344,6 +387,7 @@ export default function CheckoutScreen() {
           </View>
 
           <Pressable
+            onPress={() => guaranteeSheetRef.current?.present()}
             className="rounded-3xl bg-slate-100 border border-slate-200 px-2 py-2 flex-row items-center gap-3"
             style={cardShadow}
           >
@@ -440,6 +484,13 @@ export default function CheckoutScreen() {
           backgroundStyle={{ backgroundColor: "white" }}
           enablePanDownToClose
           enableContentPanningGesture={false}
+          keyboardBehavior="extend"
+          keyboardBlurBehavior="none"
+          enableBlurKeyboardOnGesture={false}
+          enableDynamicSizing={false}
+          topInset={0}
+          bottomInset={0}
+          onDismiss={() => setShowSheetExitConfirm(false)}
         >
           <View className="flex-1">
             <View className="px-5 pt-2 pb-3 border-b border-slate-100 bg-white">
@@ -447,26 +498,27 @@ export default function CheckoutScreen() {
                 <Text className="text-xl font-bold text-slate-900">
                   {addressTitle}
                 </Text>
-                <Pressable onPress={() => sheetRef.current?.dismiss()} hitSlop={8}>
+                <Pressable
+                  onPress={() => handleRequestCloseSheet()}
+                  hitSlop={8}
+                >
                   <Ionicons name="close-outline" size={26} color="#0F172A" />
                 </Pressable>
               </View>
             </View>
 
-            <KeyboardAvoidingView
-              behavior={Platform.OS === "ios" ? "padding" : undefined}
+            <BottomSheetScrollView
+              ref={scrollRef}
               style={{ flex: 1 }}
+              contentContainerStyle={{
+                paddingHorizontal: 20,
+                paddingTop: 12,
+                paddingBottom: Math.max(insets.bottom, 16) + 32,
+                gap: 18,
+              }}
+              keyboardShouldPersistTaps="always"
+              keyboardDismissMode="none"
             >
-              <BottomSheetScrollView
-                ref={scrollRef}
-                contentContainerStyle={{
-                  paddingHorizontal: 20,
-                  paddingTop: 12,
-                  paddingBottom: Math.max(insets.bottom, 16) + 32,
-                  gap: 18,
-                }}
-                keyboardShouldPersistTaps="handled"
-              >
 
             <View onLayout={(e) => handleFieldLayout("firstName", e.nativeEvent.layout.y)}>
               <SheetField
@@ -610,10 +662,124 @@ export default function CheckoutScreen() {
             >
               <Text className="text-base font-semibold text-white">Save</Text>
             </Pressable>
-              </BottomSheetScrollView>
-            </KeyboardAvoidingView>
+            </BottomSheetScrollView>
           </View>
         </BottomSheetModal>
+
+        <BottomSheetModal
+          ref={guaranteeSheetRef}
+          snapPoints={guaranteeSnapPoints}
+          index={0}
+          backdropComponent={backdrop}
+          handleIndicatorStyle={{ backgroundColor: "#CBD5E1", width: 40 }}
+          backgroundStyle={{ backgroundColor: "white" }}
+          enablePanDownToClose
+          enableContentPanningGesture={false}
+          enableDynamicSizing={false}
+          footerComponent={renderGuaranteeFooter}
+        >
+          <View className="flex-1">
+            <View className="px-6 pt-3 pb-3 border-b border-slate-100 bg-white">
+              <View className="flex-row items-center justify-between">
+                <Text className="text-xl font-bold text-slate-900">
+                  Artium satisfaction guarantee
+                </Text>
+                <Pressable
+                  onPress={() => guaranteeSheetRef.current?.dismiss()}
+                  hitSlop={8}
+                >
+                  <Ionicons name="close-outline" size={26} color="#0F172A" />
+                </Pressable>
+              </View>
+            </View>
+
+            <BottomSheetScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{
+                paddingHorizontal: 24,
+                paddingTop: 16,
+                paddingBottom: Math.max(insets.bottom, 16) + 120,
+                gap: 28,
+              }}
+              showsVerticalScrollIndicator={false}
+            >
+              <GuaranteeItem
+                icon="lock-closed-outline"
+                title="100% money-back guarantee"
+                description="Return your purchase for any reason within 48 hours after delivery. The buyer is responsible for all return shipping costs. The refund will be in your account 5-7 days after Artium successfully receives the artwork."
+              />
+
+              <GuaranteeItem
+                icon="car-outline"
+                title="Artium offers insured, flat-rate shipping"
+                description={
+                  <Text className="text-sm text-slate-500 leading-5">
+                    Artium insures your order. If you select ship, shipping fee is calculated based on order subtotal (after discounts), and shows in the final total at checkout, with a flat fee of 5% for domestic, 8% for international. Oversized artworks will incur a flat fee of 10% for domestic, 15% for international shipping. If you select pick up in-person, it's free. Total at checkout excludes local customs duties, taxes, and import fees; your carrier may collect these on delivery.{" "}
+                    <Text className="text-[#0B73FF] font-semibold">Learn more</Text>
+                  </Text>
+                }
+              />
+
+              <GuaranteeItem
+                icon="shield-checkmark-outline"
+                title="Certificate of Authenticity included"
+                description="All artworks are authenticated by the Artium team. You will receive a certificate of authenticity from the artist when you purchase a work through Artium."
+              />
+            </BottomSheetScrollView>
+          </View>
+        </BottomSheetModal>
+
+        <Modal
+          visible={showSheetExitConfirm}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowSheetExitConfirm(false)}
+        >
+          <View className="flex-1 bg-black/40 items-center justify-center px-6">
+            <View className="w-full rounded-[28px] bg-white p-6">
+              <View className="flex-row justify-end">
+                <Pressable
+                  onPress={() => setShowSheetExitConfirm(false)}
+                  hitSlop={12}
+                  className="h-10 w-10 items-center justify-center rounded-full"
+                >
+                  <Ionicons name="close" size={22} color="#0F172A" />
+                </Pressable>
+              </View>
+
+              <View className="mt-2 mb-5">
+                <Text className="text-2xl font-bold text-slate-900 text-center">
+                  Are you sure{"\n"}you want to exit?
+                </Text>
+                <Text className="mt-3 text-base text-slate-500 text-center">
+                  If you leave this page, your information won't be saved.
+                </Text>
+              </View>
+
+              <View className="gap-3">
+                <Pressable
+                  onPress={() => {
+                    setShowSheetExitConfirm(false);
+                    sheetRef.current?.dismiss();
+                  }}
+                  className="rounded-full border border-rose-500 py-3 items-center active:opacity-80"
+                >
+                  <Text className="text-base font-semibold text-rose-500">
+                    Yes, exit flow
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setShowSheetExitConfirm(false)}
+                  className="rounded-full border border-slate-200 py-3 items-center active:opacity-80"
+                >
+                  <Text className="text-base font-semibold text-slate-700">
+                    Cancel
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         <Modal
           visible={showExitConfirm}
@@ -786,6 +952,30 @@ function SummaryRow({ label, value }: SummaryRowProps) {
     <View className="flex-row items-center justify-between">
       <Text className="text-sm text-slate-600">{label}</Text>
       <Text className="text-sm text-slate-900">{value}</Text>
+    </View>
+  );
+}
+
+type GuaranteeItemProps = {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  description: React.ReactNode;
+};
+
+function GuaranteeItem({ icon, title, description }: GuaranteeItemProps) {
+  return (
+    <View className="flex-row gap-4">
+      <View className="h-10 w-10 rounded-full items-center justify-center bg-[#E0F2FE]">
+        <Ionicons name={icon} size={20} color="#0B73FF" />
+      </View>
+      <View className="flex-1 gap-2">
+        <Text className="text-base font-semibold text-slate-900">{title}</Text>
+        {typeof description === "string" ? (
+          <Text className="text-sm text-slate-500 leading-5">{description}</Text>
+        ) : (
+          description
+        )}
+      </View>
     </View>
   );
 }
