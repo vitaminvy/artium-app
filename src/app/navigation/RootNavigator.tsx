@@ -4,14 +4,17 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import ArtworkDetailScreen from "../../screens/ArtworkDetailScreen";
 import UploadInventoryScreen from "../../screens/UploadInventoryScreen";
+import CheckoutScreen from "../../screens/CheckoutScreen";
 import TabNavigator from "./TabNavigator";
 import { TabParamList } from "./tabTypes";
 import AuthStack from "./AuthStack";
 import { AuthStatus } from "../../domains/auth/types";
+import type { ArtworkDetail } from "../../domains/artwork/types";
 
 type AppStackParamList = {
   Tabs: { screen?: keyof TabParamList; params?: TabParamList[keyof TabParamList] } | undefined;
   ArtworkDetail: { id?: string };
+  Checkout: { artwork?: ArtworkDetail };
   Upload: undefined;
 };
 
@@ -38,6 +41,11 @@ function AppStack() {
       <Stack.Screen
         name="ArtworkDetail"
         component={ArtworkDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Checkout"
+        component={CheckoutScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

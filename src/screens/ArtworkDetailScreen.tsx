@@ -321,6 +321,7 @@ export default function ArtworkDetailScreen() {
           onLike={() => setLiked((prev) => !prev)}
           onReshare={handleOpenReshareSheet}
           onSave={handleOpenSaveSheet}
+          onBuy={() => navigation.navigate("Checkout", { artwork: detail })}
         />
 
         {/* Reshare Sheet */}
