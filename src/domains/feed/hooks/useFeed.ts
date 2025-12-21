@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { User as AuthUser } from "firebase/auth"; // Import Firebase user type
 import { FeedComment, FeedPost, FeedTab } from "../types";
-import { createPost, getFeedPosts, togglePostLike } from "./services/feedService";
+import {  addCommentToPost, createPost, getFeedPosts, togglePostLike } from "./services/feedService";
 
 type UseFeedResult = {
   tab: FeedTab;
@@ -85,7 +85,7 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
     return sorted;
   }, [posts, currentUser]);
 
-  const toggleLike = useCallback(async (id: string) => {
+  const toggleLike = useCallback(async (id: string, isCurrentlyLiked: boolean) => {
     // Optimistic UI update
     setPosts((prev) => {
       const idx = prev.findIndex((p) => p.id === id);
@@ -105,9 +105,8 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
 
     // Call backend service
     try {
-      const originalPost = posts.find((p) => p.id === id);
-      if (originalPost) {
-        await togglePostLike(id, originalPost.liked ?? false);
+      if (currentUser) {
+        await togglePostLike(id, currentUser.uid, isCurrentlyLiked);
       }
     } catch (error) {
       console.error("Failed to update like status on backend:", error);
@@ -130,9 +129,48 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
     }
   }, [posts]);
   
-  const addComment = useCallback((postId: string, content: string) => {
-    console.log("addComment to be implemented with backend call");
-  }, []);
+  const addComment = useCallback(
+    async (postId: string, content: string) => {
+      if (!content.trim() || !currentUser) return; // Ensure content and user exist
+
+      try {
+        // Optimistic UI update for comments list in the sheet
+        const tempCommentId = `temp-cmt-${Date.now()}`;
+        const newLocalComment: FeedComment = {
+            id: tempCommentId,
+            author: { // Use currentUser info directly
+              id: currentUser.uid,
+              name: currentUser.displayName || "You",
+              handle: (currentUser.displayName || "you").replace(/\s+/g, "").toLowerCase(),
+              avatar: currentUser.photoURL || undefined,
+            },
+            content: content.trim(),
+            createdAt: Date.now(),
+            relativeTime: "Just now",
+          };
+
+        setCommentsByPost((prev) => ({
+          ...prev,
+          [postId]: [newLocalComment, ...(prev[postId] ?? [])],
+        }));
+
+        // Call backend service to add comment and increment count
+        await addCommentToPost(postId, {
+          authorId: currentUser.uid,
+          content: content.trim(),
+        });
+
+        // After successful comment, refetch posts to update the comment count on the post
+        await fetchPosts(); 
+
+      } catch (error) {
+        console.error("Failed to add comment to backend:", error);
+        // Implement rollback for optimistic update here if necessary, or show alert
+        // A simple rollback would be to remove the tempCommentId from commentsByPost
+      }
+    },
+    [currentUser, fetchPosts]
+  );
 
   const createReshare = useCallback((targetId: string, note: string) => {
     console.log("createReshare to be implemented with backend call");

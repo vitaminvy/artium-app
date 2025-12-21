@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where, orderBy, doc, updateDoc, increment, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs, query, where, orderBy, doc, updateDoc, increment, addDoc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 import { FeedPost, FeedAuthor } from "../../types";
 
@@ -108,13 +108,29 @@ export const getFeedPosts = async (): Promise<FeedPost[]> => {
 /**
  * Toggles the like status for a post, incrementing or decrementing the count.
  */
-export const togglePostLike = async (postId: string, isCurrentlyLiked: boolean): Promise<void> => {
-  if (!postId) return;
+export const togglePostLike = async (postId: string, userId: string, isCurrentlyLiked: boolean): Promise<void> => {
+  if (!postId || !userId) return;
+
+  const batch = writeBatch(firestore);
+  
+  // Reference to the main post document
   const postRef = doc(firestore, POSTS_COLLECTION, postId);
+  
+  // Reference to the user's "like" document in the subcollection
+  const likeRef = doc(firestore, POSTS_COLLECTION, postId, "likes", userId);
+
+  if (isCurrentlyLiked) {
+    // User is UNLIKING: decrement counter and delete like document
+    batch.update(postRef, { "metrics.likes": increment(-1) });
+    batch.delete(likeRef);
+  } else {
+    // User is LIKING: increment counter and create like document
+    batch.update(postRef, { "metrics.likes": increment(1) });
+    batch.set(likeRef, { createdAt: serverTimestamp() });
+  }
+
   try {
-    await updateDoc(postRef, {
-      "metrics.likes": increment(isCurrentlyLiked ? -1 : 1),
-    });
+    await batch.commit();
   } catch (error) {
     console.error("Failed to toggle post like:", error);
     throw error;
@@ -140,6 +156,37 @@ export const createPost = async (postData: { authorId: string; content: string; 
     });
   } catch (error) {
     console.error("Error creating post:", error);
+    throw error;
+  }
+};
+
+/**
+ * Adds a new comment to a post and increments the comment count on the post.
+ */
+export const addCommentToPost = async (
+  postId: string,
+  commentData: { authorId: string; content: string }
+): Promise<void> => {
+  const trimmed = commentData.content.trim();
+
+  if (!postId || !commentData.authorId || !trimmed) {
+    throw new Error("Post ID, author ID, and content are required to add a comment.");
+  }
+
+  const postRef = doc(firestore, POSTS_COLLECTION, postId);
+
+  try {
+    await addDoc(collection(postRef, "comments"), {
+      authorId: commentData.authorId,
+      content: trimmed,
+      createdAt: serverTimestamp(),
+    });
+
+    await updateDoc(postRef, {
+      "metrics.comments": increment(1),
+    });
+  } catch (error) {
+    console.error("Failed to add comment:", error);
     throw error;
   }
 };

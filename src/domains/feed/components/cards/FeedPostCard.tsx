@@ -259,7 +259,7 @@ function FeedPostCard({
       <View className="flex-row items-center gap-6 pt-1">
         <Pressable
           className="flex-row items-center gap-2"
-          onPress={() => onPressLike(post.id)}
+          onPress={() => onPressLike(post.id, post.liked ?? false)}
           hitSlop={6}
         >
           <Ionicons
