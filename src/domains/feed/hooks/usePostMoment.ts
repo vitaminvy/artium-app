@@ -8,6 +8,7 @@ import { FeedPost, PostMomentMedia } from "../types";
 import { subscribePostMomentOpen } from "../../../shared/utils/postMomentBridge";
 import { MEDIA_CONFIG } from "../constants/media";
 import { FEED_MESSAGES } from "../constants/messages";
+import { uploadMedia } from "../../../shared/services/uploadService";
 
 type MediaSource = "library" | "camera";
 
@@ -18,6 +19,7 @@ export function usePostMoment({
   const [visible, setVisible] = useState(false);
   const [text, setText] = useState("");
   const [media, setMedia] = useState<PostMomentMedia | undefined>();
+  const [isUploading, setIsUploading] = useState(false); // ADD UPLOADING STATE
 
   const resetDraft = useCallback(() => {
     setText("");
@@ -30,13 +32,16 @@ export function usePostMoment({
   }, []);
 
   const close = useCallback(() => {
+    // Prevent closing while uploading
+    if (isUploading) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     resetDraft();
     setVisible(false);
-  }, [resetDraft]);
+  }, [resetDraft, isUploading]);
 
   useEffect(() => subscribePostMomentOpen(open), [open]);
 
+  // ... (The image/video picker logic remains the same)
   const chooseSource = useCallback(
     async (type: "image" | "video"): Promise<MediaSource | null> => {
       const cameraLabel =
@@ -168,7 +173,6 @@ export function usePostMoment({
         return;
       }
 
-      // Validate asset has URI
       if (!asset.uri) {
         Alert.alert(
           FEED_MESSAGES.ERROR_VIDEO_UNAVAILABLE,
@@ -177,14 +181,12 @@ export function usePostMoment({
         return;
       }
 
-      // Determine source URI; iCloud assets may not be local
       let sourceUri = asset.uri;
 
       if (source === "library") {
         const hasLocalFile = sourceUri?.startsWith("file://");
 
         if (!hasLocalFile && sourceUri) {
-          // Check if file exists before downloading
           try {
             const fileInfo = await FileSystem.getInfoAsync(sourceUri);
             if (!fileInfo.exists) {
@@ -223,14 +225,15 @@ export function usePostMoment({
         uri: sourceUri,
         width: asset.width,
         height: asset.height,
-        durationMs: durationMs || undefined, // will be resolved after load if missing
+        durationMs: durationMs || undefined,
         aspectRatio,
       });
     } catch (error) {
       console.error("Failed to pick media:", error);
       Alert.alert("Error", FEED_MESSAGES.ERROR_MEDIA_SELECTION_FAILED);
     }
-  }, [ensurePermission]);
+  }, [ensurePermission, chooseSource]);
+
 
   const pickImage = useCallback(async () => {
     const source = await chooseSource("image");
@@ -261,60 +264,86 @@ export function usePostMoment({
 
   const canShare = useMemo(
     () =>
-      text.trim().length > 0 ||
-      (media?.type === "image" ? media.items.length > 0 : !!media),
-    [media, text]
+      !isUploading && (text.trim().length > 0 ||
+      (media?.type === "image" ? media.items.length > 0 : !!media)),
+    [media, text, isUploading]
   );
 
-  const share = useCallback(() => {
+ // --- REFACTORED SHARE FUNCTION ---
+  const share = useCallback(async () => {
     if (!canShare) return;
 
-    const now = Date.now();
-    let feedMedia: FeedPost["media"] | undefined;
-    if (media?.type === "image") {
-      feedMedia = {
-        type: "image",
-        items: media.items.map((item) => ({
-          uri: item.uri,
-          width: item.width,
-          height: item.height,
-        })),
-        placeholderColor: MEDIA_CONFIG.PLACEHOLDER_COLOR,
-      };
-    } else if (media?.type === "video") {
-      feedMedia = {
-        type: "video",
-        uri: media.uri,
-        durationMs: media.durationMs,
-        placeholderColor: MEDIA_CONFIG.PLACEHOLDER_COLOR,
-        aspectRatio: media.aspectRatio,
-      };
-    }
-
-    const newPost: FeedPost = {
-      id: `moment-${now}`,
-      author: CURRENT_USER,
-      content: text.trim(),
-      createdAt: now,
-      relativeTime: "Just now",
-      media: feedMedia,
-      metrics: { likes: 0, comments: 0, shares: 0 },
-      liked: false,
-      reshared: false,
-    };
-
-    onPublish(newPost);
+    setIsUploading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    resetDraft();
-    setVisible(false);
-    onShared?.();
-  }, [canShare, media, onPublish, resetDraft, text]);
+
+    try {
+      let feedMedia: FeedPost["media"] | undefined;
+
+      // Step 1: Upload media if it exists and get download URLs
+      if (media?.type === "image") {
+        const uploadPromises = media.items.map(item => uploadMedia(item.uri, 'posts'));
+        const downloadUrls = await Promise.all(uploadPromises);
+        feedMedia = {
+          type: "image",
+          items: downloadUrls.map((url, index) => ({ // Using original width/height
+            uri: url,
+            width: media.items[index].width,
+            height: media.items[index].height,
+          })),
+          placeholderColor: MEDIA_CONFIG.PLACEHOLDER_COLOR,
+        };
+      } else if (media?.type === "video") {
+        const downloadUrl = await uploadMedia(media.uri, 'posts');
+        feedMedia = {
+          type: "video",
+          uri: downloadUrl,
+          durationMs: media.durationMs,
+          placeholderColor: MEDIA_CONFIG.PLACEHOLDER_COLOR,
+          aspectRatio: media.aspectRatio,
+        };
+      }
+
+      // Step 2: Create the post object with the public media URLs
+      const newPost: FeedPost = {
+        id: `moment-${Date.now()}`, // This ID is temporary, Firestore will generate the real one
+        author: CURRENT_USER, // This is also temporary, the backend will use the authenticated user
+        content: text.trim(),
+        createdAt: Date.now(),
+        relativeTime: "Just now",
+        media: feedMedia, // Use the media object with public URLs
+        metrics: { likes: 0, comments: 0, shares: 0 },
+        liked: false,
+        reshared: false,
+      };
+
+      // Step 3: Call onPublish to save the post to the backend
+      await onPublish(newPost);
+      
+      // Step 4: Cleanup
+      resetDraft();
+      setVisible(false);
+      onShared?.();
+
+    } catch (error: any) {
+      console.error("--- FAILED TO SHARE POST ---");
+      // Log the full detailed error object from Firebase
+      console.error("Full Error:", JSON.stringify(error, null, 2));
+      if (error.serverResponse) {
+        console.error("Server Response:", error.serverResponse);
+      }
+      console.error("-----------------------------");
+      Alert.alert("Error", "Could not share your post. Please check the console for more details.");
+    } finally {
+      setIsUploading(false);
+    }
+  }, [canShare, media, onPublish, onShared, resetDraft, text]);
 
   const state: UsePostMomentState = {
     visible,
     text,
     media,
     canShare,
+    isUploading, // Expose uploading state
   };
 
   const actions: UsePostMomentActions = useMemo(
@@ -345,7 +374,7 @@ export function usePostMoment({
   return { state, actions };
 }
 type UsePostMomentParams = {
-  onPublish: (post: FeedPost) => void;
+  onPublish: (post: FeedPost) => Promise<void>; // Make onPublish async
   onShared?: () => void;
 };
 
@@ -354,6 +383,7 @@ type UsePostMomentState = {
   text: string;
   media?: PostMomentMedia;
   canShare: boolean;
+  isUploading: boolean; // Expose uploading state
 };
 
 type UsePostMomentActions = {
