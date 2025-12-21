@@ -121,7 +121,7 @@ export const togglePostLike = async (postId: string, isCurrentlyLiked: boolean):
 /**
  * Creates a new text-only post in Firestore.
  */
-export const createPost = async (postData: { authorId: string; content: string }): Promise<void> => {
+export const createPost = async (postData: { authorId: string; content: string; mediaUrl?: string }): Promise<void> => {
   try {
     await addDoc(collection(firestore, POSTS_COLLECTION), {
       authorId: postData.authorId,
@@ -132,6 +132,8 @@ export const createPost = async (postData: { authorId: string; content: string }
         comments: 0,
         shares: 0,
       },
+      ...(postData.mediaUrl && { mediaUrl: postData.mediaUrl }), // Add mediaUrl if provided
+      // Other fields like 'media' (detailed structure) can be added later
     });
   } catch (error) {
     console.error("Error creating post:", error);

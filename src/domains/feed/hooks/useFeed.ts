@@ -142,10 +142,18 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
     if (!currentUser) {
       throw new Error("User must be logged in to create a post.");
     }
+
+    let mediaUrl: string | undefined;
+    if (post.media?.type === "video") {
+      mediaUrl = post.media.uri;
+    } else if (post.media?.type === "image" && post.media.items && post.media.items.length > 0) {
+      mediaUrl = post.media.items[0].uri;
+    }
     
     await createPost({
       authorId: currentUser.uid,
       content: post.content,
+      mediaUrl: mediaUrl,
     });
     
     await fetchPosts();
