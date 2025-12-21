@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { User as AuthUser } from "firebase/auth"; // Import Firebase user type
 import { FeedComment, FeedPost, FeedTab } from "../types";
-import {  addCommentToPost, createPost, getFeedPosts, togglePostLike } from "./services/feedService";
+import {  addCommentToPost, createPost, subscribeToFeedPosts, togglePostLike } from "./services/feedService";
 
 type UseFeedResult = {
   tab: FeedTab;
   setTab: (tab: FeedTab) => void;
   loading: boolean;
+  isRefreshing: boolean; // Add for pull-to-refresh
+  onRefresh: () => Promise<void>; // Add for pull-to-refresh
   error: Error | null;
   explorePosts: FeedPost[];
   followingPosts: FeedPost[];
@@ -51,27 +53,41 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
   
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   const [commentsByPost, setCommentsByPost] = useState<
     Record<string, FeedComment[]>
   >({});
 
-  const fetchPosts = useCallback(async () => {
-    try {
-      setLoading(true);
-      const fetchedPosts = await getFeedPosts(currentUser?.uid || null);
-      setPosts(attachRelativeTime(fetchedPosts));
-    } catch (e: any) {
-      setError(e);
-    } finally {
-      setLoading(false);
-    }
+  // Set up the real-time listener
+  useEffect(() => {
+    setLoading(true);
+
+    const unsubscribe = subscribeToFeedPosts(
+      (fetchedPosts) => {
+        setPosts(attachRelativeTime(fetchedPosts));
+        setError(null);
+        setLoading(false);
+      },
+      (e) => {
+        setError(e);
+        setLoading(false);
+      },
+      currentUser?.uid || null
+    );
+
+    // Clean up the listener when the component unmounts
+    return () => unsubscribe();
   }, [currentUser]);
 
-  useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
+  // Manual refresh function (for UI feedback, actual data update is via listener)
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    // Simulate a short delay for UX, as listener handles actual data update
+    await new Promise(resolve => setTimeout(resolve, 500)); 
+    setIsRefreshing(false);
+  }, []);
 
   const explorePosts = useMemo(() => sortByCreatedAt(posts), [posts]);
 
@@ -128,7 +144,7 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
         return next;
       });
     }
-  }, [posts]);
+  }, [currentUser]);
   
   const addComment = useCallback(
     async (postId: string, content: string) => {
@@ -161,16 +177,13 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
           content: content.trim(),
         });
 
-        // After successful comment, refetch posts to update the comment count on the post
-        await fetchPosts(); 
-
       } catch (error) {
         console.error("Failed to add comment to backend:", error);
         // Implement rollback for optimistic update here if necessary, or show alert
         // A simple rollback would be to remove the tempCommentId from commentsByPost
       }
     },
-    [currentUser, fetchPosts]
+    [currentUser]
   );
 
   const createReshare = useCallback((targetId: string, note: string) => {
@@ -195,15 +208,15 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
       content: post.content,
       mediaUrl: mediaUrl,
     });
-    
-    await fetchPosts();
 
-  }, [currentUser, fetchPosts]);
+  }, [currentUser]);
 
   return {
     tab,
     setTab,
     loading,
+    isRefreshing,
+    onRefresh,
     error,
     explorePosts,
     followingPosts,

@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where, orderBy, doc, updateDoc, increment, addDoc, serverTimestamp, writeBatch,getDoc } from "firebase/firestore";
+import { collection, getDocs, query, where, orderBy, doc, updateDoc, increment, addDoc, serverTimestamp, writeBatch, getDoc, onSnapshot, Unsubscribe } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 import { FeedPost, FeedAuthor } from "../../types";
 
@@ -16,108 +16,110 @@ type PostDoc = {
 };
 
 /**
- * Fetches posts for the feed and enriches them with author data from both artists and users collections.
+ * Subscribes to feed posts and provides real-time updates.
  */
-export const getFeedPosts = async (currentUserId: string | null): Promise<FeedPost[]> => {
-  try {
-    const postQuery = query(
-      collection(firestore, POSTS_COLLECTION),
-      orderBy("createdAt", "desc")
-    );
-    const postSnapshots = await getDocs(postQuery);
-    const postsFromDB: PostDoc[] = postSnapshots.docs.map((doc) => ({
-      id: doc.id,
-      ...(doc.data() as Omit<PostDoc, "id">),
-    }));
+export const subscribeToFeedPosts = (
+  onUpdate: (posts: FeedPost[]) => void,
+  onError: (error: Error) => void,
+  currentUserId: string | null
+): Unsubscribe => {
+  const postQuery = query(
+    collection(firestore, POSTS_COLLECTION),
+    orderBy("createdAt", "desc")
+  );
 
-    if (postsFromDB.length === 0) {
-      return [];
-    }
+  const unsubscribe = onSnapshot(postQuery, async (querySnapshot) => {
+    try {
+      const postsFromDB: PostDoc[] = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as Omit<PostDoc, "id">),
+      }));
 
-    const authorIds = [...new Set(postsFromDB.map((post) => post.authorId))];
-    const authorsMap = new Map<string, FeedAuthor>();
+      if (postsFromDB.length === 0) {
+        onUpdate([]);
+        return;
+      }
 
-    if (authorIds.length > 0) {
-      // Fetch authors from 'artists' collection
-      const artistQuery = query(
-        collection(firestore, ARTISTS_COLLECTION),
-        where("__name__", "in", authorIds)
-      );
-      const artistSnapshots = await getDocs(artistQuery);
-      artistSnapshots.forEach((doc) => {
-        const data = doc.data();
-        authorsMap.set(doc.id, {
-          id: doc.id,
-          name: data.name,
-          handle: data.name.replace(/\s+/g, "").toLowerCase(),
-          avatar: data.avatar,
-          verified: data.verified || false,
-        });
-      });
+      const authorIds = [...new Set(postsFromDB.map((post) => post.authorId))];
+      const authorsMap = new Map<string, FeedAuthor>();
 
-      const missingAuthorIds = authorIds.filter(id => !authorsMap.has(id));
-
-      if (missingAuthorIds.length > 0) {
-        // Fallback to 'users' collection
-        const userQuery = query(
-          collection(firestore, USERS_COLLECTION),
-          where("uid", "in", missingAuthorIds)
+      if (authorIds.length > 0) {
+        const artistQuery = query(
+          collection(firestore, ARTISTS_COLLECTION),
+          where("__name__", "in", authorIds)
         );
-        const userSnapshots = await getDocs(userQuery);
-        userSnapshots.forEach((doc) => {
+        const artistSnapshots = await getDocs(artistQuery);
+        artistSnapshots.forEach((doc) => {
           const data = doc.data();
-          authorsMap.set(data.uid, {
-            id: data.uid,
-            name: data.displayName,
-            handle: (data.displayName || '').replace(/\s+/g, "").toLowerCase(),
-            avatar: data.photoURL,
-            verified: false,
+          authorsMap.set(doc.id, {
+            id: doc.id,
+            name: data.name,
+            handle: data.name.replace(/\s+/g, "").toLowerCase(),
+            avatar: data.avatar,
+            verified: data.verified || false,
           });
         });
-      }
-    }
 
-    // --- NEW: Check which posts the current user has liked ---
-    const likedPostIds = new Set<string>();
-    if (currentUserId && postsFromDB.length > 0) {
-      const postIds = postsFromDB.map(post => post.id);
-      // Create a promise for each like check
-      const likeChecks = postIds.map(postId => 
-        getDoc(doc(firestore, POSTS_COLLECTION, postId, "likes", currentUserId))
-      );
-      const likeSnapshots = await Promise.all(likeChecks);
-      likeSnapshots.forEach((likeSnap, index) => {
-        if (likeSnap.exists()) {
-          likedPostIds.add(postIds[index]);
+        const missingAuthorIds = authorIds.filter(id => !authorsMap.has(id));
+        if (missingAuthorIds.length > 0) {
+          const userQuery = query(
+            collection(firestore, USERS_COLLECTION),
+            where("uid", "in", missingAuthorIds)
+          );
+          const userSnapshots = await getDocs(userQuery);
+          userSnapshots.forEach((doc) => {
+            const data = doc.data();
+            authorsMap.set(data.uid, {
+              id: data.uid,
+              name: data.displayName,
+              handle: (data.displayName || '').replace(/\s+/g, "").toLowerCase(),
+              avatar: data.photoURL,
+              verified: false,
+            });
+          });
         }
+      }
+
+      const likedPostIds = new Set<string>();
+      if (currentUserId && postsFromDB.length > 0) {
+        const postIds = postsFromDB.map(post => post.id);
+        const likeChecks = postIds.map(postId => 
+          getDoc(doc(firestore, POSTS_COLLECTION, postId, "likes", currentUserId))
+        );
+        const likeSnapshots = await Promise.all(likeChecks);
+        likeSnapshots.forEach((likeSnap, index) => {
+          if (likeSnap.exists()) {
+            likedPostIds.add(postIds[index]);
+          }
+        });
+      }
+
+      const feedPosts: FeedPost[] = postsFromDB.map((post) => {
+        const author = authorsMap.get(post.authorId) || {
+          id: post.authorId,
+          name: "Unknown User",
+          handle: "unknown",
+        };
+        const createdAtTimestamp = post.createdAt ? post.createdAt.toDate() : new Date();
+        
+        return {
+          id: post.id,
+          author: author,
+          content: post.content,
+          createdAt: createdAtTimestamp.getTime(),
+          relativeTime: "Just now",
+          metrics: post.metrics || { likes: 0, comments: 0, shares: 0 },
+          media: post.mediaUrl ? { type: 'image', items: [{ uri: post.mediaUrl }], placeholderColor: '#CBD5E1', aspectRatio: 1 } : undefined,
+          liked: likedPostIds.has(post.id),
+        };
       });
+      onUpdate(feedPosts);
+    } catch (e: any) {
+      onError(e);
     }
+  });
 
-    const feedPosts: FeedPost[] = postsFromDB.map((post) => {
-      const author = authorsMap.get(post.authorId) || {
-        id: post.authorId,
-        name: "Unknown User",
-        handle: "unknown",
-      };
-      const createdAtTimestamp = post.createdAt ? post.createdAt.toDate() : new Date();
-      
-      return {
-        id: post.id,
-        author: author,
-        content: post.content,
-        createdAt: createdAtTimestamp.getTime(),
-        relativeTime: "Just now",
-        metrics: post.metrics || { likes: 0, comments: 0, shares: 0 },
-        media: post.mediaUrl ? { type: 'image', items: [{ uri: post.mediaUrl }], placeholderColor: '#CBD5E1', aspectRatio: 1 } : undefined,
-        liked: likedPostIds.has(post.id), // Set liked status based on check
-      };
-    });
-
-    return feedPosts;
-  } catch (error) {
-    console.error("Error getting feed posts:", error);
-    throw error;
-  }
+  return unsubscribe;
 };
 
 /**

@@ -13,6 +13,8 @@ type Props = {
   onPressImage?: (images: { uri: string }[], index: number) => void;
   scrollHandler?: any;
   isTabActive?: boolean;
+  isRefreshing?: boolean;
+  onRefresh?: () => void;
 };
 
 export default function FeedExploreTab({
@@ -24,6 +26,8 @@ export default function FeedExploreTab({
   onPressImage,
   scrollHandler,
   isTabActive = true,
+  isRefreshing,
+  onRefresh,
 }: Props) {
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
 
@@ -114,6 +118,8 @@ export default function FeedExploreTab({
       showsVerticalScrollIndicator={false}
       onScroll={scrollHandler}
       scrollEventThrottle={16}
+      onRefresh={onRefresh}
+      refreshing={isRefreshing}
     />
   );
 }

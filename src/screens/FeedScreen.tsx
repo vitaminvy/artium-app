@@ -40,6 +40,8 @@ export default function FeedScreen() {
     setTab,
     loading,
     error,
+    isRefreshing,
+    onRefresh,
     explorePosts,
     followingPosts,
     toggleLike,
