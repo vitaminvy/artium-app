@@ -61,9 +61,15 @@ export default function DiscoverScreen() {
   const [locationText, setLocationText] = useState("Albuquerque, NM, USA");
   const [radius, setRadius] = useState("10 miles");
   const [showRadiusOptions, setShowRadiusOptions] = useState(false);
+  const handleRequireSignUp = useCallback(() => {
+    navigation.navigate("SignUp");
+  }, [navigation]);
+  const handleRequireSignUpForCard = useCallback((_: unknown) => {
+    navigation.navigate("SignUp");
+  }, [navigation]);
 
   const renderContent = () => {
-    const onCardPress = isGuest ? handleRequireSignUp : undefined;
+    const onCardPress = isGuest ? handleRequireSignUpForCard : undefined;
 
     switch (tab) {
       case "topPicks":
@@ -94,10 +100,6 @@ export default function DiscoverScreen() {
         return null;
     }
   };
-
-  const handleRequireSignUp = useCallback((_: unknown) => {
-    navigation.navigate("SignUp");
-  }, [navigation]);
 
   return (
     <View className="flex-1 bg-white">

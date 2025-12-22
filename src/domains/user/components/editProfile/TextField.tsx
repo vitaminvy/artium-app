@@ -1,6 +1,6 @@
 import React from "react";
 import { Controller, Control, RegisterOptions } from "react-hook-form";
-import { TextInput, View, Text } from "react-native";
+import { TextInput, View, Text, TextInputProps } from "react-native";
 
 type Props = {
   control: Control<any>;
@@ -8,10 +8,13 @@ type Props = {
   label: string;
   required?: boolean;
   maxLength?: number;
-  placeholder?: string;
   helperText?: string;
   keyboardType?: "default" | "numeric" | "phone-pad" | "email-address";
   rules?: RegisterOptions;
+  inputRef?: React.RefObject<TextInput | null>;
+  returnKeyType?: TextInputProps["returnKeyType"];
+  blurOnSubmit?: TextInputProps["blurOnSubmit"];
+  onSubmitEditing?: TextInputProps["onSubmitEditing"];
 };
 
 export default function TextField({
@@ -20,10 +23,13 @@ export default function TextField({
   label,
   required,
   maxLength,
-  placeholder,
   helperText,
   keyboardType = "default",
   rules,
+  inputRef,
+  returnKeyType,
+  blurOnSubmit,
+  onSubmitEditing,
 }: Props) {
   return (
     <Controller
@@ -46,15 +52,17 @@ export default function TextField({
 
           <View className="rounded-xl border border-slate-200 bg-white px-3 py-3 min-h-[52px] justify-center">
             <TextInput
+              ref={inputRef}
               value={value}
               onChangeText={onChange}
               onBlur={onBlur}
-              placeholder={placeholder}
               maxLength={maxLength}
               keyboardType={keyboardType}
+              returnKeyType={returnKeyType}
+              blurOnSubmit={blurOnSubmit}
+              onSubmitEditing={onSubmitEditing}
               className="text-slate-900 text-[16px]"
               style={{ paddingVertical: 0, textAlignVertical: "center" }}
-              placeholderTextColor="#94A3B8"
             />
           </View>
 

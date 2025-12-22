@@ -5,6 +5,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Keyboard,
+  TextInput,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Controller } from "react-hook-form";
@@ -34,6 +36,11 @@ export default function EditProfileScreen() {
     setValue,
     reset,
   } = useEditProfileForm();
+  const usernameRef = React.useRef<TextInput | null>(null);
+  const firstNameRef = React.useRef<TextInput | null>(null);
+  const lastNameRef = React.useRef<TextInput | null>(null);
+  const phoneRef = React.useRef<TextInput | null>(null);
+  const addressRef = React.useRef<TextInput | null>(null);
 
   const pickImage = async () => {
     try {
@@ -47,13 +54,12 @@ export default function EditProfileScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        // SDK 51+ expects array mediaTypes (images|videos|livePhotos)
-        mediaTypes: ["images"] as any,
+        mediaTypes: ["images"],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.8,
-        exif: false,
-        selectionLimit: 1,
+        shape: "oval",
+        quality: 1,
+        presentationStyle: ImagePicker.UIImagePickerPresentationStyle.FULL_SCREEN,
       });
 
       if (!result.canceled && result.assets?.length) {
@@ -107,33 +113,49 @@ export default function EditProfileScreen() {
             <TextField
               control={control}
               name="username"
-            label={EDIT_PROFILE_LABELS.username}
-            required
-            maxLength={limits.username}
-            helperText={EDIT_PROFILE_LABELS.usernameHint}
-            rules={{ required: "Username is required" }}
-          />
+              label={EDIT_PROFILE_LABELS.username}
+              required
+              maxLength={limits.username}
+              helperText={EDIT_PROFILE_LABELS.usernameHint}
+              rules={{ required: "Username is required" }}
+              inputRef={usernameRef}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => firstNameRef.current?.focus()}
+            />
 
-          <TextField
-            control={control}
-            name="firstName"
-            label={EDIT_PROFILE_LABELS.firstName}
-            required
-            maxLength={limits.firstName}
-            rules={{ required: "First name is required" }}
-          />
+            <TextField
+              control={control}
+              name="firstName"
+              label={EDIT_PROFILE_LABELS.firstName}
+              required
+              maxLength={limits.firstName}
+              rules={{ required: "First name is required" }}
+              inputRef={firstNameRef}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => lastNameRef.current?.focus()}
+            />
 
             <TextField
               control={control}
               name="lastName"
               label={EDIT_PROFILE_LABELS.lastName}
               maxLength={limits.lastName}
+              inputRef={lastNameRef}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => phoneRef.current?.focus()}
             />
 
             <PhoneField
               control={control}
               label={EDIT_PROFILE_LABELS.phoneNumber}
               maxLength={limits.phoneNumber}
+              inputRef={phoneRef}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => addressRef.current?.focus()}
             />
 
             <TextField
@@ -141,7 +163,9 @@ export default function EditProfileScreen() {
               name="address"
               label={EDIT_PROFILE_LABELS.address}
               maxLength={limits.address}
-              placeholder="Add your address"
+              inputRef={addressRef}
+              returnKeyType="done"
+              onSubmitEditing={() => Keyboard.dismiss()}
             />
           </EditProfileSection>
         </ScrollView>

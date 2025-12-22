@@ -1,7 +1,7 @@
 import React from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { PROFILE_ACCENT, PROFILE_STRINGS } from "../../../constants/profile";
+import { PROFILE_ACCENT } from "../../../constants/profile";
 import { ProfileMoodboard, ProfileViewModel } from "../../../types";
 
 type Props = {
@@ -11,15 +11,6 @@ type Props = {
 export default function ProfileMoodboardsTab({ profile }: Props) {
   return (
     <View className="pt-3 px-4 pb-6">
-      <Pressable
-        className="self-center rounded-full border border-slate-200 bg-white px-6 py-3 shadow-sm"
-        hitSlop={6}
-      >
-        <Text className="text-sm font-semibold text-slate-800">
-          {PROFILE_STRINGS.moodboardCta}
-        </Text>
-      </Pressable>
-
       <View className="mt-5" style={{ rowGap: 14 }}>
         {profile.moodboards.map((mb) => (
           <MoodboardCard key={mb.id} moodboard={mb} />

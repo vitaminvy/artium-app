@@ -8,7 +8,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { EDIT_PROFILE_COUNTRIES } from "../../constants/editProfile";
+import { CountryOption } from "../../constants/editProfile";
 
 export const flagEmoji = (countryCode: string) => {
   if (!countryCode) return "🏳️";
@@ -22,7 +22,7 @@ export const flagEmoji = (countryCode: string) => {
 
 type PickerProps = {
   visible: boolean;
-  options: typeof EDIT_PROFILE_COUNTRIES;
+  options: CountryOption[];
   selectedCode: string;
   onClose: () => void;
   onSelect: (code: string) => void;
