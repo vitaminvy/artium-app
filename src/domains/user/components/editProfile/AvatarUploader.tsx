@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = {
-  value?: string;
+  value?: string | null;
   onPick?: () => void;
   onClear?: () => void;
 };

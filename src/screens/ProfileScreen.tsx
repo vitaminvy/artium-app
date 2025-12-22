@@ -15,6 +15,7 @@ import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
 import Sidebar from "../shared/components/Sidebar";
 import { useSidebarItems, SidebarKey } from "../shared/hooks/useSidebar";
 import { requestPostMomentSheet } from "../shared/utils/postMomentBridge";
+import { navigate as rootNavigate } from "../app/navigation/navigationRef";
 
 type NavigationProp = NativeStackNavigationProp<
   HomeStackParamList,
@@ -44,8 +45,7 @@ export default function ProfileScreen() {
   };
 
   const handleUploadInventory = () => {
-    const rootNav = navigation.getParent?.()?.getParent?.() ?? navigation;
-    rootNav.navigate("Upload" as never);
+    rootNavigate("Upload");
   };
 
   const handleSidebarSelect = (key: SidebarKey | "more") => {
