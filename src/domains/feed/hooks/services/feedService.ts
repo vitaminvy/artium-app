@@ -17,12 +17,16 @@ type PostDoc = {
 
 /**
  * Subscribes to feed posts and provides real-time updates.
+ * Also subscribes to each post's likes subcollection for instant like/unlike updates.
  */
 export const subscribeToFeedPosts = (
   onUpdate: (posts: FeedPost[]) => void,
   onError: (error: Error) => void,
   currentUserId: string | null
 ): Unsubscribe => {
+  let likeUnsubscribes: Unsubscribe[] = [];
+  let currentPosts: FeedPost[] = [];
+
   const postQuery = query(
     collection(firestore, POSTS_COLLECTION),
     orderBy("createdAt", "desc")
@@ -36,6 +40,9 @@ export const subscribeToFeedPosts = (
       }));
 
       if (postsFromDB.length === 0) {
+        // Cleanup old like listeners
+        likeUnsubscribes.forEach(unsub => unsub());
+        likeUnsubscribes = [];
         onUpdate([]);
         return;
       }
@@ -80,10 +87,11 @@ export const subscribeToFeedPosts = (
         }
       }
 
+      // Initial liked status check
       const likedPostIds = new Set<string>();
       if (currentUserId && postsFromDB.length > 0) {
         const postIds = postsFromDB.map(post => post.id);
-        const likeChecks = postIds.map(postId => 
+        const likeChecks = postIds.map(postId =>
           getDoc(doc(firestore, POSTS_COLLECTION, postId, "likes", currentUserId))
         );
         const likeSnapshots = await Promise.all(likeChecks);
@@ -101,7 +109,7 @@ export const subscribeToFeedPosts = (
           handle: "unknown",
         };
         const createdAtTimestamp = post.createdAt ? post.createdAt.toDate() : new Date();
-        
+
         return {
           id: post.id,
           author: author,
@@ -113,13 +121,75 @@ export const subscribeToFeedPosts = (
           liked: likedPostIds.has(post.id),
         };
       });
+
+      currentPosts = feedPosts;
       onUpdate(feedPosts);
+
+      // Cleanup old like listeners
+      likeUnsubscribes.forEach(unsub => unsub());
+      likeUnsubscribes = [];
+
+      // Subscribe to likes subcollection for each post
+      postsFromDB.forEach((post) => {
+        const likesCollectionRef = collection(firestore, POSTS_COLLECTION, post.id, "likes");
+
+        const likeUnsubscribe = onSnapshot(likesCollectionRef, (likesSnapshot) => {
+          // Check if current user liked this post
+          const userLiked = currentUserId ? likesSnapshot.docs.some(doc => doc.id === currentUserId) : false;
+
+          // Update the post in currentPosts array
+          const updatedPosts = currentPosts.map(p => {
+            if (p.id === post.id) {
+              return {
+                ...p,
+                liked: userLiked,
+                // Metrics are already updated by the main post listener
+              };
+            }
+            return p;
+          });
+
+          currentPosts = updatedPosts;
+          onUpdate(updatedPosts);
+        });
+
+        likeUnsubscribes.push(likeUnsubscribe);
+      });
+
     } catch (e: any) {
       onError(e);
     }
   });
 
-  return unsubscribe;
+  // Return combined unsubscribe function
+  return () => {
+    unsubscribe();
+    likeUnsubscribes.forEach(unsub => unsub());
+  };
+};
+
+/**
+ * Fetch liked post IDs for a given user and list of posts.
+ */
+export const getLikedPostIds = async (
+  userId: string,
+  postIds: string[]
+): Promise<string[]> => {
+  if (!userId || postIds.length === 0) return [];
+
+  const likeChecks = postIds.map((postId) =>
+    getDoc(doc(firestore, POSTS_COLLECTION, postId, "likes", userId))
+  );
+  const likeSnapshots = await Promise.all(likeChecks);
+
+  const likedIds: string[] = [];
+  likeSnapshots.forEach((snap, index) => {
+    if (snap.exists()) {
+      likedIds.push(postIds[index]);
+    }
+  });
+
+  return likedIds;
 };
 
 /**
