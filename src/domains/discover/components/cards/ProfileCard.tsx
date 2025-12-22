@@ -11,12 +11,14 @@ const cardShadow = {
   elevation: 4,
 };
 
-export default function ProfileCard({ item }: { item: ArtistProfile }) {
-  return (
-    <View
-      className="flex-1 rounded-3xl bg-white border border-slate-100 px-4 py-5 items-center"
-      style={cardShadow}
-    >
+type Props = {
+  item: ArtistProfile;
+  onPress?: () => void;
+};
+
+export default function ProfileCard({ item, onPress }: Props) {
+  const content = (
+    <View pointerEvents={onPress ? "none" : "auto"} className="items-center">
       <View className="h-20 w-20 rounded-full overflow-hidden bg-slate-200">
         <Image source={{ uri: item.avatar }} className="h-full w-full" />
       </View>
@@ -35,6 +37,27 @@ export default function ProfileCard({ item }: { item: ArtistProfile }) {
       <Pressable className="mt-4 px-4 py-2 rounded-full bg-slate-900 active:opacity-90">
         <Text className="text-xs font-semibold text-white">Follow</Text>
       </Pressable>
+    </View>
+  );
+
+  if (onPress) {
+    return (
+      <Pressable
+        className="flex-1 rounded-3xl bg-white border border-slate-100 px-4 py-5 items-center"
+        style={cardShadow}
+        onPress={onPress}
+      >
+        {content}
+      </Pressable>
+    );
+  }
+
+  return (
+    <View
+      className="flex-1 rounded-3xl bg-white border border-slate-100 px-4 py-5 items-center"
+      style={cardShadow}
+    >
+      {content}
     </View>
   );
 }

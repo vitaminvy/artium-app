@@ -4,7 +4,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import DiscoverStack from "./Stack/DiscoverStack";
 import FeedStack from "./Stack/FeedStack";
 import UploadStack from "./Stack/UploadStack";
-import HomeScreen from "../../screens/HomeScreen";
+import HomeStack from "./Stack/HomeStack";
 
 import CustomTabBar from "./CustomTabBar";
 import { TabParamList } from "./tabTypes";
@@ -19,14 +19,14 @@ export default function TabNavigator() {
   return (
     <TabBarVisibilityProvider>
       <Tab.Navigator
-        initialRouteName="Discover"
+        initialRouteName="Home"
         screenOptions={{
           headerShown: false,
           lazy: false, // mount tabs eagerly so global sheets can open anywhere
         }}
         tabBar={(props) => <CustomTabBar {...props} />}
       >
-        <Tab.Screen name="Home" component={HomeScreen} />
+        <Tab.Screen name="Home" component={HomeStack} />
         <Tab.Screen name="Feed" component={FeedStack} />
         
         {/* Center Button (Quick Sell) */}

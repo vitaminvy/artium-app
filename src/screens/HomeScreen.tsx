@@ -8,7 +8,7 @@ import UnderlineHome from "../../assets/headers/underline-home.svg";
 import { doSignOut } from "../domains/auth/services/firebaseAuth"; // Import doSignOut
 
 export default function HomeScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const items = useSidebarItems();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(96);
@@ -65,6 +65,10 @@ export default function HomeScreen() {
         onClose={() => setSidebarOpen(false)}
         onSelect={(key) => {
           setSidebarOpen(false);
+          if (key === "inventory") {
+            navigation.navigate("Inventory");
+            return;
+          }
           console.log("Selected sidebar item:", key);
         }}
         topOffset={headerHeight}

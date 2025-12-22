@@ -1,17 +1,20 @@
 import React, { useMemo } from "react";
-import { FlatList, ListRenderItemInfo, View } from "react-native";
+import { FlatList, ListRenderItemInfo, View, NativeScrollEvent, NativeSyntheticEvent } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Artwork } from "../../types";
 import ArtworkCard from "../cards/ArtworkCard";
 
 type Props = {
   data: Artwork[];
+  onCardPress?: (item: Artwork) => void;
+  onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
 };
 
 // Define a type for the items in our list, which can be a real artwork or a phantom spacer
 type ListItem = Artwork | { id: string; empty: true };
 
-export default function DiscoverArtworksTab({ data }: Props) {
+
+export default function DiscoverArtworksTab({ data, onCardPress, onScroll }: Props) {
   const navigation = useNavigation();
 
   // Add a phantom item if the data length is odd
@@ -53,6 +56,8 @@ export default function DiscoverArtworksTab({ data }: Props) {
       }}
       columnWrapperStyle={{ columnGap: 12, marginBottom: 12 }} // Added marginBottom to wrapper for row gap
       showsVerticalScrollIndicator={false}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
     />
   );
 }

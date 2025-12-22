@@ -16,9 +16,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BottomSheetModalProvider, BottomSheetModal, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
 import type { BottomSheetBackdropProps } from "@gorhom/bottom-sheet";
 
+import { discoverMockData } from "../domains/discover/mockData";
+import { Artwork as DiscoverArtwork } from "../domains/discover/types";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import ReshareSheet from "../domains/feed/components/sheets/ReshareSheet";
 import { FeedPost } from "../domains/feed/types";
+import { Artwork as InventoryArtwork } from "../domains/inventory/types";
 
 // Domain Imports
 import { ArtworkDetail } from "../domains/artwork/types";
@@ -293,6 +296,7 @@ export default function ArtworkDetailScreen() {
           onLike={handleLike}
           onReshare={handleOpenReshareSheet}
           onSave={handleOpenSaveSheet}
+          onBuy={() => navigation.navigate("Checkout", { artwork: detail })}
         />
 
         {/* Reshare Sheet */}

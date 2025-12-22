@@ -2,7 +2,7 @@
 // src/app/navigation/Stack/UploadStack.tsx
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import QuickSellScreen from "../../../screens/QuickSellScreen";
+import UploadInventoryScreen from "../../../screens/UploadInventoryScreen";
 
 export type UploadStackParamList = {
   UploadMain: undefined;
@@ -13,7 +13,7 @@ const Stack = createNativeStackNavigator<UploadStackParamList>();
 export default function UploadStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="UploadMain" component={QuickSellScreen} />
+      <Stack.Screen name="UploadMain" component={UploadInventoryScreen} />
     </Stack.Navigator>
   );
 }
