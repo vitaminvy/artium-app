@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, View, Text } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import ScreenHeader from "../shared/components/ScreenHeader";
 import UnderlineHome from "../../assets/headers/underline-home.svg";
 
@@ -124,7 +125,7 @@ export default function DiscoverScreen() {
     }
   };
 
-  const handleRequireSignUp = useCallback((_: unknown) => {
+  const handleRequireSignUp = useCallback(() => {
     navigation.navigate("SignUp");
   }, [navigation]);
 
