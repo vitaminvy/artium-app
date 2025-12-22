@@ -1,3 +1,4 @@
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import {
   EDIT_PROFILE_DEFAULTS,
@@ -6,10 +7,18 @@ import {
 import { EditProfileFormValues } from "../types";
 
 export function useEditProfileForm(initial?: Partial<EditProfileFormValues>) {
+  const defaultValues = useMemo(
+    () => ({ ...EDIT_PROFILE_DEFAULTS, ...initial }),
+    [initial]
+  );
   const form = useForm<EditProfileFormValues>({
-    defaultValues: { ...EDIT_PROFILE_DEFAULTS, ...initial },
+    defaultValues,
     mode: "onChange",
   });
+
+  useEffect(() => {
+    form.reset(defaultValues);
+  }, [defaultValues, form]);
 
   return {
     ...form,

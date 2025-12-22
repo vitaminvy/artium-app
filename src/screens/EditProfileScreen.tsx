@@ -18,6 +18,7 @@ import TextField from "../domains/user/components/editProfile/TextField";
 import PhoneField from "../domains/user/components/editProfile/PhoneField";
 import { useEditProfileForm } from "../domains/user/hooks/useEditProfileForm";
 import { EDIT_PROFILE_LABELS } from "../domains/user/constants/editProfile";
+import { useProfileContext } from "../domains/user/contexts/ProfileContext";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
@@ -28,6 +29,7 @@ type NavigationProp = NativeStackNavigationProp<
 
 export default function EditProfileScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const { editProfile, updateProfile } = useProfileContext();
   const {
     control,
     limits,
@@ -35,7 +37,7 @@ export default function EditProfileScreen() {
     formState,
     setValue,
     reset,
-  } = useEditProfileForm();
+  } = useEditProfileForm(editProfile);
   const usernameRef = React.useRef<TextInput | null>(null);
   const firstNameRef = React.useRef<TextInput | null>(null);
   const lastNameRef = React.useRef<TextInput | null>(null);
@@ -74,6 +76,7 @@ export default function EditProfileScreen() {
   const onSave = submit(async (values) => {
     // TODO: replace with API call
     await new Promise((res) => setTimeout(res, 500));
+    updateProfile(values);
     Alert.alert("Profile saved", "Your changes have been saved.");
     reset(values);
     navigation.goBack();
@@ -105,7 +108,7 @@ export default function EditProfileScreen() {
                 <AvatarUploader
                   value={value}
                   onPick={pickImage}
-                  onClear={() => onChange(undefined)}
+                  onClear={() => onChange(null)}
                 />
               )}
             />

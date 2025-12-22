@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
-import { profileMockData } from "../mockData";
+import { useState } from "react";
 import { ProfileTabKey, ProfileViewModel } from "../types";
+import { useProfileContext } from "../contexts/ProfileContext";
 
 type UseProfileResult = {
   profile: ProfileViewModel;
@@ -10,9 +10,7 @@ type UseProfileResult = {
 
 export function useProfile(): UseProfileResult {
   const [tab, setTab] = useState<ProfileTabKey>("overview");
-
-  // Memoized mock to mimic future data loading
-  const profile = useMemo(() => profileMockData, []);
+  const { profile } = useProfileContext();
 
   return {
     profile,

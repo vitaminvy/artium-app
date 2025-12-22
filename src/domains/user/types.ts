@@ -13,6 +13,7 @@ export type ProfileUser = {
   handle: string;
   avatarColor?: string;
   avatarLabel?: string;
+  avatarUri?: string | null;
 };
 
 export type ProfileFeaturedArtwork = {
@@ -37,7 +38,7 @@ export type ProfileViewModel = {
 };
 
 export type EditProfileFormValues = {
-  avatar?: string;
+  avatar?: string | null;
   countryCode: string;
   username: string;
   firstName: string;
