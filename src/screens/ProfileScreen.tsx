@@ -60,6 +60,11 @@ export default function ProfileScreen() {
       return;
     }
 
+    if (key === "inventory") {
+      navigation.navigate("Inventory");
+      return;
+    }
+
     if (key === "profile") return;
 
     console.log("Sidebar selected:", key);

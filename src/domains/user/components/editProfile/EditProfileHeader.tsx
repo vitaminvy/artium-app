@@ -19,14 +19,14 @@ export default function EditProfileHeader({
 
   return (
     <View
-      className="bg-white border-b border-slate-200 px-4 pb-3"
-      style={{ paddingTop: insets.top + 8 }}
+      className="bg-white border-b border-slate-100 px-4"
+      style={{ paddingTop: insets.top + 8, paddingBottom: 12 }}
     >
       <View className="relative flex-row items-center justify-between">
         <Pressable
           onPress={onBack}
           hitSlop={10}
-          className="h-11 w-11 items-center justify-center rounded-full"
+          className="h-10 w-10 items-center justify-center"
         >
           <Ionicons name="arrow-back" size={22} color="#0F172A" />
         </Pressable>

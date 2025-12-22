@@ -12,18 +12,17 @@ type Props = {
 
 export default function ProfileHeader({ onPressBack, onPressMenu, onLayout }: Props) {
   const insets = useSafeAreaInsets();
-  const topPad = Math.max(insets.top + 6, 24); // align with ScreenHeader
 
   return (
     <View className="bg-white border-b border-slate-100" onLayout={onLayout}>
       <View
-        className="flex-row items-center justify-between px-8 pb-4"
-        style={{ paddingTop: topPad }}
+        className="flex-row items-center justify-between px-4"
+        style={{ paddingTop: insets.top + 8, paddingBottom: 12 }}
       >
         <Pressable
           onPress={onPressBack}
           hitSlop={10}
-          className="h-11 w-11 items-center justify-center rounded-full"
+          className="h-10 w-10 items-center justify-center"
         >
           <Ionicons name="arrow-back" size={22} color="#0F172A" />
         </Pressable>
@@ -42,7 +41,7 @@ export default function ProfileHeader({ onPressBack, onPressMenu, onLayout }: Pr
         <Pressable
           onPress={onPressMenu}
           hitSlop={10}
-          className="h-11 w-11 items-center justify-center rounded-full"
+          className="h-10 w-10 items-center justify-center"
         >
           <Ionicons name="menu-outline" size={24} color="#0F172A" />
         </Pressable>
