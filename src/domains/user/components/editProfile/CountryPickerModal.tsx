@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   Modal,
   Pressable,
@@ -6,8 +6,10 @@ import {
   Text,
   FlatList,
   useWindowDimensions,
+  TextInput,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CountryOption } from "../../constants/editProfile";
 
 export const flagEmoji = (countryCode: string) => {
@@ -38,8 +40,34 @@ export default function CountryPickerModal({
   anchor,
 }: PickerProps) {
   const { height } = useWindowDimensions();
-  const topCandidate = anchor.y + anchor.height + 8;
-  const top = Math.min(Math.max(topCandidate, 120), height - 360);
+  const insets = useSafeAreaInsets();
+  const [query, setQuery] = useState("");
+  const topCandidate = anchor.y + anchor.height - 8;
+  const bottomInset = Math.max(insets.bottom, 16);
+  const maxTop = height - bottomInset - 360;
+  const top = Math.min(Math.max(topCandidate, 120), maxTop);
+  const maxHeight = Math.min(height - top - bottomInset, height * 0.62);
+
+  useEffect(() => {
+    if (!visible) {
+      setQuery("");
+    }
+  }, [visible]);
+
+  const filteredOptions = useMemo(() => {
+    const keyword = query.trim().toLowerCase();
+    if (!keyword) return options;
+    return options.filter((item) => {
+      const name = item.name.toLowerCase();
+      const code = item.code.toLowerCase();
+      const dial = item.dialCode.replace("+", "");
+      return (
+        name.includes(keyword) ||
+        code.includes(keyword) ||
+        dial.includes(keyword.replace("+", ""))
+      );
+    });
+  }, [options, query]);
 
   return (
     <Modal
@@ -56,14 +84,30 @@ export default function CountryPickerModal({
         className="absolute left-4 right-4 rounded-2xl bg-white p-4 shadow-lg"
         style={{
           top,
-          maxHeight: "60%",
+          maxHeight,
         }}
       >
-        <Text className="text-base font-semibold text-slate-900 mb-3">
-          Select country
-        </Text>
+        <View className="mb-3">
+          <Text className="text-base font-semibold text-slate-900 mb-2">
+            Select country
+          </Text>
+          <View className="flex-row items-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+            <Ionicons name="search" size={16} color="#94A3B8" />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search country"
+              placeholderTextColor="#94A3B8"
+              autoCorrect={false}
+              autoCapitalize="none"
+              returnKeyType="search"
+              className="ml-2 flex-1 text-[14px] text-slate-900"
+              style={{ paddingVertical: 0 }}
+            />
+          </View>
+        </View>
         <FlatList
-          data={options}
+          data={filteredOptions}
           keyExtractor={(item) => item.code}
           renderItem={({ item }) => (
             <Pressable
