@@ -39,6 +39,7 @@ export default function AvatarUploader({ value, onPick, onClear }: Props) {
             <Ionicons name="cloud-upload-outline" size={30} color="#94A3B8" />
             <Text className="mt-2 text-xs text-slate-500">Upload</Text>
           </View>
+          
         )}
       </Pressable>
     </View>
