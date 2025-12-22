@@ -1,25 +1,63 @@
-import React, { useMemo, useState } from "react";
-import { View, Text, Pressable, Image, DevSettings } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import React, { useCallback, useState } from "react";
+import { View, Text, Pressable, Image } from "react-native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { CompositeNavigationProp } from "@react-navigation/native";
 import ScreenHeader from "../shared/components/ScreenHeader";
 import Sidebar from "../shared/components/Sidebar";
-import { useSidebarItems } from "../shared/hooks/useSidebar";
+import { SidebarKey, useSidebarItems } from "../shared/hooks/useSidebar";
 import UnderlineHome from "../../assets/headers/underline-home.svg";
 import { doSignOut } from "../domains/auth/services/firebaseAuth"; // Import doSignOut
+import { TabParamList } from "../app/navigation/tabTypes";
+import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
 
+type HomeScreenNavigationProp = CompositeNavigationProp<
+  NativeStackNavigationProp<HomeStackParamList, "HomeMain">,
+  BottomTabNavigationProp<TabParamList>
+>;
 export default function HomeScreen() {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<HomeScreenNavigationProp>();
   const items = useSidebarItems();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(96);
-  const activeKey = useMemo(() => items[0]?.key, [items]);
+  const [activeKey, setActiveKey] = useState<SidebarKey>("home");
+  const goToDiscoverTab = () => {
+    navigation.navigate("Discover");
+  };
+
+  const handleSidebarSelect = (key: SidebarKey | "more") => {
+    setSidebarOpen(false);
+
+    if (key === "more") {
+      console.log("Sidebar selected:", key);
+      return;
+    }
+
+    if (key === "inventory") {
+      navigation.navigate("Inventory");
+      return;
+    }
+
+    if (key === "profile") {
+      navigation.navigate("Profile");
+      return;
+    }
+
+    console.log("Sidebar selected:", key);
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      setActiveKey("home");
+    }, [setActiveKey])
+  );
 
   const handleLogout = async () => {
     try {
       await doSignOut();
-      // onAuthStateChanged in AuthProvider will handle the rest
     } catch (error) {
-      console.error("Error signing out: ", error);
+      console.error("Failed to log out:", error);
     }
   };
 
@@ -44,33 +82,23 @@ export default function HomeScreen() {
         <Text className="text-lg text-gray-700">Home Screen</Text>
 
         <Pressable
-          onPress={() => navigation.navigate("Discover" as never)}
+          onPress={goToDiscoverTab}
           className="mt-6 px-6 py-3 bg-slate-900 rounded-xl"
         >
           <Text className="text-white font-semibold">Go to Discover</Text>
         </Pressable>
-         <Pressable
+        <Pressable
           onPress={handleLogout}
           className="mt-4 px-4 py-2 rounded-lg border border-slate-300"
         >
           <Text className="text-slate-700 text-sm">Log out</Text>
         </Pressable>
-
-        
       </View>
-
 
       <Sidebar
         visible={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        onSelect={(key) => {
-          setSidebarOpen(false);
-          if (key === "inventory") {
-            navigation.navigate("Inventory");
-            return;
-          }
-          console.log("Selected sidebar item:", key);
-        }}
+        onSelect={handleSidebarSelect}
         topOffset={headerHeight}
         activeKey={activeKey}
         items={items}

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
@@ -13,7 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import ScreenHeader from "../shared/components/ScreenHeader";
 import UnderlineHome from "../../assets/headers/underline-home.svg";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
-import { useRoute } from "@react-navigation/native";
+import { useFocusEffect, useRoute } from "@react-navigation/native";
 import Sidebar from "../shared/components/Sidebar";
 import { useSidebarItems } from "../shared/hooks/useSidebar";
 
@@ -37,6 +37,7 @@ export default function InventoryScreen() {
   const {
     navigation,
     activeKey,
+    setActiveKey,
     sidebarOpen,
     setSidebarOpen,
     tab,
@@ -89,6 +90,12 @@ export default function InventoryScreen() {
   const openUpload = () => {
     rootNav.navigate("Upload");
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      setActiveKey("inventory");
+    }, [setActiveKey])
+  );
 
   useEffect(() => {
     const incoming: Artwork | undefined = route.params?.newArtwork;
@@ -367,6 +374,18 @@ export default function InventoryScreen() {
         onSelect={(key) => {
           setSidebarOpen(false);
           if (key === "inventory") return;
+          if (key === "home") {
+            if (navigation.popToTop) {
+              navigation.popToTop();
+            } else {
+              navigation.navigate("HomeMain");
+            }
+            return;
+          }
+          if (key === "profile") {
+            navigation.navigate("Profile");
+            return;
+          }
           console.log("Selected sidebar item:", key);
         }}
         topOffset={headerHeight}

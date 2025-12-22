@@ -71,6 +71,12 @@ export default function DiscoverScreen() {
   const [locationText, setLocationText] = useState("Albuquerque, NM, USA");
   const [radius, setRadius] = useState("10 miles");
   const [showRadiusOptions, setShowRadiusOptions] = useState(false);
+  const handleRequireSignUp = useCallback(() => {
+    navigation.navigate("SignUp");
+  }, [navigation]);
+  const handleRequireSignUpForCard = useCallback((_: unknown) => {
+    navigation.navigate("SignUp");
+  }, [navigation]);
 
   const renderContent = () => {
     // --- HANDLE LOADING AND ERROR STATES ---
