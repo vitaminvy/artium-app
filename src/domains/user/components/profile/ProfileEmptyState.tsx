@@ -9,7 +9,7 @@ export default function ProfileEmptyState({ message }: Props) {
   return (
     <View className="items-center justify-center px-6 py-8">
       <TileStack />
-      <Text className="mt-6 text-sm text-center text-slate-500">
+      <Text className="mt-10 text-sm text-center text-slate-500">
         {message}
       </Text>
     </View>
