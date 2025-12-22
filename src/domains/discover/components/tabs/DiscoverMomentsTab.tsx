@@ -15,6 +15,7 @@ export default function DiscoverMomentsTab({ data, onCardPress, onScroll }: Prop
 
   return (
     <FlatList
+      numColumns={2}
       data={data}
       keyExtractor={(item) => item.id}
       renderItem={({ item }) => (
@@ -25,6 +26,7 @@ export default function DiscoverMomentsTab({ data, onCardPress, onScroll }: Prop
               ? onCardPress(item)
               : (navigation.navigate as any)("ArtworkDetail", { id: item.id })
           }
+          style={{ flex: 1 }}
         />
       )}
       contentContainerStyle={{
@@ -33,6 +35,7 @@ export default function DiscoverMomentsTab({ data, onCardPress, onScroll }: Prop
         paddingBottom: 120,
         rowGap: 16,
       }}
+      columnWrapperStyle={{ gap: 12 }}
       showsVerticalScrollIndicator={false}
       onScroll={onScroll}
       scrollEventThrottle={16}

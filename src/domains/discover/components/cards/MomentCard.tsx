@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Image, Pressable } from "react-native";
+import { View, Text, Image, Pressable, StyleProp, ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Artwork } from "../../types";
 
@@ -14,15 +14,17 @@ const cardShadow = {
 export default function MomentCard({
   item,
   onPress,
+  style,
 }: {
   item: Artwork;
   onPress: () => void;
+  style?: StyleProp<ViewStyle>;
 }) {
   return (
     <Pressable
       onPress={onPress}
       className="rounded-3xl bg-white border border-slate-100 overflow-hidden"
-      style={cardShadow}
+      style={[cardShadow, style]}
     >
       <Image
         source={{ uri: item.image }}
