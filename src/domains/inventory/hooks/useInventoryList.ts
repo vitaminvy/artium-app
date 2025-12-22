@@ -171,6 +171,7 @@ export function useInventoryList() {
   return {
     navigation,
     activeKey,
+    setActiveKey,
     sidebarOpen,
     setSidebarOpen,
     tab,

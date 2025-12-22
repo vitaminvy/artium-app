@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { View, Text, Pressable, Image } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { CompositeNavigationProp } from "@react-navigation/native";
@@ -34,8 +34,6 @@ export default function HomeScreen() {
       return;
     }
 
-    setActiveKey(key);
-
     if (key === "inventory") {
       navigation.navigate("Inventory");
       return;
@@ -48,6 +46,12 @@ export default function HomeScreen() {
 
     console.log("Sidebar selected:", key);
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      setActiveKey("home");
+    }, [setActiveKey])
+  );
 
   const handleLogout = async () => {
     try {

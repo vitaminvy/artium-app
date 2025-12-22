@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { View, ScrollView } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import ProfileHeader from "../domains/user/components/profile/ProfileHeader";
 import ProfileHero from "../domains/user/components/profile/ProfileHero";
@@ -48,15 +48,15 @@ export default function ProfileScreen() {
     rootNav.navigate("Upload" as never);
   };
 
-  const handleSidebarSelect = (key: SidebarKey) => {
+  const handleSidebarSelect = (key: SidebarKey | "more") => {
     setSidebarOpen(false);
-    setActiveKey(key);
 
     if (key === "home") {
-      navigation.navigate("HomeMain");
-      // Switch tab back to Home if we were on another tab
-      const tabNav = navigation.getParent()?.getParent();
-      tabNav?.navigate("Home");
+      if (navigation.popToTop) {
+        navigation.popToTop();
+      } else {
+        navigation.navigate("HomeMain");
+      }
       return;
     }
 
@@ -69,6 +69,12 @@ export default function ProfileScreen() {
 
     console.log("Sidebar selected:", key);
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      setActiveKey("profile");
+    }, [setActiveKey])
+  );
 
   return (
     <View className="flex-1 bg-white">
