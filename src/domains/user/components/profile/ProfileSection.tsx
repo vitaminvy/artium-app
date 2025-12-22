@@ -24,7 +24,7 @@ export default function ProfileSection({ title, actions, children }: Props) {
               <Text
                 className={`text-xs font-semibold ${
                   action.tone === "primary"
-                    ? "text-slate-900"
+                    ? "text-[#0B73FF]"
                     : "text-slate-500"
                 }`}
               >

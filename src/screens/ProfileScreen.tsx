@@ -12,9 +12,9 @@ import ProfileMomentsTab from "../domains/user/components/profile/tabs/ProfileMo
 import ProfileMoodboardsTab from "../domains/user/components/profile/tabs/ProfileMoodboardsTab";
 import { useProfile } from "../domains/user/hooks/useProfile";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
-import { shareProfile } from "../shared/utils/shareProfile";
 import Sidebar from "../shared/components/Sidebar";
 import { useSidebarItems, SidebarKey } from "../shared/hooks/useSidebar";
+import { requestPostMomentSheet } from "../shared/utils/postMomentBridge";
 
 type NavigationProp = NativeStackNavigationProp<
   HomeStackParamList,
@@ -40,11 +40,12 @@ export default function ProfileScreen() {
   };
 
   const handleShare = () => {
-    shareProfile({
-      user: profile.user,
-      stats: profile.stats,
-      deepLink: `https://www.artium.com/user/${profile.user.id ?? "me"}`,
-    });
+    requestPostMomentSheet();
+  };
+
+  const handleUploadInventory = () => {
+    const rootNav = navigation.getParent?.()?.getParent?.() ?? navigation;
+    rootNav.navigate("Upload" as never);
   };
 
   const handleSidebarSelect = (key: SidebarKey) => {
@@ -84,7 +85,13 @@ export default function ProfileScreen() {
         <ProfileTabBar tab={tab} onChange={setTab} />
 
         <View className="px-1 pb-4">
-          {tab === "overview" && <ProfileOverviewTab profile={profile} />}
+          {tab === "overview" && (
+            <ProfileOverviewTab
+              profile={profile}
+              onPressUpload={handleUploadInventory}
+              onPressShare={handleShare}
+            />
+          )}
           {tab === "artworks" && <ProfileArtworksTab profile={profile} />}
           {tab === "moments" && <ProfileMomentsTab profile={profile} />}
           {tab === "moodboards" && <ProfileMoodboardsTab profile={profile} />}
