@@ -11,6 +11,7 @@ type ArtworkActionBarProps = {
   onLike: () => void;
   onReshare: () => void;
   onSave: () => void;
+  onBuy: () => void;
 };
 
 const actionBarShadow: ViewStyle = {
@@ -29,6 +30,7 @@ export default function ArtworkActionBar({
   onLike,
   onReshare,
   onSave,
+  onBuy,
 }: ArtworkActionBarProps) {
   return (
     <RNAnimated.View
@@ -60,7 +62,10 @@ export default function ArtworkActionBar({
           onPress={onSave}
         />
       </View>
-      <Pressable className="bg-[#0B73FF] px-5 py-3 rounded-full flex-row items-center gap-2 active:opacity-90">
+      <Pressable
+        onPress={onBuy}
+        className="bg-[#0B73FF] px-5 py-3 rounded-full flex-row items-center gap-2 active:opacity-90"
+      >
         <Ionicons name="cart-outline" size={18} color="#ffffff" />
         <Text className="text-white font-semibold">Buy now</Text>
       </Pressable>

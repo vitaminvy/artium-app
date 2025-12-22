@@ -247,6 +247,8 @@ export default function SaveSheet({
                 onChangeText={setNewBoardName}
                 placeholder="Enter moodboard name"
                 placeholderTextColor="#94A3B8"
+                returnKeyType="done"
+                onSubmitEditing={handleCreate}
                 style={{
                   fontSize: 16,
                   color: "#0F172A",

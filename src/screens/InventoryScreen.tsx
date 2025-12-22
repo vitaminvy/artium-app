@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
+  Keyboard,
   Pressable,
   ScrollView,
   Text,
@@ -244,6 +245,7 @@ export default function InventoryScreen() {
                 placeholderTextColor="#94A3B8"
                 className="ml-2 h-10 flex-1 text-[13px] text-slate-900"
                 returnKeyType="search"
+                onSubmitEditing={() => Keyboard.dismiss()}
               />
             </View>
 

@@ -5,6 +5,8 @@ import InventoryScreen from "../../../screens/InventoryScreen";
 import ArtworkDetailScreen from "../../../screens/ArtworkDetailScreen";
 import ProfileScreen from "../../../screens/ProfileScreen";
 import EditProfileScreen from "../../../screens/EditProfileScreen";
+import CheckoutScreen from "../../../screens/CheckoutScreen";
+import type { ArtworkDetail } from "../../../domains/artwork/types";
 
 export type HomeStackParamList = {
   HomeMain: undefined;
@@ -12,6 +14,7 @@ export type HomeStackParamList = {
   ArtworkDetail: { id?: string };
   Profile: undefined;
   EditProfile: undefined;
+  Checkout: { artwork?: ArtworkDetail };
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -28,6 +31,7 @@ export default function HomeStack() {
         component={EditProfileScreen}
         options={{ headerShown: false }}
       />
+      <Stack.Screen name="Checkout" component={CheckoutScreen} />
     </Stack.Navigator>
   );
 }
