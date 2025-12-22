@@ -28,12 +28,12 @@ export default function TabNavigator() {
       >
         <Tab.Screen name="Home" component={HomeStack} />
         <Tab.Screen name="Feed" component={FeedStack} />
-        
+
         {/* Center Button (Quick Sell) */}
         <Tab.Screen name="Upload" component={UploadStack} />
 
         <Tab.Screen name="Discover" component={DiscoverStack} />
-        
+
         {/* Upload Action Sheet Trigger */}
         <Tab.Screen name="UploadOptions" component={UploadOptionsPlaceholder} />
       </Tab.Navigator>

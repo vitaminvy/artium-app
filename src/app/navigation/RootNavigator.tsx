@@ -9,6 +9,7 @@ import TabNavigator from "./TabNavigator";
 import { TabParamList } from "./tabTypes";
 import AuthStack from "./AuthStack";
 import { AuthStatus } from "../../domains/auth/types";
+import { navigationRef } from "./navigationRef";
 import type { ArtworkDetail } from "../../domains/artwork/types";
 
 type AppStackParamList = {
@@ -59,7 +60,7 @@ function AppStack() {
 
 export default function RootNavigator({ authStatus }: RootNavigatorProps) {
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       {authStatus === "authenticated" ? <AppStack /> : <AuthStack />}
     </NavigationContainer>
   );
