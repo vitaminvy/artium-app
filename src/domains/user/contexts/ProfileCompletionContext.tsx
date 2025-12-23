@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 
 import { firestore } from "@/configs/firebase";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
@@ -92,7 +92,11 @@ export function ProfileCompletionProvider({
     try {
       await upsertUserProfile(currentUser);
       const userRef = doc(firestore, "users", currentUser.uid);
-      await updateDoc(userRef, { profilePromptDismissed: true });
+      await setDoc(
+        userRef,
+        { profilePromptDismissed: true },
+        { merge: true }
+      );
       setPromptDismissed(true);
     } catch (error) {
       console.warn("Failed to dismiss profile prompt:", error);
@@ -104,11 +108,15 @@ export function ProfileCompletionProvider({
     try {
       await upsertUserProfile(currentUser);
       const userRef = doc(firestore, "users", currentUser.uid);
-      await updateDoc(userRef, {
-        profileCompleted: true,
-        profilePromptDismissed: true,
-        profileCompletedAt: serverTimestamp(),
-      });
+      await setDoc(
+        userRef,
+        {
+          profileCompleted: true,
+          profilePromptDismissed: true,
+          profileCompletedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
       setProfileCompleted(true);
       setPromptDismissed(true);
     } catch (error) {

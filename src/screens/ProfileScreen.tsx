@@ -26,7 +26,7 @@ type NavigationProp = NativeStackNavigationProp<
 export default function ProfileScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { profile, tab, setTab } = useProfile();
-  const { loading: profileStatusLoading, profileCompleted } =
+  const { loading: profileStatusLoading, profileCompleted, promptDismissed } =
     useProfileCompletion();
   const sidebarItems = useSidebarItems();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
@@ -81,10 +81,10 @@ export default function ProfileScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (!profileStatusLoading && !profileCompleted) {
+      if (!profileStatusLoading && !profileCompleted && !promptDismissed) {
         navigation.navigate("EditProfile");
       }
-    }, [navigation, profileCompleted, profileStatusLoading])
+    }, [navigation, profileCompleted, profileStatusLoading, promptDismissed])
   );
 
   return (

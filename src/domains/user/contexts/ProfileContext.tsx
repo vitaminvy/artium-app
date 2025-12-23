@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import type { User } from "firebase/auth";
 
 import { firestore } from "@/configs/firebase";
@@ -20,6 +20,7 @@ import { EditProfileFormValues, ProfileViewModel } from "../types";
 type ProfileContextValue = {
   profile: ProfileViewModel;
   editProfile: EditProfileFormValues;
+  isLoading: boolean;
   updateProfile: (values: EditProfileFormValues) => Promise<void>;
 };
 
@@ -207,6 +208,7 @@ const defaultEditProfile = {
 const ProfileContext = createContext<ProfileContextValue>({
   profile: baseProfile,
   editProfile: defaultEditProfile,
+  isLoading: true,
   updateProfile: async () => {},
 });
 
@@ -216,11 +218,14 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [editProfile, setEditProfile] = useState<EditProfileFormValues>(
     defaultEditProfile
   );
+  const [isLoading, setIsLoading] = useState(true);
 
   const refreshProfile = useCallback(async () => {
+    setIsLoading(true);
     if (status !== "authenticated" || !currentUser) {
       setProfile(baseProfile);
       setEditProfile(defaultEditProfile);
+      setIsLoading(false);
       return;
     }
     try {
@@ -241,6 +246,8 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       console.warn("Failed to load profile:", error);
       setProfile(baseProfile);
       setEditProfile(defaultEditProfile);
+    } finally {
+      setIsLoading(false);
     }
   }, [currentUser, status]);
 
@@ -283,7 +290,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         payload.displayName = displayName;
       }
 
-      await updateDoc(userRef, payload);
+      await setDoc(userRef, payload, { merge: true });
       setEditProfile(values);
       setProfile((prev) => buildProfileFromForm(prev, values));
     },
@@ -294,9 +301,10 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     () => ({
       profile,
       editProfile,
+      isLoading,
       updateProfile,
     }),
-    [profile, editProfile, updateProfile]
+    [profile, editProfile, isLoading, updateProfile]
   );
 
   return (
