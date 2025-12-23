@@ -11,9 +11,10 @@ import Animated, {
   type SharedValue,
 } from "react-native-reanimated";
 import { HomeNewsItem } from "../../types";
+import { HOME_CONSTANTS, HOME_COLORS } from "../../constants";
 
 const cardShadow = {
-  shadowColor: "#000",
+  shadowColor: HOME_COLORS.SHADOW,
   shadowOffset: { width: 0, height: 8 },
   shadowOpacity: 0.06,
   shadowRadius: 12,
@@ -32,7 +33,7 @@ export default function HomeNewsCarousel({ data, onPressItem }: Props) {
   if (!data.length) return null;
 
   const cardWidth = width - 32;
-  const cardHeight = Math.round(cardWidth * 0.6);
+  const cardHeight = Math.round(cardWidth * HOME_CONSTANTS.NEWS_CARD_ASPECT_RATIO);
 
   return (
     <View className="rounded-3xl bg-white" style={cardShadow}>
@@ -42,7 +43,7 @@ export default function HomeNewsCarousel({ data, onPressItem }: Props) {
         data={data}
         loop={data.length > 1}
         autoPlay={data.length > 1}
-        autoPlayInterval={4500}
+        autoPlayInterval={HOME_CONSTANTS.NEWS_CAROUSEL_INTERVAL}
         scrollAnimationDuration={500}
         onProgressChange={(_, absoluteProgress) => {
           progress.value = absoluteProgress;
@@ -80,7 +81,7 @@ function NewsCard({
   return (
     <Pressable
       className="rounded-3xl overflow-hidden bg-slate-200"
-      style={{ width, height, borderWidth: 1, borderColor: "#E2E8F0" }}
+      style={{ width, height, borderWidth: 1, borderColor: HOME_COLORS.BORDER }}
       onPress={() => onPress?.(item)}
     >
       <Image
@@ -117,7 +118,7 @@ function NewsCard({
               <Text className="text-[12px] font-semibold text-slate-900">
                 READ NOW
               </Text>
-              <Ionicons name="arrow-forward" size={14} color="#0F172A" />
+              <Ionicons name="arrow-forward" size={14} color={HOME_COLORS.TEXT_PRIMARY} />
             </View>
           </View>
         </View>

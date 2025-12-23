@@ -132,13 +132,30 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
 
   const toggleFollow = useCallback(
     (id: string) => {
-      if (isFollowing(id)) {
-        unfollowUser(id);
-      } else {
-        followUser(id);
-      }
+      setFollowingIds((prev) => {
+        const isCurrentlyFollowing = prev.includes(id);
+        if (isCurrentlyFollowing) {
+          setProfile((prevProfile) => ({
+            ...prevProfile,
+            stats: {
+              ...prevProfile.stats,
+              following: Math.max(prevProfile.stats.following - 1, 0),
+            },
+          }));
+          return prev.filter((item) => item !== id);
+        } else {
+          setProfile((prevProfile) => ({
+            ...prevProfile,
+            stats: {
+              ...prevProfile.stats,
+              following: prevProfile.stats.following + 1,
+            },
+          }));
+          return [...prev, id];
+        }
+      });
     },
-    [followUser, isFollowing, unfollowUser]
+    []
   );
 
   const value = useMemo(

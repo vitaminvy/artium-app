@@ -2,9 +2,11 @@ import React from "react";
 import { View, Text, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { HomeEventItem } from "../../types";
+import { HOME_COLORS } from "../../constants";
+import { parseCalendarInfo } from "../../utils/dateParser";
 
 const cardShadow = {
-  shadowColor: "#000",
+  shadowColor: HOME_COLORS.SHADOW,
   shadowOffset: { width: 0, height: 6 },
   shadowOpacity: 0.05,
   shadowRadius: 10,
@@ -18,7 +20,7 @@ type Props = {
   height?: number;
 };
 
-export default function HomeEventCard({ item, onPress, width, height }: Props) {
+function HomeEventCard({ item, onPress, width, height }: Props) {
   const Container = onPress ? Pressable : View;
   const cardHeight = height ?? 150;
   const imageHeight = Math.round(cardHeight * 0.55);
@@ -26,6 +28,11 @@ export default function HomeEventCard({ item, onPress, width, height }: Props) {
   const month = calendarInfo?.month;
   const day = calendarInfo?.day;
   const showCalendar = !!month && !!day;
+
+  // Null safety check
+  if (!item?.image || !item?.title) {
+    return null;
+  }
 
   return (
     <Container
@@ -68,57 +75,4 @@ export default function HomeEventCard({ item, onPress, width, height }: Props) {
   );
 }
 
-const MONTHS = [
-  "JAN",
-  "FEB",
-  "MAR",
-  "APR",
-  "MAY",
-  "JUN",
-  "JUL",
-  "AUG",
-  "SEP",
-  "OCT",
-  "NOV",
-  "DEC",
-];
-
-const MONTH_KEY_MAP: Record<string, number> = {
-  jan: 0,
-  feb: 1,
-  mar: 2,
-  apr: 3,
-  may: 4,
-  jun: 5,
-  jul: 6,
-  aug: 7,
-  sep: 8,
-  oct: 9,
-  nov: 10,
-  dec: 11,
-};
-
-function parseCalendarInfo(value?: string) {
-  if (!value) return null;
-
-  const isoMatch = value.match(/(\d{4})-(\d{2})-(\d{2})/);
-  if (isoMatch) {
-    const monthIndex = Number(isoMatch[2]) - 1;
-    const day = String(Number(isoMatch[3]));
-    if (monthIndex >= 0 && monthIndex < 12) {
-      return { month: MONTHS[monthIndex], day };
-    }
-  }
-
-  const monthMatch = value.match(/[A-Za-z]{3,}/);
-  const dayMatch = value.match(/\b(\d{1,2})\b/);
-  if (monthMatch && dayMatch) {
-    const key = monthMatch[0].slice(0, 3).toLowerCase();
-    const monthIndex = MONTH_KEY_MAP[key];
-    if (monthIndex !== undefined) {
-      return { month: MONTHS[monthIndex], day: dayMatch[1] };
-    }
-  }
-
-  return null;
-}
+export default React.memo(HomeEventCard);

@@ -3,9 +3,10 @@ import { View, Text, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { HomeFollowingProfile } from "../../types";
+import { HOME_COLORS } from "../../constants";
 
 const cardShadow = {
-  shadowColor: "#000",
+  shadowColor: HOME_COLORS.SHADOW,
   shadowOffset: { width: 0, height: 6 },
   shadowOpacity: 0.05,
   shadowRadius: 10,
@@ -19,13 +20,18 @@ type Props = {
   onToggleFollow?: (id: string) => void;
 };
 
-export default function HomeFollowingCard({
+function HomeFollowingCard({
   item,
   onPress,
   isFollowing = false,
   onToggleFollow,
 }: Props) {
   const Container = onPress ? Pressable : View;
+
+  // Null safety check
+  if (!item?.avatar || !item?.name) {
+    return null;
+  }
 
   return (
     <Container
@@ -51,7 +57,7 @@ export default function HomeFollowingCard({
           <Ionicons
             name="checkmark-circle"
             size={14}
-            color="#22C55E"
+            color={HOME_COLORS.VERIFIED_BADGE}
             style={{ marginLeft: 6, marginTop: 1 }}
           />
         ) : null}
@@ -68,14 +74,14 @@ export default function HomeFollowingCard({
       <Pressable
         className="mt-4 flex-row items-center gap-2 rounded-full border px-4 py-2 active:opacity-90"
         style={{
-          borderColor: isFollowing ? "#CBD5E1" : "#E2E8F0",
-          backgroundColor: isFollowing ? "#F8FAFC" : "#F8FAFC",
+          borderColor: isFollowing ? HOME_COLORS.FOLLOWING_BORDER : HOME_COLORS.FOLLOW_BORDER,
+          backgroundColor: isFollowing ? HOME_COLORS.FOLLOWING_BG : HOME_COLORS.FOLLOW_BG,
         }}
         onPress={() => onToggleFollow?.(item.id)}
       >
         {isFollowing ? (
           <View style={{ width: 16, height: 16 }}>
-            <Ionicons name="person-outline" size={16} color="#0F172A" />
+            <Ionicons name="person-outline" size={16} color={HOME_COLORS.TEXT_PRIMARY} />
             <View
               style={{
                 position: "absolute",
@@ -84,16 +90,16 @@ export default function HomeFollowingCard({
                 width: 10,
                 height: 10,
                 borderRadius: 999,
-                backgroundColor: "#22C55E",
+                backgroundColor: HOME_COLORS.VERIFIED_BADGE,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Ionicons name="checkmark" size={7} color="#FFFFFF" />
+              <Ionicons name="checkmark" size={7} color={HOME_COLORS.WHITE} />
             </View>
           </View>
         ) : (
-          <Ionicons name="person-add-outline" size={16} color="#0F172A" />
+          <Ionicons name="person-add-outline" size={16} color={HOME_COLORS.TEXT_PRIMARY} />
         )}
         <Text className="text-[12px] font-semibold text-slate-900">
           {isFollowing ? "Following" : "Follow"}
@@ -102,3 +108,5 @@ export default function HomeFollowingCard({
     </Container>
   );
 }
+
+export default React.memo(HomeFollowingCard);

@@ -2,9 +2,10 @@ import React from "react";
 import { View, Text, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { HomeBlogItem } from "../../types";
+import { HOME_CONSTANTS, HOME_COLORS } from "../../constants";
 
 const cardShadow = {
-  shadowColor: "#000",
+  shadowColor: HOME_COLORS.SHADOW,
   shadowOffset: { width: 0, height: 6 },
   shadowOpacity: 0.05,
   shadowRadius: 10,
@@ -18,15 +19,20 @@ type Props = {
   height?: number;
 };
 
-export default function HomeBlogCard({ item, onPress, width, height }: Props) {
+function HomeBlogCard({ item, onPress, width, height }: Props) {
   const Container = onPress ? Pressable : View;
-  const cardHeight = height ?? 132;
-  const imageWidth = Math.round(cardHeight * 0.9);
+  const cardHeight = height ?? HOME_CONSTANTS.BLOG_CARD_DEFAULT_HEIGHT;
+  const imageWidth = Math.round(cardHeight * HOME_CONSTANTS.EVENT_CARD_ASPECT_RATIO);
+
+  // Null safety check
+  if (!item?.image || !item?.title) {
+    return null;
+  }
 
   return (
     <Container
       className="rounded-3xl bg-white border border-slate-100 overflow-hidden"
-      style={[cardShadow, { width: width ?? 260, height: cardHeight }]}
+      style={[cardShadow, { width: width ?? HOME_CONSTANTS.BLOG_CARD_DEFAULT_WIDTH, height: cardHeight }]}
       onPress={() => onPress?.(item)}
     >
       <View className="flex-row" style={{ height: cardHeight }}>
@@ -66,3 +72,5 @@ export default function HomeBlogCard({ item, onPress, width, height }: Props) {
     </Container>
   );
 }
+
+export default React.memo(HomeBlogCard);
