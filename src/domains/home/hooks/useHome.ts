@@ -6,7 +6,8 @@ export function useHome() {
   const blogs = useMemo(() => homeMockData.blogs, []);
   const events = useMemo(() => homeMockData.events, []);
   const sellItems = useMemo(() => homeMockData.sellItems, []);
-  const following = useMemo(() => homeMockData.following, []);
+  const popularArtists = useMemo(() => homeMockData.following, []);
+  const following = useMemo(() => homeMockData.following.slice(0, 6), []);
 
   return {
     news,
@@ -14,5 +15,6 @@ export function useHome() {
     events,
     sellItems,
     following,
+    popularArtists,
   };
 }

@@ -15,9 +15,16 @@ const cardShadow = {
 type Props = {
   item: HomeFollowingProfile;
   onPress?: (item: HomeFollowingProfile) => void;
+  isFollowing?: boolean;
+  onToggleFollow?: (id: string) => void;
 };
 
-export default function HomeFollowingCard({ item, onPress }: Props) {
+export default function HomeFollowingCard({
+  item,
+  onPress,
+  isFollowing = false,
+  onToggleFollow,
+}: Props) {
   const Container = onPress ? Pressable : View;
 
   return (
@@ -58,10 +65,38 @@ export default function HomeFollowingCard({ item, onPress }: Props) {
         </Text>
       ) : null}
 
-      <Pressable className="mt-4 flex-row items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2">
-        <Ionicons name="person-add-outline" size={14} color="#0F172A" />
+      <Pressable
+        className="mt-4 flex-row items-center gap-2 rounded-full border px-4 py-2 active:opacity-90"
+        style={{
+          borderColor: isFollowing ? "#CBD5E1" : "#E2E8F0",
+          backgroundColor: isFollowing ? "#F8FAFC" : "#F8FAFC",
+        }}
+        onPress={() => onToggleFollow?.(item.id)}
+      >
+        {isFollowing ? (
+          <View style={{ width: 16, height: 16 }}>
+            <Ionicons name="person-outline" size={16} color="#0F172A" />
+            <View
+              style={{
+                position: "absolute",
+                right: -2,
+                bottom: -2,
+                width: 10,
+                height: 10,
+                borderRadius: 999,
+                backgroundColor: "#22C55E",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons name="checkmark" size={7} color="#FFFFFF" />
+            </View>
+          </View>
+        ) : (
+          <Ionicons name="person-add-outline" size={16} color="#0F172A" />
+        )}
         <Text className="text-[12px] font-semibold text-slate-900">
-          {item.actionLabel ?? "Follow"}
+          {isFollowing ? "Following" : "Follow"}
         </Text>
       </Pressable>
     </Container>

@@ -23,6 +23,7 @@ import HomeNewsCarousel from "../domains/home/components/cards/HomeNewsCarousel"
 import HomeBlogCard from "../domains/home/components/cards/HomeBlogCard";
 import HomeEventCard from "../domains/home/components/cards/HomeEventCard";
 import HomeFollowingCard from "../domains/home/components/cards/HomeFollowingCard";
+import { useProfileContext } from "../domains/user/contexts/ProfileContext";
 import {
   HomeFollowingProfile,
   HomeBlogItem,
@@ -46,6 +47,7 @@ export default function HomeScreen() {
   >(null);
   const { width } = useWindowDimensions();
   const { news, blogs, events, sellItems, following } = useHome();
+  const { isFollowing, toggleFollow } = useProfileContext();
   const highlightCardWidth = Math.min(320, Math.round(width * 0.72));
   const highlightCardHeight = Math.round(highlightCardWidth * 0.55);
   const sellCardWidth = Math.round((width - 16 * 2 - 12) / 2);
@@ -63,6 +65,9 @@ export default function HomeScreen() {
   }, [blogs, events]);
   const handleSeeAllSaved = useCallback(() => {
     navigation.navigate("Discover");
+  }, [navigation]);
+  const handleSeeAllPopular = useCallback(() => {
+    navigation.navigate("PopularArtists");
   }, [navigation]);
   const handleSellCardLayout = useCallback(
     (height: number) => {
@@ -190,13 +195,20 @@ export default function HomeScreen() {
           }
         />
 
-        <SectionHeader title="Popular in Your Area" />
+        <SectionHeader
+          title="Popular in Your Area"
+          onPressAction={handleSeeAllPopular}
+        />
         <FlatList
           data={following}
           keyExtractor={(item) => item.id}
           renderItem={({ item }: ListRenderItemInfo<HomeFollowingProfile>) => (
             <View style={{ width: followingCardWidth }}>
-              <HomeFollowingCard item={item} />
+              <HomeFollowingCard
+                item={item}
+                isFollowing={isFollowing(item.id)}
+                onToggleFollow={toggleFollow}
+              />
             </View>
           )}
           horizontal

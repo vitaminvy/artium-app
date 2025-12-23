@@ -7,6 +7,11 @@ type ProfileContextValue = {
   profile: ProfileViewModel;
   editProfile: EditProfileFormValues;
   updateProfile: (values: EditProfileFormValues) => void;
+  followingIds: string[];
+  isFollowing: (id: string) => boolean;
+  followUser: (id: string) => void;
+  unfollowUser: (id: string) => void;
+  toggleFollow: (id: string) => void;
 };
 
 const buildEditProfileFromProfile = (
@@ -65,11 +70,17 @@ const buildProfileFromForm = (
 
 const defaultProfile = profileMockData;
 const defaultEditProfile = buildEditProfileFromProfile(defaultProfile);
+const defaultFollowingIds: string[] = ["follow-1", "follow-2"];
 
 const ProfileContext = createContext<ProfileContextValue>({
   profile: defaultProfile,
   editProfile: defaultEditProfile,
   updateProfile: () => {},
+  followingIds: defaultFollowingIds,
+  isFollowing: () => false,
+  followUser: () => {},
+  unfollowUser: () => {},
+  toggleFollow: () => {},
 });
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
@@ -77,19 +88,80 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [editProfile, setEditProfile] = useState<EditProfileFormValues>(
     defaultEditProfile
   );
+  const [followingIds, setFollowingIds] = useState<string[]>(
+    defaultFollowingIds
+  );
 
   const updateProfile = useCallback((values: EditProfileFormValues) => {
     setEditProfile(values);
     setProfile((prev) => buildProfileFromForm(prev, values));
   }, []);
 
+  const isFollowing = useCallback(
+    (id: string) => followingIds.includes(id),
+    [followingIds]
+  );
+
+  const followUser = useCallback((id: string) => {
+    setFollowingIds((prev) => {
+      if (prev.includes(id)) return prev;
+      setProfile((prevProfile) => ({
+        ...prevProfile,
+        stats: {
+          ...prevProfile.stats,
+          following: prevProfile.stats.following + 1,
+        },
+      }));
+      return [...prev, id];
+    });
+  }, []);
+
+  const unfollowUser = useCallback((id: string) => {
+    setFollowingIds((prev) => {
+      if (!prev.includes(id)) return prev;
+      setProfile((prevProfile) => ({
+        ...prevProfile,
+        stats: {
+          ...prevProfile.stats,
+          following: Math.max(prevProfile.stats.following - 1, 0),
+        },
+      }));
+      return prev.filter((item) => item !== id);
+    });
+  }, []);
+
+  const toggleFollow = useCallback(
+    (id: string) => {
+      if (isFollowing(id)) {
+        unfollowUser(id);
+      } else {
+        followUser(id);
+      }
+    },
+    [followUser, isFollowing, unfollowUser]
+  );
+
   const value = useMemo(
     () => ({
       profile,
       editProfile,
       updateProfile,
+      followingIds,
+      isFollowing,
+      followUser,
+      unfollowUser,
+      toggleFollow,
     }),
-    [profile, editProfile, updateProfile]
+    [
+      profile,
+      editProfile,
+      updateProfile,
+      followingIds,
+      isFollowing,
+      followUser,
+      unfollowUser,
+      toggleFollow,
+    ]
   );
 
   return (
