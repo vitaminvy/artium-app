@@ -74,9 +74,6 @@ export default function DiscoverScreen() {
   const handleRequireSignUp = useCallback(() => {
     navigation.navigate("SignUp");
   }, [navigation]);
-  const handleRequireSignUpForCard = useCallback((_: unknown) => {
-    navigation.navigate("SignUp");
-  }, [navigation]);
 
   const renderContent = () => {
     // --- HANDLE LOADING AND ERROR STATES ---
@@ -130,10 +127,6 @@ export default function DiscoverScreen() {
         return null;
     }
   };
-
-  const handleRequireSignUp = useCallback(() => {
-    navigation.navigate("SignUp");
-  }, [navigation]);
 
   return (
     <View className="flex-1 bg-white">

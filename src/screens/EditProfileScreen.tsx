@@ -19,6 +19,7 @@ import PhoneField from "../domains/user/components/editProfile/PhoneField";
 import { useEditProfileForm } from "../domains/user/hooks/useEditProfileForm";
 import { EDIT_PROFILE_LABELS } from "../domains/user/constants/editProfile";
 import { useProfileContext } from "../domains/user/contexts/ProfileContext";
+import { useProfileCompletion } from "../domains/user/contexts/ProfileCompletionContext";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
@@ -30,6 +31,7 @@ type NavigationProp = NativeStackNavigationProp<
 export default function EditProfileScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { editProfile, updateProfile } = useProfileContext();
+  const { markProfileCompleted } = useProfileCompletion();
   const {
     control,
     limits,
@@ -74,12 +76,18 @@ export default function EditProfileScreen() {
   };
 
   const onSave = submit(async (values) => {
-    // TODO: replace with API call
-    await new Promise((res) => setTimeout(res, 500));
-    updateProfile(values);
-    Alert.alert("Profile saved", "Your changes have been saved.");
-    reset(values);
-    navigation.goBack();
+    try {
+      // TODO: replace with API call
+      await new Promise((res) => setTimeout(res, 500));
+      await updateProfile(values);
+      await markProfileCompleted();
+      Alert.alert("Profile saved", "Your changes have been saved.");
+      reset(values);
+      navigation.goBack();
+    } catch (error) {
+      console.error("Failed to save profile:", error);
+      Alert.alert("Save failed", "Unable to save profile. Please try again.");
+    }
   });
 
   return (

@@ -16,6 +16,7 @@ import Sidebar from "../shared/components/Sidebar";
 import { useSidebarItems, SidebarKey } from "../shared/hooks/useSidebar";
 import { requestPostMomentSheet } from "../shared/utils/postMomentBridge";
 import { navigate as rootNavigate } from "../app/navigation/navigationRef";
+import { useProfileCompletion } from "../domains/user/contexts/ProfileCompletionContext";
 
 type NavigationProp = NativeStackNavigationProp<
   HomeStackParamList,
@@ -25,6 +26,8 @@ type NavigationProp = NativeStackNavigationProp<
 export default function ProfileScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { profile, tab, setTab } = useProfile();
+  const { loading: profileStatusLoading, profileCompleted } =
+    useProfileCompletion();
   const sidebarItems = useSidebarItems();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [headerHeight, setHeaderHeight] = React.useState(96);
@@ -74,6 +77,14 @@ export default function ProfileScreen() {
     useCallback(() => {
       setActiveKey("profile");
     }, [setActiveKey])
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!profileStatusLoading && !profileCompleted) {
+        navigation.navigate("EditProfile");
+      }
+    }, [navigation, profileCompleted, profileStatusLoading])
   );
 
   return (
