@@ -1,11 +1,19 @@
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import RootNavigator from "./navigation/RootNavigator";
 import { useAuth, AuthProvider } from "../domains/auth/contexts/AuthContext";
+import { ProfileProvider } from "../domains/user/contexts/ProfileContext";
+import {
+  ProfileCompletionProvider,
+  useProfileCompletion,
+} from "../domains/user/contexts/ProfileCompletionContext";
 import Loader from "../shared/components/Loader";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import ProfileOnboardingModal from "../domains/user/components/onboarding/ProfileOnboardingModal";
+import { navigate } from "./navigation/navigationRef";
 
 function NavigationWrapper() {
   const auth = useAuth();
+  const { shouldPrompt, dismissPrompt } = useProfileCompletion();
 
   useEffect(() => {
     // Configure Google Sign-In once when the app's navigation is ready.
@@ -15,17 +23,39 @@ function NavigationWrapper() {
     });
   }, []);
 
+  const handleStartExploring = useCallback(async () => {
+    await dismissPrompt();
+  }, [dismissPrompt]);
+
+  const handleEditProfile = useCallback(async () => {
+    await dismissPrompt();
+    navigate("Tabs", { screen: "Home", params: { screen: "EditProfile" } });
+  }, [dismissPrompt]);
+
   if (auth.status === "loading") {
     return <Loader />;
   }
 
-  return <RootNavigator authStatus={auth.status} />;
+  return (
+    <>
+      <RootNavigator authStatus={auth.status} />
+      <ProfileOnboardingModal
+        visible={shouldPrompt}
+        onStartExploring={handleStartExploring}
+        onEditProfile={handleEditProfile}
+      />
+    </>
+  );
 }
 
 export default function AppEntry() {
   return (
     <AuthProvider>
-      <NavigationWrapper />
+      <ProfileCompletionProvider>
+        <ProfileProvider>
+          <NavigationWrapper />
+        </ProfileProvider>
+      </ProfileCompletionProvider>
     </AuthProvider>
   );
 }

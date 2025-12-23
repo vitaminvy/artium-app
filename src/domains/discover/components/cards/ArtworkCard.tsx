@@ -2,7 +2,6 @@ import React from "react";
 import { View, Text, Image, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Artwork } from "../../types";
-import { Badge, Pill } from "../ui/DiscoverShared";
 
 const cardShadow = {
   shadowColor: "#000",
@@ -17,6 +16,16 @@ const cardContainer = {
   borderWidth: 1,
   borderColor: "#E2E8F0",
   overflow: "hidden" as const,
+};
+
+const glassPillStyle = {
+  backgroundColor: "rgba(255,255,255,0.85)",
+  borderColor: "rgba(255,255,255,0.55)",
+  borderWidth: 1,
+  shadowColor: "#0F172A",
+  shadowOpacity: 0.08,
+  shadowRadius: 10,
+  shadowOffset: { width: 0, height: 6 },
 };
 
 export default function ArtworkCard({
@@ -39,24 +48,22 @@ export default function ArtworkCard({
           style={{ aspectRatio: 3 / 4, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
           resizeMode="cover"
         />
-        {item.isTrending && (
-          <View
-            className="absolute bottom-3 left-3 flex-row items-center gap-1 rounded-full px-3 py-1"
-            style={{
-              backgroundColor: "rgba(255,255,255,0.8)",
-              borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.55)",
-            }}
-          >
-            <Ionicons name="flame" size={14} color="#EA580C" />
-            <Text className="text-[11px] font-semibold text-[#EA580C]">
-              TRENDING
-            </Text>
+        {item.isTrending ? (
+          <View className="absolute bottom-3 left-3">
+            <View
+              className="flex-row items-center gap-1 rounded-full px-3 py-1"
+              style={glassPillStyle}
+            >
+              <Ionicons name="flame" size={14} color="#F97316" />
+              <Text className="text-[11px] font-semibold uppercase text-[#F97316]">
+                Trending
+              </Text>
+            </View>
           </View>
-        )}
+        ) : null}
       </View>
 
-      <View className="px-4 py-4 gap-3 bg-white rounded-b-[28px]">
+      <View className="px-4 py-4 bg-white rounded-b-[28px] flex-1 justify-between">
         <View className="flex-row items-center gap-3">
           <View className="h-7 w-7 rounded-full bg-slate-200 overflow-hidden">
             {item.artistAvatar ? (
@@ -66,7 +73,7 @@ export default function ArtworkCard({
               />
             ) : null}
           </View>
-          <Text className="text-sm text-slate-600 font-medium">
+          <Text className="text-[13px] text-slate-600 font-medium">
             {item.artist}
           </Text>
         </View>
@@ -75,10 +82,19 @@ export default function ArtworkCard({
           {item.title}
         </Text>
 
-        <View className="flex-row items-center gap-3 flex-wrap">
-          {item.price ? <Pill label={item.price} color="#2563EB" /> : null}
+        <View className="gap-1.5">
           {item.location ? (
             <Text className="text-sm text-slate-400">{item.location}</Text>
+          ) : null}
+          {item.price ? (
+            <View
+              className="self-start rounded-full px-3 py-1"
+              style={glassPillStyle}
+            >
+              <Text className="text-[13px] font-semibold text-[#2563EB] tracking-tight">
+                {item.price}
+              </Text>
+            </View>
           ) : null}
         </View>
       </View>

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Alert, Pressable, Text, View } from "react-native";
+import { useRef, useState } from "react";
+import { Alert, Pressable, Text, TextInput, View } from "react-native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { forgotPassword } from "@/domains/auth/services/forgotPassword";
@@ -15,6 +15,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const emailInputRef = useRef<TextInput>(null);
 
   const handleResetPassword = async () => {
     if (!email.trim()) {
@@ -59,9 +60,12 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
       <View className="gap-5">
         <AuthTextField
           label="EMAIL ADDRESS"
+          inputRef={emailInputRef}
           placeholder="you@example.com"
           autoCapitalize="none"
           keyboardType="email-address"
+          returnKeyType="done"
+          onSubmitEditing={handleResetPassword}
           onChangeText={setEmail}
           value={email}
           editable={!loading}

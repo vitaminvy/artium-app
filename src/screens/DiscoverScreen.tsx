@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, View, Text } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import ScreenHeader from "../shared/components/ScreenHeader";
 import UnderlineHome from "../../assets/headers/underline-home.svg";
@@ -8,6 +8,7 @@ import { useDiscover } from "../domains/discover/hooks/useDiscover";
 import { DiscoverTab } from "../domains/discover/types";
 import { TabChip } from "../domains/discover/components/ui/DiscoverShared";
 import ChangeLocationSheet from "../domains/discover/components/sheets/ChangeLocationSheet";
+import Loader from "../shared/components/Loader"; // Import Loader
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 
@@ -30,8 +31,17 @@ const TABS: { key: DiscoverTab; label: string }[] = [
 export default function DiscoverScreen() {
   const navigation = useNavigation<any>();
   const { status } = useAuth();
-  const { tab, setTab, topPicks, artworks, profiles, moments, events } =
-    useDiscover();
+  const {
+    tab,
+    setTab,
+    loading, // Get loading state
+    error,   // Get error state
+    topPicks,
+    artworks,
+    profiles,
+    moments,
+    events,
+  } = useDiscover();
   const isGuest = status !== "authenticated";
   const { setHidden } = useTabBarVisibility();
   const lastOffset = useRef(0);
@@ -61,8 +71,31 @@ export default function DiscoverScreen() {
   const [locationText, setLocationText] = useState("Albuquerque, NM, USA");
   const [radius, setRadius] = useState("10 miles");
   const [showRadiusOptions, setShowRadiusOptions] = useState(false);
+  const handleRequireSignUp = useCallback(() => {
+    navigation.navigate("SignUp");
+  }, [navigation]);
 
   const renderContent = () => {
+    // --- HANDLE LOADING AND ERROR STATES ---
+    if (loading) {
+      return (
+        <View className="flex-1 justify-center items-center">
+          <Loader />
+        </View>
+      );
+    }
+
+    if (error) {
+      return (
+        <View className="flex-1 justify-center items-center p-4">
+          <Text className="text-lg text-red-500 text-center">
+            Failed to load content. Please try again later.
+          </Text>
+        </View>
+      );
+    }
+    
+    // --- RENDER TABS ---
     const onCardPress = isGuest ? handleRequireSignUp : undefined;
 
     switch (tab) {
@@ -94,10 +127,6 @@ export default function DiscoverScreen() {
         return null;
     }
   };
-
-  const handleRequireSignUp = useCallback((_: unknown) => {
-    navigation.navigate("SignUp");
-  }, [navigation]);
 
   return (
     <View className="flex-1 bg-white">

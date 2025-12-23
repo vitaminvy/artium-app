@@ -36,6 +36,18 @@ export function ArtworkDetailsStep({
   onFieldLayout,
   onFieldChange,
 }: Props) {
+  const titleRef = React.useRef<TextInput>(null);
+  const descriptionRef = React.useRef<TextInput>(null);
+  const yearRef = React.useRef<TextInput>(null);
+  const editionRef = React.useRef<TextInput>(null);
+  const heightRef = React.useRef<TextInput>(null);
+  const widthRef = React.useRef<TextInput>(null);
+  const depthRef = React.useRef<TextInput>(null);
+  const weightRef = React.useRef<TextInput>(null);
+  const materialsRef = React.useRef<TextInput>(null);
+  const priceRef = React.useRef<TextInput>(null);
+  const quantityRef = React.useRef<TextInput>(null);
+
   const handleChange = (field: keyof InventoryDetails, value: any) => {
     onChangeDetails((prev) => ({ ...prev, [field]: value }));
     if (field === "title") onFieldChange?.("title");
@@ -60,39 +72,55 @@ export function ArtworkDetailsStep({
         <View onLayout={(e) => onFieldLayout?.("title", e.nativeEvent.layout.y)}>
           <LabeledField
             label="Artwork title"
+            inputRef={titleRef}
             value={details.title}
             onChangeText={(val) => handleChange("title", val)}
             placeholder="Artwork title"
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => descriptionRef.current?.focus()}
           />
           {renderError("title")}
         </View>
         <View onLayout={(e) => onFieldLayout?.("description", e.nativeEvent.layout.y)}>
           <LabeledField
             label="Description"
+            inputRef={descriptionRef}
             value={details.description}
             onChangeText={(val) => handleChange("description", val)}
             placeholder="Describe your artwork"
             multiline
             helper="Tell buyers about the story, process, or inspiration."
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => yearRef.current?.focus()}
           />
           {renderError("description")}
         </View>
         <View onLayout={(e) => onFieldLayout?.("year", e.nativeEvent.layout.y)}>
           <LabeledField
             label="Year"
+            inputRef={yearRef}
             value={details.year}
             onChangeText={(val) => handleChange("year", val)}
             placeholder="2025"
             keyboardType="numeric"
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => editionRef.current?.focus()}
           />
           {renderError("year")}
         </View>
         <View onLayout={(e) => onFieldLayout?.("edition", e.nativeEvent.layout.y)}>
           <LabeledField
             label="Edition"
+            inputRef={editionRef}
             value={details.edition}
             onChangeText={(val) => handleChange("edition", val)}
             placeholder="12/100, Limited Edition, etc."
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => heightRef.current?.focus()}
           />
           {renderError("edition")}
         </View>
@@ -124,6 +152,7 @@ export function ArtworkDetailsStep({
                 }
               >
                 <TextInput
+                  ref={heightRef}
                   value={details.dimensions.height}
                   onChangeText={(val) =>
                   onChangeDetails((prev) => ({
@@ -135,6 +164,9 @@ export function ArtworkDetailsStep({
                 placeholder="0"
                 placeholderTextColor="#94A3B8"
                 keyboardType="numeric"
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => widthRef.current?.focus()}
                 className="rounded-2xl border border-slate-200 bg-white px-3 py-4 text-[15px] text-slate-900"
                 />
               </View>
@@ -147,6 +179,7 @@ export function ArtworkDetailsStep({
                 }
               >
                 <TextInput
+                  ref={widthRef}
                   value={details.dimensions.width}
                   onChangeText={(val) =>
                   onChangeDetails((prev) => ({
@@ -158,6 +191,9 @@ export function ArtworkDetailsStep({
                 placeholder="0"
                 placeholderTextColor="#94A3B8"
                 keyboardType="numeric"
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => depthRef.current?.focus()}
                 className="rounded-2xl border border-slate-200 bg-white px-3 py-4 text-[15px] text-slate-900"
                 />
               </View>
@@ -170,6 +206,7 @@ export function ArtworkDetailsStep({
                 }
               >
                 <TextInput
+                  ref={depthRef}
                   value={details.dimensions.depth}
                   onChangeText={(val) =>
                   onChangeDetails((prev) => ({
@@ -181,6 +218,9 @@ export function ArtworkDetailsStep({
                 placeholder="0"
                 placeholderTextColor="#94A3B8"
                 keyboardType="numeric"
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => weightRef.current?.focus()}
                 className="rounded-2xl border border-slate-200 bg-white px-3 py-4 text-[15px] text-slate-900"
                 />
               </View>
@@ -217,6 +257,7 @@ export function ArtworkDetailsStep({
             }
           >
             <TextInput
+              ref={weightRef}
               value={details.weight.value}
               onChangeText={(val) =>
               onChangeDetails((prev) => ({
@@ -228,6 +269,9 @@ export function ArtworkDetailsStep({
             placeholder="0"
             placeholderTextColor="#94A3B8"
             keyboardType="numeric"
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => materialsRef.current?.focus()}
             className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-[15px] text-slate-900"
             />
             {renderError("weight.value")}
@@ -237,9 +281,13 @@ export function ArtworkDetailsStep({
         <View onLayout={(e) => onFieldLayout?.("materials", e.nativeEvent.layout.y)}>
           <LabeledField
             label="Materials"
+            inputRef={materialsRef}
             value={details.materials}
             onChangeText={(val) => handleChange("materials", val)}
             placeholder="Oil on canvas"
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => priceRef.current?.focus()}
           />
           {renderError("materials")}
         </View>
@@ -301,10 +349,14 @@ export function ArtworkDetailsStep({
         <View onLayout={(e) => onFieldLayout?.("price", e.nativeEvent.layout.y)}>
           <LabeledField
             label="Artwork price"
+            inputRef={priceRef}
             value={details.price}
             onChangeText={(val) => handleChange("price", val)}
             placeholder="US$ 12,345"
             keyboardType="numeric"
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => quantityRef.current?.focus()}
           />
           {renderError("price")}
         </View>
@@ -314,10 +366,13 @@ export function ArtworkDetailsStep({
         <View onLayout={(e) => onFieldLayout?.("quantity", e.nativeEvent.layout.y)}>
           <LabeledField
             label="Quantity available"
+            inputRef={quantityRef}
             value={details.quantity}
             onChangeText={(val) => handleChange("quantity", val)}
             placeholder="1"
             keyboardType="numeric"
+            returnKeyType="done"
+            onSubmitEditing={() => quantityRef.current?.blur()}
           />
           {renderError("quantity")}
         </View>

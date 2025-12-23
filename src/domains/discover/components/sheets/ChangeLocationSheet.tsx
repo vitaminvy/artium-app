@@ -7,6 +7,7 @@ import {
   TextInput,
   Animated,
   Easing,
+  Keyboard,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -89,6 +90,8 @@ export default function ChangeLocationSheet({
                 onChangeText={onChangeLocation}
                 className="flex-1 text-slate-900"
                 placeholderTextColor="#94A3B8"
+                returnKeyType="search"
+                onSubmitEditing={() => Keyboard.dismiss()}
               />
             </View>
           </View>

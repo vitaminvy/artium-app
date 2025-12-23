@@ -4,10 +4,13 @@ import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import DiscoverScreen from "../../../screens/DiscoverScreen";
 import ArtworkDetailScreen from "../../../screens/ArtworkDetailScreen";
+import CheckoutScreen from "../../../screens/CheckoutScreen";
+import type { ArtworkDetail } from "../../../domains/artwork/types";
 
 export type DiscoverStackParamList = {
   DiscoverMain: undefined;
   ArtworkDetail: { id: string };
+  Checkout: { artwork?: ArtworkDetail };
 };
 
 const Stack = createNativeStackNavigator<DiscoverStackParamList>();
@@ -17,6 +20,7 @@ export default function DiscoverStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="DiscoverMain" component={DiscoverScreen} />
       <Stack.Screen name="ArtworkDetail" component={ArtworkDetailScreen} />
+      <Stack.Screen name="Checkout" component={CheckoutScreen} />
     </Stack.Navigator>
   );
 }
