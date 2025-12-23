@@ -7,6 +7,7 @@ import ProfileScreen from "../../../screens/ProfileScreen";
 import EditProfileScreen from "../../../screens/EditProfileScreen";
 import CheckoutScreen from "../../../screens/CheckoutScreen";
 import PopularArtistsScreen from "../../../screens/PopularArtistsScreen";
+import SimilarSavedScreen from "../../../screens/SimilarSavedScreen";
 import type { ArtworkDetail } from "../../../domains/artwork/types";
 
 export type HomeStackParamList = {
@@ -17,6 +18,7 @@ export type HomeStackParamList = {
   EditProfile: undefined;
   Checkout: { artwork?: ArtworkDetail };
   PopularArtists: undefined;
+  SimilarSaved: undefined;
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -29,6 +31,7 @@ export default function HomeStack() {
       <Stack.Screen name="ArtworkDetail" component={ArtworkDetailScreen} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="PopularArtists" component={PopularArtistsScreen} />
+      <Stack.Screen name="SimilarSaved" component={SimilarSavedScreen} />
       <Stack.Screen
         name="EditProfile"
         component={EditProfileScreen}

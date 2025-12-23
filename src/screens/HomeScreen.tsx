@@ -46,7 +46,7 @@ export default function HomeScreen() {
     number | null
   >(null);
   const { width } = useWindowDimensions();
-  const { news, blogs, events, sellItems, following } = useHome();
+  const { news, blogs, events, sellItemsPreview, following } = useHome();
   const { isFollowing, toggleFollow } = useProfileContext();
   const highlightCardWidth = Math.min(320, Math.round(width * 0.72));
   const highlightCardHeight = Math.round(highlightCardWidth * 0.55);
@@ -64,7 +64,7 @@ export default function HomeScreen() {
     return result;
   }, [blogs, events]);
   const handleSeeAllSaved = useCallback(() => {
-    navigation.navigate("Discover");
+    navigation.navigate("SimilarSaved");
   }, [navigation]);
   const handleSeeAllPopular = useCallback(() => {
     navigation.navigate("PopularArtists");
@@ -161,7 +161,7 @@ export default function HomeScreen() {
           onPressAction={handleSeeAllSaved}
         />
         <FlatList
-          data={sellItems}
+          data={sellItemsPreview}
           keyExtractor={(item) => item.id}
           renderItem={({ item, index }: ListRenderItemInfo<Artwork>) => (
             <View

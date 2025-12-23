@@ -60,7 +60,7 @@ const events: HomeEventItem[] = [
   },
 ];
 
-const sellItems = discoverMockData.artworks.slice(0, 4);
+const sellItems = discoverMockData.artworks;
 
 const following: HomeFollowingProfile[] = [
   {
