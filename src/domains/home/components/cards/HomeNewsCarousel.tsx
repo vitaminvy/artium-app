@@ -106,14 +106,13 @@ function NewsCard({
         </View>
 
         <View className="absolute left-4 right-4 bottom-4">
-          <Text
-            className="text-[18px] font-semibold text-white leading-6"
-            numberOfLines={3}
-          >
-            {item.title}
-          </Text>
-
-          <View className="mt-3 flex-row justify-end">
+          <View className="flex-row items-end gap-3">
+            <Text
+              className="flex-1 text-[18px] font-semibold text-white leading-6"
+              numberOfLines={3}
+            >
+              {item.title}
+            </Text>
             <View className="flex-row items-center gap-2 rounded-full bg-white px-4 py-2">
               <Text className="text-[12px] font-semibold text-slate-900">
                 READ NOW

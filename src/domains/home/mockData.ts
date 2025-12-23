@@ -30,7 +30,7 @@ const news: HomeNewsItem[] = [
     title: "Collector Spotlight: Micro patronage is reshaping art funding",
     dateLabel: "Dec 12, 2025",
     image:
-      "https://images.unsplash.com/photo-1515165562835-c3b8c9ea0f5b?auto=format&fit=crop&w=1600&q=80",
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80",
     tag: "NEWS",
   },
 ];
