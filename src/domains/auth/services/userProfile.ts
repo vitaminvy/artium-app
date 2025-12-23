@@ -35,14 +35,32 @@ export async function upsertUserProfile(
   };
 
   if (userSnap.exists()) {
-    // Update existing user - preserve createdAt
-    await updateDoc(userRef, {
-      ...userData,
-      // Only update these if they are truthy in userData to avoid wiping existing data with empty strings if auth provider is missing info
-      ...(userData.email && { email: userData.email }),
-      ...(userData.displayName && { displayName: userData.displayName }),
-      ...(userData.photoURL && { photoURL: userData.photoURL }),
-    });
+    const existing = userSnap.data() ?? {};
+    const updates: Record<string, any> = {
+      lastLoginAt: serverTimestamp(),
+    };
+
+    if (extras.email) {
+      updates.email = extras.email;
+    } else if (!existing.email && userData.email) {
+      updates.email = userData.email;
+    }
+
+    if (extras.displayName) {
+      updates.displayName = extras.displayName;
+    } else if (!existing.displayName && userData.displayName) {
+      updates.displayName = userData.displayName;
+    }
+
+    if (extras.photoURL) {
+      updates.photoURL = extras.photoURL;
+    } else if (!existing.photoURL && userData.photoURL) {
+      updates.photoURL = userData.photoURL;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await updateDoc(userRef, updates);
+    }
   } else {
     // Create new user
     await setDoc(userRef, {
@@ -50,6 +68,8 @@ export async function upsertUserProfile(
       role: "art_lover",
       followerCount: 0,
       followingCount: 0,
+      profileCompleted: false,
+      profilePromptDismissed: false,
       createdAt: serverTimestamp(),
     });
   }

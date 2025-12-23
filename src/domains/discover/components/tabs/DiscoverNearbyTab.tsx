@@ -1,5 +1,12 @@
 import React from "react";
-import { View, Text, ScrollView, Pressable, FlatList, ListRenderItemInfo } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  FlatList,
+  ListRenderItemInfo,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { Artwork, ArtistProfile, EventItem, DiscoverTab } from "../../types";
@@ -46,7 +53,7 @@ export default function DiscoverNearbyTab({
       }
     />
   );
-  
+
   const renderProfile = ({ item }: ListRenderItemInfo<ArtistProfile>) => (
     <ProfileCard
       item={item}

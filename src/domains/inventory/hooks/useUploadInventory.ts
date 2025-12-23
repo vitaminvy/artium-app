@@ -2,14 +2,20 @@ import { useCallback, useMemo, useState } from "react";
 import { ActionSheetIOS, Alert, Platform } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useNavigation } from "@react-navigation/native";
-import { InventoryDetails, InventoryImage, MediaSource, Artwork } from "../types";
+import { addDoc, collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { InventoryDetails, InventoryImage, MediaSource } from "../types";
 import { INITIAL_DETAILS, MAX_IMAGES } from "../constants";
 import { FieldKey } from "../components/ArtworkDetailsStep";
+import { firestore } from "@/configs/firebase";
+import { useAuth } from "@/domains/auth/contexts/AuthContext";
+import { useProfileContext } from "@/domains/user/contexts/ProfileContext";
 
 const DEFAULT_UPLOAD_FOLDER = "Unsorted";
 
 export function useUploadInventory() {
   const navigation = useNavigation<any>();
+  const { currentUser } = useAuth();
+  const { profile } = useProfileContext();
   const [step, setStep] = useState(0);
   const [images, setImages] = useState<InventoryImage[]>([]);
   const [details, setDetails] = useState<InventoryDetails>(INITIAL_DETAILS);
@@ -17,6 +23,7 @@ export function useUploadInventory() {
   const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [scrollToError, setScrollToError] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   // Computed states
   const canContinue = images.length > 0;
@@ -201,7 +208,7 @@ export function useUploadInventory() {
     );
   }, []);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     const validation = validateDetails();
     if (Object.keys(validation).length > 0) {
       setErrors(validation);
@@ -209,39 +216,100 @@ export function useUploadInventory() {
       setScrollToError(true);
       return;
     }
+    if (!currentUser) {
+      Alert.alert("Sign in required", "Please sign in to upload artwork.");
+      return;
+    }
+    if (submitting) return;
     setErrors({});
     setScrollToError(false);
-    const yearNumber = parseInt(details.year, 10);
-    const dimensionText = `${details.dimensions.height || "?"} x ${
-      details.dimensions.width || "?"
-    } ${details.dimensions.unit}`;
-    const newArtwork: Artwork = {
-      id: `aw-${Date.now()}`,
-      title: details.title || "Untitled",
-      artist: "Unknown Artist",
-      year: Number.isFinite(yearNumber) ? yearNumber : new Date().getFullYear(),
-      price: details.price ? `$${details.price}` : "Price upon request",
-      status: "Available",
-      folder: DEFAULT_UPLOAD_FOLDER,
-      thumbnail: images[0]?.uri ?? "",
-      images: images.length ? images.map((img) => img.uri) : undefined,
-      tags: selectedTags.length ? selectedTags : undefined,
-      details,
-      dimensions: dimensionText,
-    };
+    setSubmitting(true);
 
-    navigation.navigate("Tabs", {
-      screen: "Home",
-      params: {
-        screen: "Inventory",
-        params: { newArtwork },
-      },
-    });
-    setStep(0);
-    setImages([]);
-    setDetails(INITIAL_DETAILS);
-    setSelectedTags([]);
-  }, [validateDetails, details, images, navigation, selectedTags]);
+    const yearNumber = parseInt(details.year, 10);
+    const editionNumber = parseInt(details.edition, 10);
+    const height = parseFloat(details.dimensions.height);
+    const width = parseFloat(details.dimensions.width);
+    const depth = parseFloat(details.dimensions.depth);
+    const weightValue = parseFloat(details.weight.value);
+    const authorName =
+      profile.user.name ||
+      currentUser.displayName ||
+      currentUser.email ||
+      "Unknown Artist";
+    const authorAvatar = profile.user.avatarUri || currentUser.photoURL || "";
+
+    try {
+      await setDoc(
+        doc(firestore, "artists", currentUser.uid),
+        {
+          name: authorName,
+          avatar: authorAvatar,
+          verified: false,
+        },
+        { merge: true }
+      );
+
+      await addDoc(collection(firestore, "artworks"), {
+        authorId: currentUser.uid,
+        authorName,
+        artistId: currentUser.uid,
+        artist: {
+          name: authorName,
+          avatar: authorAvatar,
+          verified: false,
+        },
+        title: details.title || "Untitled",
+        description: details.description || "",
+        year: Number.isFinite(yearNumber) ? yearNumber : new Date().getFullYear(),
+        edition: Number.isFinite(editionNumber) ? editionNumber : 1,
+        materials: details.materials || "",
+        price: details.price ? `USD $${details.price}` : "Price on Request",
+        availabilityNote: "",
+        images: images.length ? images.map((img) => img.uri) : [],
+        tags: selectedTags,
+        dimension: {
+          h: Number.isFinite(height) ? height : 0,
+          w: Number.isFinite(width) ? width : 0,
+          d: Number.isFinite(depth) ? depth : 0,
+          unit: details.dimensions.unit,
+        },
+        weight: Number.isFinite(weightValue)
+          ? `${weightValue} ${details.weight.unit}`
+          : "0",
+        shipping: [{ title: "Shipped within 7 working days in a box" }],
+        stats: { worksSold: 0, buyers: 0 },
+        metrics: { views: 0, likes: 0, shares: 0 },
+        popularityScore: 0,
+        status: details.status,
+        folder: DEFAULT_UPLOAD_FOLDER,
+        createdAt: serverTimestamp(),
+      });
+
+      navigation.navigate("Tabs", {
+        screen: "Home",
+        params: {
+          screen: "Inventory",
+        },
+      });
+      resetForm();
+    } catch (error) {
+      console.error("Failed to upload artwork:", error);
+      Alert.alert("Upload failed", "Could not upload artwork. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }, [
+    validateDetails,
+    details,
+    images,
+    navigation,
+    selectedTags,
+    currentUser,
+    profile.user.name,
+    profile.user.avatarUri,
+    submitting,
+    resetForm,
+  ]);
 
   return {
     step,

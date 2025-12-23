@@ -5,16 +5,18 @@ import { useProfileContext } from "../contexts/ProfileContext";
 type UseProfileResult = {
   profile: ProfileViewModel;
   tab: ProfileTabKey;
+  isLoading: boolean;
   setTab: (tab: ProfileTabKey) => void;
 };
 
 export function useProfile(): UseProfileResult {
   const [tab, setTab] = useState<ProfileTabKey>("overview");
-  const { profile } = useProfileContext();
+  const { profile, isLoading } = useProfileContext();
 
   return {
     profile,
     tab,
+    isLoading,
     setTab,
   };
 }

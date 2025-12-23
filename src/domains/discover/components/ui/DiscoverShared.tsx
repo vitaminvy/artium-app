@@ -33,10 +33,10 @@ export function Badge({
 export function Pill({ label, color }: { label: string; color: string }) {
   return (
     <View
-      className="rounded-full px-3 py-1"
-      style={{ backgroundColor: `${color}1A` }}
+      className="rounded-full px-2 py-1"
+      style={{ backgroundColor: `${color}1A`, alignSelf: "flex-start" }}
     >
-      <Text className="text-[12px] font-semibold" style={{ color }}>
+      <Text className="text-[11px] font-semibold" style={{ color }}>
         {label}
       </Text>
     </View>
