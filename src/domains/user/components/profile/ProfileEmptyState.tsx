@@ -1,18 +1,22 @@
 import React from "react";
-import { View, Text } from "react-native";
+import { View, Text, Pressable } from "react-native";
 
 type Props = {
   message: string;
+  onPress?: () => void;
 };
 
-export default function ProfileEmptyState({ message }: Props) {
+export default function ProfileEmptyState({ message, onPress }: Props) {
   return (
-    <View className="items-center justify-center px-6 py-8">
+    <Pressable
+      onPress={onPress}
+      className="items-center justify-center px-6 py-8 active:opacity-60"
+    >
       <TileStack />
       <Text className="mt-10 text-sm text-center text-slate-500">
         {message}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 
