@@ -49,6 +49,7 @@ export default function HomeScreen() {
   const highlightCardWidth = Math.min(320, Math.round(width * 0.72));
   const highlightCardHeight = Math.round(highlightCardWidth * 0.55);
   const sellCardWidth = Math.round((width - 16 * 2 - 12) / 2);
+  const followingCardWidth = sellCardWidth;
   const sellCardHeight = Math.round(sellCardWidth * (4 / 3) + 96);
   const seeMoreCardHeight = sellCardMeasuredHeight ?? sellCardHeight;
   const highlights = useMemo(() => {
@@ -115,7 +116,7 @@ export default function HomeScreen() {
       />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 140 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
       >
         <View className="px-4 pt-4">
           <HomeNewsCarousel data={news} />
@@ -194,13 +195,14 @@ export default function HomeScreen() {
           data={following}
           keyExtractor={(item) => item.id}
           renderItem={({ item }: ListRenderItemInfo<HomeFollowingProfile>) => (
-            <HomeFollowingCard item={item} />
+            <View style={{ width: followingCardWidth }}>
+              <HomeFollowingCard item={item} />
+            </View>
           )}
-          numColumns={2}
-          scrollEnabled={false}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={gridContent}
-          columnWrapperStyle={gridColumns}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={horizontalContent}
+          ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
         />
       </ScrollView>
 
@@ -246,15 +248,6 @@ function SectionHeader({
     </View>
   );
 }
-
-const gridContent = {
-  paddingHorizontal: 16,
-  rowGap: 12,
-};
-
-const gridColumns = {
-  columnGap: 12,
-};
 
 const horizontalContent = {
   paddingHorizontal: 16,

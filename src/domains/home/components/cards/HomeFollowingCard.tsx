@@ -22,7 +22,7 @@ export default function HomeFollowingCard({ item, onPress }: Props) {
 
   return (
     <Container
-      className="flex-1 rounded-3xl bg-white border border-slate-100 px-4 py-5 items-center"
+      className="flex-1 rounded-3xl bg-white border border-slate-100 px-4 pt-5 pb-6 items-center"
       style={cardShadow}
       onPress={() => onPress?.(item)}
     >
@@ -36,18 +36,27 @@ export default function HomeFollowingCard({ item, onPress }: Props) {
         />
       </View>
 
-      <Text className="mt-3 text-[15px] font-semibold text-slate-900 text-center">
-        {item.name}
-      </Text>
-
-      <View className="flex-row items-center gap-1">
+      <View className="mt-3 flex-row flex-wrap items-center justify-center">
+        <Text className="text-[15px] font-semibold text-slate-900 text-center">
+          {item.name}
+        </Text>
         {item.verified ? (
-          <Ionicons name="checkmark-circle" size={14} color="#22C55E" />
-        ) : null}
-        {item.subtitle ? (
-          <Text className="text-[11px] text-slate-500">{item.subtitle}</Text>
+          <Ionicons
+            name="checkmark-circle"
+            size={14}
+            color="#22C55E"
+            style={{ marginLeft: 6, marginTop: 1 }}
+          />
         ) : null}
       </View>
+      {item.subtitle ? (
+        <Text
+          className="mt-1 text-[11px] text-slate-500 text-center"
+          numberOfLines={1}
+        >
+          {item.subtitle}
+        </Text>
+      ) : null}
 
       <Pressable className="mt-4 flex-row items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2">
         <Ionicons name="person-add-outline" size={14} color="#0F172A" />
