@@ -22,14 +22,14 @@ import { useHome } from "../domains/home/hooks/useHome";
 import HomeNewsCarousel from "../domains/home/components/cards/HomeNewsCarousel";
 import HomeBlogCard from "../domains/home/components/cards/HomeBlogCard";
 import HomeEventCard from "../domains/home/components/cards/HomeEventCard";
-import HomeSellCard from "../domains/home/components/cards/HomeSellCard";
 import HomeFollowingCard from "../domains/home/components/cards/HomeFollowingCard";
 import {
   HomeFollowingProfile,
-  HomeSellItem,
   HomeBlogItem,
   HomeEventItem,
 } from "../domains/home/types";
+import ArtworkCard from "../domains/discover/components/cards/ArtworkCard";
+import type { Artwork } from "../domains/discover/types";
 
 type HomeScreenNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<HomeStackParamList, "HomeMain">,
@@ -41,10 +41,16 @@ export default function HomeScreen() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(96);
   const [activeKey, setActiveKey] = useState<SidebarKey>("home");
+  const [sellCardMeasuredHeight, setSellCardMeasuredHeight] = useState<
+    number | null
+  >(null);
   const { width } = useWindowDimensions();
   const { news, blogs, events, sellItems, following } = useHome();
   const highlightCardWidth = Math.min(320, Math.round(width * 0.72));
   const highlightCardHeight = Math.round(highlightCardWidth * 0.55);
+  const sellCardWidth = Math.round((width - 16 * 2 - 12) / 2);
+  const sellCardHeight = Math.round(sellCardWidth * (4 / 3) + 96);
+  const seeMoreCardHeight = sellCardMeasuredHeight ?? sellCardHeight;
   const highlights = useMemo(() => {
     const result: HighlightItem[] = [];
     const max = Math.max(blogs.length, events.length);
@@ -54,6 +60,20 @@ export default function HomeScreen() {
     }
     return result;
   }, [blogs, events]);
+  const handleSeeAllSaved = useCallback(() => {
+    navigation.navigate("Discover");
+  }, [navigation]);
+  const handleSellCardLayout = useCallback(
+    (height: number) => {
+      if (
+        !sellCardMeasuredHeight ||
+        Math.abs(height - sellCardMeasuredHeight) > 1
+      ) {
+        setSellCardMeasuredHeight(height);
+      }
+    },
+    [sellCardMeasuredHeight]
+  );
 
   const handleSidebarSelect = (key: SidebarKey | "more") => {
     setSidebarOpen(false);
@@ -130,18 +150,43 @@ export default function HomeScreen() {
           />
         </View>
 
-        <SectionHeader title="Similar to What You Recently Saved" />
+        <SectionHeader
+          title="Similar to What You Recently Saved"
+          onPressAction={handleSeeAllSaved}
+        />
         <FlatList
           data={sellItems}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }: ListRenderItemInfo<HomeSellItem>) => (
-            <HomeSellCard item={item} />
+          renderItem={({ item, index }: ListRenderItemInfo<Artwork>) => (
+            <View
+              style={{ width: sellCardWidth }}
+              onLayout={
+                index === 0
+                  ? (event) =>
+                      handleSellCardLayout(event.nativeEvent.layout.height)
+                  : undefined
+              }
+            >
+              <ArtworkCard
+                item={item}
+                onPress={() =>
+                  (navigation.navigate as any)("ArtworkDetail", { id: item.id })
+                }
+              />
+            </View>
           )}
-          numColumns={2}
-          scrollEnabled={false}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={gridContent}
-          columnWrapperStyle={gridColumns}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={horizontalContent}
+          ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
+          ListFooterComponent={
+            <View style={{ marginLeft: 12, width: sellCardWidth }}>
+              <SeeMoreCard
+                height={seeMoreCardHeight}
+                onPress={handleSeeAllSaved}
+              />
+            </View>
+          }
         />
 
         <SectionHeader title="Popular in Your Area" />
@@ -188,9 +233,11 @@ function SectionHeader({
 }: SectionHeaderProps) {
   return (
     <View className="mt-6 px-4 mb-3 flex-row items-center justify-between">
-      <Text className="text-[18px] font-semibold text-slate-900">
-        {title}
-      </Text>
+      <View className="flex-1 pr-6">
+        <Text className="text-[18px] font-semibold text-slate-900">
+          {title}
+        </Text>
+      </View>
       <Pressable onPress={onPressAction}>
         <Text className="text-[12px] font-semibold text-[#2D74ED]">
           {actionLabel}
@@ -207,4 +254,42 @@ const gridContent = {
 
 const gridColumns = {
   columnGap: 12,
+};
+
+const horizontalContent = {
+  paddingHorizontal: 16,
+  paddingBottom: 16,
+};
+
+function SeeMoreCard({
+  height,
+  onPress,
+}: {
+  height: number;
+  onPress?: () => void;
+}) {
+  return (
+    <Pressable
+      className="rounded-3xl bg-white border border-slate-100 items-center justify-center active:opacity-90"
+      style={[
+        cardShadow,
+        {
+          height,
+        },
+      ]}
+      onPress={onPress}
+    >
+      <Text className="text-[16px] font-semibold text-[#2D74ED]">
+        See More
+      </Text>
+    </Pressable>
+  );
+}
+
+const cardShadow = {
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 6 },
+  shadowOpacity: 0.05,
+  shadowRadius: 10,
+  elevation: 4,
 };

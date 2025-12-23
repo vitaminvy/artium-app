@@ -4,8 +4,8 @@ import {
   HomeEventItem,
   HomeFollowingProfile,
   HomeNewsItem,
-  HomeSellItem,
 } from "./types";
+import { discoverMockData } from "../discover/mockData";
 
 const news: HomeNewsItem[] = [
   {
@@ -60,50 +60,7 @@ const events: HomeEventItem[] = [
   },
 ];
 
-const sellItems: HomeSellItem[] = [
-  {
-    id: "sell-1",
-    title: "Belle de nuit",
-    artist: "Ernest Compta",
-    image:
-      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
-    price: "$4,000",
-    artistAvatar:
-      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80",
-    verified: true,
-  },
-  {
-    id: "sell-2",
-    title: "I've seen it",
-    artist: "Ernest Compta",
-    image:
-      "https://images.unsplash.com/photo-1472220625704-91e1462799b2?auto=format&fit=crop&w=1200&q=80",
-    price: "$4,000",
-    artistAvatar:
-      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80",
-    verified: true,
-  },
-  {
-    id: "sell-3",
-    title: "Quiet Form",
-    artist: "Aya Tan",
-    image:
-      "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80",
-    price: "$2,300",
-    artistAvatar:
-      "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=200&q=80",
-  },
-  {
-    id: "sell-4",
-    title: "Digital Bloom",
-    artist: "Mara Klein",
-    image:
-      "https://images.unsplash.com/photo-1523419400524-fc1e1cc2d6c5?auto=format&fit=crop&w=1200&q=80",
-    price: "$1,150",
-    artistAvatar:
-      "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=200&q=80",
-  },
-];
+const sellItems = discoverMockData.artworks.slice(0, 4);
 
 const following: HomeFollowingProfile[] = [
   {
