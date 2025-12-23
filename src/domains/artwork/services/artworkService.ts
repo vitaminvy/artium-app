@@ -4,7 +4,7 @@ import { ArtworkDetail } from "../types";
 import { Artwork as DiscoverArtwork } from "../../discover/types"; // Import the card's artwork type
 
 const ARTWORKS_COLLECTION = "artworks";
-const ARTISTS_COLLECTION = "artists";
+const USERS_COLLECTION = "users"; // Changed from ARTISTS_COLLECTION
 
 // --- NEW FUNCTIONS TO UPDATE METRICS ---
 
@@ -57,24 +57,24 @@ type ArtworkDoc = {
   price?: string;
 };
 
-// Helper function to get artist data
+// Helper function to get artist data (from USERS collection)
 const _getArtistById = async (id: string): Promise<ArtistData> => {
-  const artistRef = doc(firestore, ARTISTS_COLLECTION, id);
-  const artistSnap = await getDoc(artistRef);
+  const userRef = doc(firestore, USERS_COLLECTION, id);
+  const userSnap = await getDoc(userRef);
 
-  if (!artistSnap.exists()) {
+  if (!userSnap.exists()) {
     return { name: "Unknown Artist", avatar: "", verified: false };
   }
   
-  const artistData = artistSnap.data();
+  const userData = userSnap.data();
   return {
-    name: artistData.name,
-    avatar: artistData.avatar,
-    verified: artistData.verified || false,
+    name: userData.displayName || "Unknown User",
+    avatar: userData.photoURL || "",
+    verified: false, // Default to false or check userData.role === 'artist' or userData.isVerified
   };
 };
 
-// Helper to combine artworks and artists
+// Helper to combine artworks and artists (from USERS collection)
 const _combineArtworksWithArtists = async (artworksFromDB: ArtworkDoc[], defaultIsTrending: boolean = false): Promise<DiscoverArtwork[]> => {
   if (artworksFromDB.length === 0) {
     return [];
@@ -84,14 +84,14 @@ const _combineArtworksWithArtists = async (artworksFromDB: ArtworkDoc[], default
 
   let artistsMap = new Map<string, ArtistData>();
   if (artistIds.length > 0) {
-    const artistQuery = query(collection(firestore, ARTISTS_COLLECTION), where("__name__", "in", artistIds));
-    const artistSnapshots = await getDocs(artistQuery);
-    artistSnapshots.forEach(doc => {
+    const userQuery = query(collection(firestore, USERS_COLLECTION), where("__name__", "in", artistIds));
+    const userSnapshots = await getDocs(userQuery);
+    userSnapshots.forEach(doc => {
       const data = doc.data();
       artistsMap.set(doc.id, {
-        name: data.name,
-        avatar: data.avatar,
-        verified: data.verified || false,
+        name: data.displayName || "Unknown User",
+        avatar: data.photoURL || "",
+        verified: false, // Default or check data.isVerified
       });
     });
   }
