@@ -1,16 +1,23 @@
 import { useState, useEffect, useMemo } from "react";
-import { homeMockData } from "../mockData";
 import { HOME_CONSTANTS } from "../constants";
 import { getLatestBlogs, getOldestEditorialsAsNews } from "../services/blogService";
-import type { HomeBlogItem, HomeNewsItem } from "../types";
+import { getEvents } from "../../discover/services/eventService"; // Re-use from discover
+import { getTrendingArtworks } from "../../artwork/services/artworkService"; // Re-use from artwork
+import { getPopularArtists } from "../services/artistService"; // New service
+import type { HomeBlogItem, HomeNewsItem, HomeEventItem, HomeFollowingProfile } from "../types";
+import type { Artwork } from "../../discover/types";
 
 /**
  * Hook for home screen data.
- * Fetches real blog and news data, and uses mock data for other sections.
+ * Fetches real data for all sections from Firestore.
  */
 export function useHome() {
   const [blogs, setBlogs] = useState<HomeBlogItem[]>([]);
   const [news, setNews] = useState<HomeNewsItem[]>([]);
+  const [events, setEvents] = useState<HomeEventItem[]>([]);
+  const [sellItems, setSellItems] = useState<Artwork[]>([]);
+  const [following, setFollowing] = useState<HomeFollowingProfile[]>([]);
+  
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -18,13 +25,27 @@ export function useHome() {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        // Fetch real data for blogs and news in parallel
-        const [fetchedBlogs, fetchedNews] = await Promise.all([
-          getLatestBlogs(),
-          getOldestEditorialsAsNews(),
+        
+        const [
+          fetchedBlogs, 
+          fetchedNews, 
+          fetchedEvents, 
+          fetchedTrending,
+          fetchedArtists
+        ] = await Promise.all([
+          getLatestBlogs(5),
+          getOldestEditorialsAsNews(5),
+          getEvents(5).then(res => res.events), // Fetch 5 events
+          getTrendingArtworks(10), // Fetch 10 trending artworks for "Pick for You"
+          getPopularArtists(15), // Fetch 15 popular artists
         ]);
+
         setBlogs(fetchedBlogs);
         setNews(fetchedNews);
+        setEvents(fetchedEvents);
+        setSellItems(fetchedTrending);
+        setFollowing(fetchedArtists);
+
       } catch (err: any) {
         setError(err);
       } finally {
@@ -34,18 +55,12 @@ export function useHome() {
     fetchData();
   }, []);
 
-  // Continue using mock data for other sections for now
-  const events = useMemo(() => homeMockData.events, []);
-  const sellItems = useMemo(() => homeMockData.sellItems, []);
   const sellItemsPreview = useMemo(
-    () => homeMockData.sellItems.slice(0, HOME_CONSTANTS.SELL_ITEMS_PREVIEW_COUNT),
-    []
+    () => sellItems.slice(0, HOME_CONSTANTS.SELL_ITEMS_PREVIEW_COUNT),
+    [sellItems]
   );
-  const popularArtists = useMemo(() => homeMockData.following, []);
-  const following = useMemo(
-    () => homeMockData.following.slice(0, HOME_CONSTANTS.FOLLOWING_PREVIEW_COUNT),
-    []
-  );
+  
+  const popularArtists = useMemo(() => following, [following]);
 
   return {
     news,
@@ -55,8 +70,8 @@ export function useHome() {
     following,
     popularArtists,
     sellItemsPreview,
-    isLoading, // Expose loading state for UI
-    error,     // Expose error state for UI
+    isLoading,
+    error,
   };
 }
 

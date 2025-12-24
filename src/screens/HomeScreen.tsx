@@ -47,7 +47,7 @@ export default function HomeScreen() {
     number | null
   >(null);
   const { width } = useWindowDimensions();
-  const { news, blogs, events, sellItemsPreview, following, isLoading } = useHome();
+  const { news, blogs, events, sellItemsPreview, following, popularArtists, isLoading, error } = useHome();
   const { isFollowing, toggleFollow } = useProfileContext();
   const highlightCardWidth = Math.min(320, Math.round(width * 0.72));
   const highlightCardHeight = Math.round(highlightCardWidth * 0.55);
@@ -124,105 +124,111 @@ export default function HomeScreen() {
         <View className="flex-1 justify-center items-center">
           <Loader />
         </View>
-      ) : (
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
-      >
-        <View className="px-4 pt-4">
-          <HomeNewsCarousel data={news} />
+      ) : error ? (
+        <View className="flex-1 justify-center items-center p-4">
+          <Text className="text-lg text-red-500 text-center">
+            Failed to load home content. Please try again later.
+          </Text>
         </View>
+      ) : (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+        >
+          <View className="px-4 pt-4">
+            <HomeNewsCarousel data={news} />
+          </View>
 
-        <View className="mt-4">
+          <View className="mt-4">
+            <FlatList
+              data={highlights}
+              horizontal
+              keyExtractor={(item) => item.item.id}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{
+                paddingHorizontal: 16,
+                paddingBottom: 4,
+              }}
+              ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
+              renderItem={({ item }) =>
+                item.type === "blog" ? (
+                  <HomeBlogCard
+                    item={item.item}
+                    width={highlightCardWidth}
+                    height={highlightCardHeight}
+                  />
+                ) : (
+                  <HomeEventCard
+                    item={item.item}
+                    width={highlightCardWidth}
+                    height={highlightCardHeight}
+                  />
+                )
+              }
+            />
+          </View>
+
+          <SectionHeader
+            title="Pick For You"
+            onPressAction={handleSeeAllSaved}
+          />
           <FlatList
-            data={highlights}
+            data={sellItemsPreview}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item, index }: ListRenderItemInfo<Artwork>) => (
+              <View
+                style={{ width: sellCardWidth }}
+                onLayout={
+                  index === 0
+                    ? (event) =>
+                        handleSellCardLayout(event.nativeEvent.layout.height)
+                    : undefined
+                }
+              >
+                <ArtworkCard
+                  item={item}
+                  onPress={() =>
+                    (navigation.navigate as any)("ArtworkDetail", { id: item.id })
+                  }
+                />
+              </View>
+            )}
             horizontal
-            keyExtractor={(item) => item.item.id}
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingHorizontal: 16,
-              paddingBottom: 4,
-            }}
+            contentContainerStyle={horizontalContent}
             ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
-            renderItem={({ item }) =>
-              item.type === "blog" ? (
-                <HomeBlogCard
-                  item={item.item}
-                  width={highlightCardWidth}
-                  height={highlightCardHeight}
+            ListFooterComponent={
+              <View style={{ marginLeft: 12, width: sellCardWidth }}>
+                <SeeMoreCard
+                  height={seeMoreCardHeight}
+                  onPress={handleSeeAllSaved}
                 />
-              ) : (
-                <HomeEventCard
-                  item={item.item}
-                  width={highlightCardWidth}
-                  height={highlightCardHeight}
-                />
-              )
+              </View>
             }
           />
-        </View>
 
-        <SectionHeader
-          title="Pick For You"
-          onPressAction={handleSeeAllSaved}
-        />
-        <FlatList
-          data={sellItemsPreview}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item, index }: ListRenderItemInfo<Artwork>) => (
-            <View
-              style={{ width: sellCardWidth }}
-              onLayout={
-                index === 0
-                  ? (event) =>
-                      handleSellCardLayout(event.nativeEvent.layout.height)
-                  : undefined
-              }
-            >
-              <ArtworkCard
-                item={item}
-                onPress={() =>
-                  (navigation.navigate as any)("ArtworkDetail", { id: item.id })
-                }
-              />
-            </View>
-          )}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={horizontalContent}
-          ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
-          ListFooterComponent={
-            <View style={{ marginLeft: 12, width: sellCardWidth }}>
-              <SeeMoreCard
-                height={seeMoreCardHeight}
-                onPress={handleSeeAllSaved}
-              />
-            </View>
-          }
-        />
-
-        <SectionHeader
-          title="Popular in Your Area"
-          onPressAction={handleSeeAllPopular}
-        />
-        <FlatList
-          data={following}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }: ListRenderItemInfo<HomeFollowingProfile>) => (
-            <View style={{ width: followingCardWidth }}>
-              <HomeFollowingCard
-                item={item}
-                isFollowing={isFollowing(item.id)}
-                onToggleFollow={toggleFollow}
-              />
-            </View>
-          )}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={horizontalContent}
-          ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
-        />
-      </ScrollView>
+          <SectionHeader
+            title="Popular in Your Area"
+            onPressAction={handleSeeAllPopular}
+          />
+          <FlatList
+            data={following}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }: ListRenderItemInfo<HomeFollowingProfile>) => (
+              <View style={{ width: followingCardWidth }}>
+                <HomeFollowingCard
+                  item={item}
+                  isFollowing={isFollowing(item.id)}
+                  onToggleFollow={toggleFollow}
+                />
+              </View>
+            )}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={horizontalContent}
+            ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
+          />
+        </ScrollView>
       )}
 
       <Sidebar
