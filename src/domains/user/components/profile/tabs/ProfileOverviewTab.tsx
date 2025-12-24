@@ -42,7 +42,10 @@ export default function ProfileOverviewTab({
         title={PROFILE_STRINGS.momentsTitle}
         actions={[{ label: "+ Share", tone: "primary", onPress: onPressShare }]}
       >
-        <ProfileEmptyState message={PROFILE_STRINGS.momentsEmpty} />
+        <ProfileEmptyState
+          message={PROFILE_STRINGS.momentsEmpty}
+          onPress={onPressShare}
+        />
       </ProfileSection>
     </View>
   );

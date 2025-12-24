@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
   Keyboard,
@@ -9,6 +9,8 @@ import {
   TextInput,
   View,
   ViewStyle,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
@@ -24,6 +26,10 @@ import { AddressSheet } from "../domains/checkout/components/sheets/AddressSheet
 import { GuaranteeSheet } from "../domains/checkout/components/sheets/GuaranteeSheet";
 import { SummaryRow } from "../domains/checkout/components/ui/SummaryRow";
 import { useReservationTimer } from "../domains/checkout/hooks/useReservationTimer";
+
+// --- Integration Imports ---
+import { useAuth } from "../domains/auth/contexts/AuthContext";
+import { createOrder } from "../domains/checkout/services/orderService";
 
 type CheckoutRouteParams = {
   artwork?: ArtworkDetail;
@@ -50,6 +56,10 @@ export default function CheckoutScreen() {
   const route = useRoute<any>();
   const insets = useSafeAreaInsets();
   const { setHidden } = useTabBarVisibility();
+  
+  // Auth & State
+  const { currentUser } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -106,6 +116,61 @@ export default function CheckoutScreen() {
   ]
     .filter(Boolean)
     .join(", ");
+
+  // --- Handle Buy Logic ---
+  const handleBuy = async () => {
+    if (!currentUser) {
+      Alert.alert("Authentication Required", "Please log in to make a purchase.");
+      return;
+    }
+
+    if (deliveryMethod === "artium" && !hasAddress) {
+      Alert.alert("Missing Information", "Please enter a shipping address.");
+      openAddressSheet();
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Parse price from string (e.g. "USD $1,200" -> 1200)
+      // This is a temporary parse because UI passes string. 
+      // Ideally pass the raw object from previous screen.
+      const priceRaw = detail.price || "0";
+      const priceNum = parseFloat(priceRaw.replace(/[^0-9.]/g, "")) || 0;
+      
+      const result = await createOrder({
+        buyerId: currentUser.uid,
+        artwork: detail,
+        deliveryMethod,
+        shippingAddress: currentAddress,
+        amount: {
+          subtotal: priceNum,
+          shipping: 0, // TODO: Calculate real shipping
+          total: priceNum, // TODO: Add tax/shipping
+          currency: "USD",
+        },
+      });
+
+      if (result.success) {
+        Alert.alert("Order Placed!", "Thank you for your purchase.", [
+          { 
+            text: "OK", 
+            onPress: () => {
+              // Navigate to Home or Orders list
+              navigation.getParent()?.navigate("Home"); 
+            }
+          }
+        ]);
+      } else {
+        Alert.alert("Purchase Failed", result.error || "Please try again.");
+      }
+    } catch (err) {
+      Alert.alert("Error", "An unexpected error occurred.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <BottomSheetModalProvider>
@@ -316,8 +381,16 @@ export default function CheckoutScreen() {
               <Text className="text-sm text-slate-500">Total</Text>
               <Text className="text-lg font-semibold text-slate-900">-</Text>
             </View>
-            <Pressable className="rounded-full bg-[#0B73FF] px-6 py-3 active:opacity-90">
-              <Text className="text-base font-semibold text-white">Buy</Text>
+            <Pressable 
+              onPress={handleBuy}
+              disabled={isSubmitting}
+              className={`rounded-full px-6 py-3 active:opacity-90 ${isSubmitting ? "bg-slate-300" : "bg-[#0B73FF]"}`}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text className="text-base font-semibold text-white">Buy</Text>
+              )}
             </Pressable>
           </View>
         </View>

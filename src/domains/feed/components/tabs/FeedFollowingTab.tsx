@@ -6,13 +6,15 @@ import FeedPostCard from "../cards/FeedPostCard";
 
 type Props = {
   data: FeedPost[];
-  onToggleLike: (id: string) => void;
+  onToggleLike: (id: string, isCurrentlyLiked: boolean) => void | Promise<void>;
   onToggleReshare: (post: FeedPost) => void;
   onPressComment: (post: FeedPost) => void;
   onPressCard?: (post: FeedPost) => void;
   onPressImage?: (images: { uri: string }[], index: number) => void;
   scrollHandler?: any;
   isTabActive?: boolean;
+  isRefreshing?: boolean;
+  onRefresh?: () => void;
 };
 
 export default function FeedFollowingTab({
@@ -24,6 +26,8 @@ export default function FeedFollowingTab({
   onPressImage,
   scrollHandler,
   isTabActive = true,
+  isRefreshing,
+  onRefresh,
 }: Props) {
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
 
@@ -123,6 +127,8 @@ export default function FeedFollowingTab({
       showsVerticalScrollIndicator={false}
       onScroll={scrollHandler}
       scrollEventThrottle={16}
+      onRefresh={onRefresh}
+      refreshing={isRefreshing}
     />
   );
 }

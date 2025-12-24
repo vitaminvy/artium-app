@@ -13,7 +13,7 @@ import { FEED_MESSAGES } from "../../constants/messages";
 
 type Props = {
   post: FeedPost;
-  onPressLike: (id: string) => void;
+  onPressLike: (id: string, isCurrentlyLiked: boolean) => void | Promise<void>;
   onPressReshare: (post: FeedPost) => void;
   onPressComment?: (post: FeedPost) => void;
   onPressCard?: (post: FeedPost) => void;
@@ -259,7 +259,7 @@ function FeedPostCard({
       <View className="flex-row items-center gap-6 pt-1">
         <Pressable
           className="flex-row items-center gap-2"
-          onPress={() => onPressLike(post.id)}
+          onPress={() => onPressLike(post.id, post.liked ?? false)}
           hitSlop={6}
         >
           <Ionicons

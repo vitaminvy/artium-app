@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   ScrollView,
@@ -7,10 +7,14 @@ import {
   Alert,
   Keyboard,
   TextInput,
+  Modal,
+  Pressable,
+  Text,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Controller } from "react-hook-form";
 import * as ImagePicker from "expo-image-picker";
+import { Ionicons } from "@expo/vector-icons";
 import EditProfileHeader from "../domains/user/components/editProfile/EditProfileHeader";
 import EditProfileSection from "../domains/user/components/editProfile/EditProfileSection";
 import AvatarUploader from "../domains/user/components/editProfile/AvatarUploader";
@@ -38,11 +42,40 @@ export default function EditProfileScreen() {
     setValue,
     reset,
   } = useEditProfileForm(editProfile);
+  
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const pendingAction = useRef<any>(null);
+  const isSaving = useRef(false);
+
   const usernameRef = React.useRef<TextInput | null>(null);
   const firstNameRef = React.useRef<TextInput | null>(null);
   const lastNameRef = React.useRef<TextInput | null>(null);
   const phoneRef = React.useRef<TextInput | null>(null);
   const addressRef = React.useRef<TextInput | null>(null);
+
+  // Intercept back navigation
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+      if (isSaving.current || !formState.isDirty) {
+        return;
+      }
+
+      e.preventDefault();
+      pendingAction.current = e.data.action;
+      setShowExitConfirm(true);
+    });
+
+    return unsubscribe;
+  }, [navigation, formState.isDirty]);
+
+  const handleConfirmExit = () => {
+    setShowExitConfirm(false);
+    if (pendingAction.current) {
+      navigation.dispatch(pendingAction.current);
+    } else {
+      navigation.goBack();
+    }
+  };
 
   const pickImage = async () => {
     try {
@@ -74,12 +107,17 @@ export default function EditProfileScreen() {
   };
 
   const onSave = submit(async (values) => {
-    // TODO: replace with API call
-    await new Promise((res) => setTimeout(res, 500));
-    updateProfile(values);
-    Alert.alert("Profile saved", "Your changes have been saved.");
-    reset(values);
-    navigation.goBack();
+    try {
+      await updateProfile(values);
+      reset(values);
+      isSaving.current = true;
+      Alert.alert("Profile saved", "Your changes have been saved.");
+      navigation.goBack();
+    } catch (error) {
+      console.error("Save profile error:", error);
+      Alert.alert("Error", "Failed to save profile changes.");
+      isSaving.current = false;
+    }
   });
 
   return (
@@ -173,6 +211,56 @@ export default function EditProfileScreen() {
           </EditProfileSection>
         </ScrollView>
       </View>
+
+      {/* Exit Confirmation Modal */}
+      <Modal
+        visible={showExitConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowExitConfirm(false)}
+      >
+        <View className="flex-1 bg-black/40 items-center justify-center px-6">
+          <View className="w-full rounded-[28px] bg-white p-6">
+            <View className="flex-row justify-end">
+              <Pressable
+                onPress={() => setShowExitConfirm(false)}
+                hitSlop={12}
+                className="h-10 w-10 items-center justify-center rounded-full"
+              >
+                <Ionicons name="close" size={22} color="#0F172A" />
+              </Pressable>
+            </View>
+
+            <View className="mt-2 mb-5">
+              <Text className="text-2xl font-bold text-slate-900 text-center">
+                Discard changes?
+              </Text>
+              <Text className="mt-3 text-base text-slate-500 text-center">
+                You have unsaved changes. Are you sure you want to discard them?
+              </Text>
+            </View>
+
+            <View className="gap-3">
+              <Pressable
+                onPress={handleConfirmExit}
+                className="rounded-full border border-rose-500 py-3 items-center active:opacity-80"
+              >
+                <Text className="text-base font-semibold text-rose-500">
+                  Discard changes
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setShowExitConfirm(false)}
+                className="rounded-full border border-slate-200 py-3 items-center active:opacity-80"
+              >
+                <Text className="text-base font-semibold text-slate-700">
+                  Keep editing
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }

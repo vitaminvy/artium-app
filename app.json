@@ -14,10 +14,12 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ngovanthinh.artium.dev",
+      "bundleIdentifier": "com.ngovanthinh.artium.dev", 
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera to take photos and videos for your posts.",
+        "NSPhotoLibraryUsageDescription": "The app accesses your photos to let you share them with your friends and upload artwork."
       }
     },
     "android": {
@@ -40,7 +42,13 @@
       "expo-web-browser",
       "expo-secure-store",
       "expo-video",
-      "expo-image-picker",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow this app to access your camera",
+          "photosPermission": "Allow this app to access your photos"
+        }
+      ],
       [
         "@react-native-google-signin/google-signin",
         {

@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "artium-intro"
-  }
+    "default": "artium-intro",
+    "dev": "euphoric-axon-480911-m6"
+  },
+  "targets": {},
+  "etags": {}
 }
