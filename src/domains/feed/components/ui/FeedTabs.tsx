@@ -6,18 +6,21 @@ import { FeedTab } from "../../types";
 type Props = {
   tab: FeedTab;
   onChange: (tab: FeedTab) => void;
+  tabs?: FeedTab[];
 };
 
 type TabLayout = { x: number; width: number };
 
-function FeedTabs({ tab, onChange }: Props) {
+const TAB_LABELS: Record<FeedTab, string> = {
+  explore: FEED_STRINGS.TAB_EXPLORE,
+  following: FEED_STRINGS.TAB_FOLLOWING,
+  myFeed: "My Feed",
+};
+
+function FeedTabs({ tab, onChange, tabs: tabKeys = ['explore', 'following'] }: Props) {
   const tabs = useMemo(
-    () =>
-      [
-        { key: "explore", label: FEED_STRINGS.TAB_EXPLORE },
-        { key: "following", label: FEED_STRINGS.TAB_FOLLOWING },
-      ] as const,
-    []
+    () => tabKeys.map(key => ({ key, label: TAB_LABELS[key] })),
+    [tabKeys]
   );
 
   const [layouts, setLayouts] = useState<Partial<Record<FeedTab, TabLayout>>>({});

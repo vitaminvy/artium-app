@@ -10,67 +10,68 @@ import {
   increment,
   setDoc,
   deleteDoc,
-  getDoc,
-  where,
   limit,
   Timestamp,
-  onSnapshot
+  onSnapshot,
+  startAfter,
+  QueryDocumentSnapshot,
+  DocumentData,
+  getDoc
 } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 import { FeedPost, FeedComment } from "../types";
 
 const POSTS_COLLECTION = "posts";
 
+export type PaginatedPostsResult = {
+  posts: FeedPost[];
+  lastVisible: QueryDocumentSnapshot<DocumentData> | null;
+};
+
 /**
- * Lắng nghe thay đổi bảng tin Real-time
+ * Fetches a paginated list of posts.
  */
-export const subscribeToFeedPosts = (
-  onUpdate: (posts: FeedPost[]) => void,
-  onError: (error: Error) => void,
-  currentUserId: string | null
-) => {
-  const q = query(
-    collection(firestore, POSTS_COLLECTION),
-    orderBy("createdAt", "desc"),
-    limit(50)
-  );
+export const getFeedPosts = async (
+  pageSize: number,
+  lastVisible: QueryDocumentSnapshot<DocumentData> | null = null
+): Promise<PaginatedPostsResult> => {
+  try {
+    const q = lastVisible
+      ? query(collection(firestore, POSTS_COLLECTION), orderBy("createdAt", "desc"), startAfter(lastVisible), limit(pageSize))
+      : query(collection(firestore, POSTS_COLLECTION), orderBy("createdAt", "desc"), limit(pageSize));
 
-  return onSnapshot(q, async (snapshot) => {
-    try {
-      const posts = await Promise.all(snapshot.docs.map(async (postDoc) => {
-        const data = postDoc.data();
-        
-        // Kiểm tra xem user hiện tại đã like bài này chưa
-        let liked = false;
-        if (currentUserId) {
-          const likeDoc = await getDoc(doc(firestore, POSTS_COLLECTION, postDoc.id, "likes", currentUserId));
-          liked = likeDoc.exists();
-        }
+    const snapshot = await getDocs(q);
+    const posts = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        author: data.authorSnapshot,
+        createdAt: (data.createdAt as Timestamp)?.toMillis() || Date.now(),
+      } as FeedPost;
+    });
 
-        return {
-          id: postDoc.id,
-          ...data,
-          author: data.authorSnapshot, // Map snapshot to UI author
-          liked,
-          createdAt: (data.createdAt as Timestamp)?.toMillis() || Date.now(),
-        } as FeedPost;
-      }));
-      onUpdate(posts);
-    } catch (err: any) {
-      onError(err);
-    }
-  }, (err) => onError(err));
+    return {
+      posts,
+      lastVisible: snapshot.docs[snapshot.docs.length - 1] || null,
+    };
+  } catch (error) {
+    console.error("Error getting feed posts:", error);
+    throw error;
+  }
 };
 
 /**
  * Toggle Like cho bài viết
  */
-export const togglePostLike = async (postId: string, userId: string, isCurrentlyLiked: boolean) => {
+export const togglePostLike = async (postId: string, userId: string) => {
   const postRef = doc(firestore, POSTS_COLLECTION, postId);
   const likeRef = doc(postRef, "likes", userId);
 
+  const likeDoc = await getDoc(likeRef);
+  
   try {
-    if (isCurrentlyLiked) {
+    if (likeDoc.exists()) {
       await deleteDoc(likeRef);
       await updateDoc(postRef, { "metrics.likes": increment(-1) });
     } else {
@@ -82,6 +83,7 @@ export const togglePostLike = async (postId: string, userId: string, isCurrently
     throw error;
   }
 };
+
 
 /**
  * Đăng bài viết mới (Moment)

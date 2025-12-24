@@ -34,7 +34,7 @@ import Loader from "../shared/components/Loader";
 export default function FeedScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<FeedStackParamList>>();
-  const { currentUser: user } = useAuth(); // Get the authenticated user
+  const { currentUser: user } = useAuth();
   const {
     tab,
     setTab,
@@ -44,6 +44,10 @@ export default function FeedScreen() {
     onRefresh,
     explorePosts,
     followingPosts,
+    myPosts, // Add this
+    loadMorePosts,
+    hasMorePosts,
+    isMorePostsLoading,
     toggleLike,
     createReshare,
     commentsByPost,
@@ -83,7 +87,7 @@ export default function FeedScreen() {
 
   const submitReshare = React.useCallback((note: string) => {
     if (!selectedPost) return;
-    createReshare(selectedPost.id, note);
+    createReshare(selectedPost, note); // Pass the full post object
     closeReshare();
   }, [closeReshare, createReshare, selectedPost]);
 
@@ -167,25 +171,47 @@ export default function FeedScreen() {
         <View style={{ flex: 1, display: tab === "explore" ? "flex" : "none" }}>
           <FeedExploreTab
             data={explorePosts}
-            onToggleLike={toggleLike}
+            onToggleLike={(id: string) => toggleLike(id)}
             onToggleReshare={openReshare}
             onPressComment={openComments}
             onPressCard={openDetail}
             onPressImage={handleOpenViewer}
             scrollHandler={scrollHandler}
             isTabActive={tab === "explore"}
+            onEndReached={loadMorePosts}
+            isFetchingNextPage={isMorePostsLoading}
+            onRefresh={onRefresh}
+            isRefreshing={isRefreshing}
           />
         </View>
         <View style={{ flex: 1, display: tab === "following" ? "flex" : "none" }}>
           <FeedFollowingTab
             data={followingPosts}
-            onToggleLike={toggleLike}
+            onToggleLike={(id: string) => toggleLike(id)}
             onToggleReshare={openReshare}
             onPressComment={openComments}
             onPressCard={openDetail}
             onPressImage={handleOpenViewer}
             scrollHandler={scrollHandler}
             isTabActive={tab === "following"}
+            onRefresh={onRefresh}
+            isRefreshing={isRefreshing}
+          />
+        </View>
+        <View style={{ flex: 1, display: tab === "myFeed" ? "flex" : "none" }}>
+          <FeedExploreTab
+            data={myPosts}
+            onToggleLike={(id: string) => toggleLike(id)}
+            onToggleReshare={openReshare}
+            onPressComment={openComments}
+            onPressCard={openDetail}
+            onPressImage={handleOpenViewer}
+            scrollHandler={scrollHandler}
+            isTabActive={tab === "myFeed"}
+            onEndReached={loadMorePosts} // Or a new function if my feed has separate pagination
+            isFetchingNextPage={isMorePostsLoading}
+            onRefresh={onRefresh}
+            isRefreshing={isRefreshing}
           />
         </View>
       </View>
@@ -205,7 +231,7 @@ export default function FeedScreen() {
       />
 
       <Animated.View style={[{ overflow: "hidden" }, tabAnimatedStyle]}>
-        <FeedTabs tab={tab} onChange={setTab} />
+        <FeedTabs tab={tab} onChange={setTab} tabs={['explore', 'following', 'myFeed']} />
       </Animated.View>
 
       {renderContent()}

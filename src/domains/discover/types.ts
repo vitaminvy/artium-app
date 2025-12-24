@@ -38,7 +38,7 @@ export type EventItem = {
   id: string;
   title: string;
   location: string;
-  datetime: string; // ISO string
+  startDate: string; // ISO string
   image: string;
   attendees?: number;
   status?: "ongoing" | "upcoming";
