@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { EventItem } from "../../../discover/types";
@@ -21,7 +21,6 @@ type Props = {
   onChangeDate: (value: EventSortOption) => void;
   query: string;
   onChangeQuery: (value: string) => void;
-  onPageChange?: () => void;
 };
 
 const PAGE_SIZE = 8;
@@ -39,45 +38,27 @@ function DiscoverEventsSection({
   onChangeDate,
   query,
   onChangeQuery,
-  onPageChange,
 }: Props) {
-  const [page, setPage] = useState(1);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const total = events.length;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const didMount = useRef(false);
 
+  // Reset visible count when filters change
   useEffect(() => {
-    setPage(1);
+    setVisibleCount(PAGE_SIZE);
   }, [query, statusValue.id, typeValue.id, dateValue.id]);
 
-  useEffect(() => {
-    if (page > totalPages) {
-      setPage(totalPages);
-    }
-  }, [page, totalPages]);
+  // Calculate visible events
+  const visibleEvents = useMemo(() => {
+    return events.slice(0, visibleCount);
+  }, [events, visibleCount]);
 
-  useEffect(() => {
-    if (didMount.current) {
-      onPageChange?.();
-    } else {
-      didMount.current = true;
-    }
-  }, [page, onPageChange]);
+  // Check if there are more events to load
+  const hasMore = visibleCount < total;
 
-  const pageEvents = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return events.slice(start, start + PAGE_SIZE);
-  }, [events, page]);
-
-  const pageRange = useMemo(() => {
-    if (totalPages <= 5) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
-    }
-    return [1, 2, totalPages - 1, totalPages];
-  }, [totalPages]);
-
-  const startItem = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const endItem = Math.min(page * PAGE_SIZE, total);
+  // Load more events
+  const handleLoadMore = () => {
+    setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, total));
+  };
 
   return (
     <View className="rounded-3xl border border-slate-200 bg-white p-5">
@@ -122,7 +103,7 @@ function DiscoverEventsSection({
       <View className="mt-2">
         {events.length ? (
           <View className="gap-4">
-            {pageEvents.map((event) => (
+            {visibleEvents.map((event) => (
               <EventCard key={event.id} item={event} />
             ))}
           </View>
@@ -137,76 +118,20 @@ function DiscoverEventsSection({
       {events.length ? (
         <View className="mt-5 items-center gap-3">
           <Text className="text-[12px] text-slate-500">
-            {startItem}-{endItem} of {total}
+            Showing {visibleCount} of {total} events
           </Text>
-          <View className="flex-row items-center gap-3">
-            <Pressable
-              onPress={() => setPage((prev) => Math.max(prev - 1, 1))}
-              disabled={page === 1}
-              className={`h-9 w-9 items-center justify-center rounded-full border ${
-                page === 1 ? "border-slate-100" : "border-slate-200"
-              }`}
-            >
-              <Ionicons
-                name="arrow-back"
-                size={16}
-                color={page === 1 ? "#CBD5F5" : "#0F172A"}
-              />
-            </Pressable>
 
-            <View className="flex-row items-center gap-2">
-              {pageRange.map((pageNumber, index) => {
-                if (
-                  totalPages > 5 &&
-                  index > 0 &&
-                  pageNumber - pageRange[index - 1] > 1
-                ) {
-                  return (
-                    <Text
-                      key={`dots-${pageNumber}`}
-                      className="text-[12px] text-slate-400"
-                    >
-                      ...
-                    </Text>
-                  );
-                }
-                const isActive = pageNumber === page;
-                return (
-                  <Pressable
-                    key={pageNumber}
-                    onPress={() => setPage(pageNumber)}
-                    className={`h-9 w-9 items-center justify-center rounded-full ${
-                      isActive ? "bg-slate-900" : "bg-transparent"
-                    }`}
-                  >
-                    <Text
-                      className={`text-[13px] font-semibold ${
-                        isActive ? "text-white" : "text-slate-600"
-                      }`}
-                    >
-                      {pageNumber}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
+          {hasMore && (
             <Pressable
-              onPress={() =>
-                setPage((prev) => Math.min(prev + 1, totalPages))
-              }
-              disabled={page === totalPages}
-              className={`h-9 w-9 items-center justify-center rounded-full border ${
-                page === totalPages ? "border-slate-100" : "border-slate-200"
-              }`}
+              onPress={handleLoadMore}
+              className="flex-row items-center gap-2 rounded-full bg-slate-900 px-6 py-3"
             >
-              <Ionicons
-                name="arrow-forward"
-                size={16}
-                color={page === totalPages ? "#CBD5F5" : "#0F172A"}
-              />
+              <Text className="text-[14px] font-semibold text-white">
+                Show More
+              </Text>
+              <Ionicons name="chevron-down" size={16} color="#fff" />
             </Pressable>
-          </View>
+          )}
         </View>
       ) : null}
     </View>

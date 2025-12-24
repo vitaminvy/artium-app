@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { NativeScrollEvent, NativeSyntheticEvent, ScrollView, View } from "react-native";
+import { NativeScrollEvent, NativeSyntheticEvent, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
@@ -20,7 +21,7 @@ export default function EventScreen() {
   const navigation = useNavigation<NavigationProp>();
   const items = useSidebarItems();
   const { height: tabBarHeight, setHidden } = useTabBarVisibility();
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<KeyboardAwareScrollView>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(96);
   const [activeKey, setActiveKey] = useState<SidebarKey>("events");
@@ -109,14 +110,6 @@ export default function EventScreen() {
   };
 
   const handleCreateEvent = () => {};
-  const handleDiscoverPageChange = useCallback(() => {
-    requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({
-        y: lastOffset.current,
-        animated: false,
-      });
-    });
-  }, []);
 
   return (
     <View className="flex-1 bg-white">
@@ -132,7 +125,7 @@ export default function EventScreen() {
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
       />
 
-      <ScrollView
+      <KeyboardAwareScrollView
         ref={scrollRef}
         className="flex-1"
         contentContainerStyle={{
@@ -145,6 +138,10 @@ export default function EventScreen() {
         onScroll={handleScroll}
         scrollEventThrottle={16}
         keyboardShouldPersistTaps="handled"
+        enableOnAndroid={true}
+        enableAutomaticScroll={true}
+        extraScrollHeight={20}
+        extraHeight={150}
       >
         <EventsHostingSection
           events={hostingEvents}
@@ -182,9 +179,8 @@ export default function EventScreen() {
           onChangeDate={setDiscoverDateSort}
           query={discoverQuery}
           onChangeQuery={setDiscoverQuery}
-          onPageChange={handleDiscoverPageChange}
         />
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       <Sidebar
         visible={sidebarOpen}
