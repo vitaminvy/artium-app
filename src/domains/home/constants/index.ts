@@ -1,0 +1,26 @@
+// Home domain constants
+
+// Preview/pagination limits
+export const HOME_CONSTANTS = {
+  SELL_ITEMS_PREVIEW_COUNT: 4,
+  FOLLOWING_PREVIEW_COUNT: 6,
+  NEWS_CAROUSEL_INTERVAL: 4500, // 4.5 seconds
+  NEWS_CARD_ASPECT_RATIO: 0.6, // height = width * 0.6
+  BLOG_CARD_DEFAULT_HEIGHT: 132,
+  BLOG_CARD_DEFAULT_WIDTH: 260,
+  EVENT_CARD_ASPECT_RATIO: 0.9,
+} as const;
+
+// Colors used in home components
+export const HOME_COLORS = {
+  SHADOW: "#000",
+  FOLLOW_BORDER: "#E2E8F0",
+  FOLLOWING_BORDER: "#CBD5E1",
+  FOLLOW_BG: "#F8FAFC",
+  FOLLOWING_BG: "#F8FAFC",
+  VERIFIED_BADGE: "#22C55E",
+  TEXT_PRIMARY: "#0F172A",
+  TEXT_SECONDARY: "#64748B",
+  BORDER: "#E2E8F0",
+  WHITE: "#FFFFFF",
+} as const;

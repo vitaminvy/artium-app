@@ -29,7 +29,10 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.artium"
+      "package": "com.anonymous.artium",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -55,8 +58,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "6481e52d-f627-4420-bce1-04fac3d9c7e7"
+        "projectId": "3ae1cd62-cd3f-4d9a-a952-c4810039109b"
       }
-    }
+    },
+    "owner": "huxtriss-organization"
   }
 }
