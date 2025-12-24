@@ -13,12 +13,21 @@ const cardShadow = {
   elevation: 4,
 };
 
+type RsvpStatus = "none" | "going" | "maybe" | "notGoing";
+
 type Props = {
   item: EventItem;
   onPress?: () => void;
+  rsvpStatus?: RsvpStatus;
+  onRsvpChange?: (status: RsvpStatus) => void;
 };
 
-export default function EventCard({ item, onPress }: Props) {
+export default function EventCard({
+  item,
+  onPress,
+  rsvpStatus,
+  onRsvpChange,
+}: Props) {
   const date = useMemo(() => new Date(item.datetime), [item.datetime]);
   const month = date.toLocaleString("en-US", { month: "short" });
   const day = date.getDate();
@@ -33,9 +42,12 @@ export default function EventCard({ item, onPress }: Props) {
   const attendeeLabel = item.attendees
     ? `${item.attendees} attendee${item.attendees === 1 ? "" : "s"}`
     : undefined;
-  const [rsvp, setRsvp] = useState<"none" | "going" | "maybe" | "notGoing">(
-    "none"
-  );
+  const [rsvp, setRsvp] = useState<RsvpStatus>(rsvpStatus ?? "none");
+  React.useEffect(() => {
+    if (rsvpStatus !== undefined && rsvpStatus !== rsvp) {
+      setRsvp(rsvpStatus);
+    }
+  }, [rsvpStatus, rsvp]);
   const [showMenu, setShowMenu] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -182,7 +194,9 @@ export default function EventCard({ item, onPress }: Props) {
                     idx < 2 ? "border-b border-slate-100" : ""
                   }`}
                   onPress={() => {
-                    setRsvp(opt.key as any);
+                    const next = opt.key as RsvpStatus;
+                    setRsvp(next);
+                    onRsvpChange?.(next);
                     setShowMenu(false);
                   }}
                 >

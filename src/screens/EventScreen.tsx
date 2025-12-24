@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { NativeScrollEvent, NativeSyntheticEvent, View } from "react-native";
+import { NativeScrollEvent, NativeSyntheticEvent, View, Text } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -14,6 +14,7 @@ import EventsHostingSection from "../domains/events/components/sections/EventsHo
 import YourEventsSection from "../domains/events/components/sections/YourEventsSection";
 import DiscoverEventsSection from "../domains/events/components/sections/DiscoverEventsSection";
 import EventHeader from "../domains/events/components/ui/EventHeader";
+import CreateEventModal from "../domains/events/components/modals/CreateEventModal";
 
 type NavigationProp = NativeStackNavigationProp<HomeStackParamList, "Events">;
 
@@ -25,12 +26,22 @@ export default function EventScreen() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(96);
   const [activeKey, setActiveKey] = useState<SidebarKey>("events");
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const lastOffset = useRef(0);
+  const yourLayoutRef = useRef<{ y: number; height: number }>({
+    y: 0,
+    height: 0,
+  });
+  const toastTimer = useRef<NodeJS.Timeout | null>(null);
 
   const {
     hostingEvents,
     yourEvents,
     discoverEvents,
+    addHostedEvent,
+    getRsvpStatus,
+    setRsvpStatus,
     hostingSortOptions,
     hostingSort,
     setHostingSort,
@@ -64,6 +75,9 @@ export default function EventScreen() {
   useEffect(
     () => () => {
       setHidden(false);
+      if (toastTimer.current) {
+        clearTimeout(toastTimer.current);
+      }
     },
     [setHidden]
   );
@@ -109,7 +123,42 @@ export default function EventScreen() {
     if (key === "events") return;
   };
 
-  const handleCreateEvent = () => {};
+  const handleCreateEvent = () => {
+    setShowCreateEvent(true);
+  };
+
+  const handleRsvpChange = useCallback(
+    (id: string, status: "none" | "going" | "maybe" | "notGoing") => {
+      setRsvpStatus(id, status);
+      if (toastTimer.current) {
+        clearTimeout(toastTimer.current);
+      }
+      setToastMessage("Updated successfully");
+      toastTimer.current = setTimeout(() => setToastMessage(null), 1200);
+    },
+    [setRsvpStatus]
+  );
+
+  const handleYourLayout = useCallback(
+    (layout: { x: number; y: number; width: number; height: number }) => {
+      const prev = yourLayoutRef.current;
+      yourLayoutRef.current = { y: layout.y, height: layout.height };
+      const delta = layout.height - prev.height;
+      if (!delta) return;
+      // Only adjust if user is scrolled past the Your Events block to prevent upward jump
+      if (lastOffset.current > layout.y && scrollRef.current) {
+        const nextOffset = lastOffset.current + delta;
+        if (typeof (scrollRef.current as any).scrollTo === "function") {
+          (scrollRef.current as any).scrollTo({ y: nextOffset, animated: false });
+          lastOffset.current = nextOffset;
+        } else if (typeof (scrollRef.current as any).scrollToPosition === "function") {
+          (scrollRef.current as any).scrollToPosition(0, nextOffset, false);
+          lastOffset.current = nextOffset;
+        }
+      }
+    },
+    []
+  );
 
   return (
     <View className="flex-1 bg-white">
@@ -164,6 +213,9 @@ export default function EventScreen() {
           onChangeDate={setYourDateSort}
           query={yourQuery}
           onChangeQuery={setYourQuery}
+          getRsvpStatus={getRsvpStatus}
+          onChangeRsvp={handleRsvpChange}
+          onLayout={handleYourLayout}
         />
 
         <DiscoverEventsSection
@@ -179,6 +231,8 @@ export default function EventScreen() {
           onChangeDate={setDiscoverDateSort}
           query={discoverQuery}
           onChangeQuery={setDiscoverQuery}
+          getRsvpStatus={getRsvpStatus}
+          onChangeRsvp={handleRsvpChange}
         />
       </KeyboardAwareScrollView>
 
@@ -190,6 +244,30 @@ export default function EventScreen() {
         activeKey={activeKey}
         items={items}
       />
+
+      <CreateEventModal
+        visible={showCreateEvent}
+        typeOptions={typeOptions}
+        onClose={() => setShowCreateEvent(false)}
+        onCreate={(event) => {
+          addHostedEvent(event);
+          setShowCreateEvent(false);
+        }}
+      />
+
+      {toastMessage ? (
+        <View
+          pointerEvents="none"
+          className="absolute left-0 right-0 items-center"
+          style={{ bottom: 24 + tabBarHeight }}
+        >
+          <View className="px-4 py-2 rounded-full bg-black/80">
+            <Text className="text-[13px] font-semibold text-white">
+              {toastMessage}
+            </Text>
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }

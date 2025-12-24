@@ -10,6 +10,11 @@ export type EventFilterOption = {
   label: string;
 };
 
+export type TimeZoneOption = {
+  id: string;
+  label: string;
+};
+
 export type EventsMockData = {
   hostingEvents: EventItem[];
   yourEvents: EventItem[];

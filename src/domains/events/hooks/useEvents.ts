@@ -1,13 +1,16 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import type { EventItem } from "../../discover/types";
 import type { EventFilterOption, EventSortOption } from "../types";
+
 import {
   eventsMockData,
   HOSTING_SORT_OPTIONS,
   EVENT_STATUS_OPTIONS,
   EVENT_TYPE_OPTIONS,
 } from "../mockData";
+
+type RsvpStatus = "none" | "going" | "maybe" | "notGoing";
 
 const filterByQuery = (events: EventItem[], query: string) => {
   const trimmed = query.trim().toLowerCase();
@@ -69,6 +72,9 @@ type UseEventsResult = {
   hostingEvents: EventItem[];
   yourEvents: EventItem[];
   discoverEvents: EventItem[];
+  addHostedEvent: (event: EventItem) => void;
+  getRsvpStatus: (id: string) => RsvpStatus;
+  setRsvpStatus: (id: string, status: RsvpStatus) => void;
   hostingSortOptions: EventSortOption[];
   hostingSort: EventSortOption;
   setHostingSort: (option: EventSortOption) => void;
@@ -97,8 +103,11 @@ export function useEvents(): UseEventsResult {
   const [hostingSort, setHostingSort] = useState<EventSortOption>(
     HOSTING_SORT_OPTIONS[0]
   );
+  const [hostingItems, setHostingItems] = useState<EventItem[]>(
+    eventsMockData.hostingEvents
+  );
   const [yourStatus, setYourStatus] = useState<EventFilterOption>(
-    EVENT_STATUS_OPTIONS[1]
+    EVENT_STATUS_OPTIONS[0]
   );
   const [yourType, setYourType] = useState<EventFilterOption>(
     EVENT_TYPE_OPTIONS[0]
@@ -106,6 +115,7 @@ export function useEvents(): UseEventsResult {
   const [yourDateSort, setYourDateSort] = useState<EventSortOption>(
     HOSTING_SORT_OPTIONS[0]
   );
+  const [rsvpMap, setRsvpMap] = useState<Record<string, RsvpStatus>>({});
   const [discoverStatus, setDiscoverStatus] = useState<EventFilterOption>(
     EVENT_STATUS_OPTIONS[0]
   );
@@ -119,20 +129,8 @@ export function useEvents(): UseEventsResult {
   const [discoverQuery, setDiscoverQuery] = useState("");
 
   const hostingEvents = useMemo(
-    () => sortEvents(eventsMockData.hostingEvents, hostingSort),
-    [hostingSort]
-  );
-
-  const yourEvents = useMemo(
-    () =>
-      applyFilters(
-        eventsMockData.yourEvents,
-        yourQuery,
-        yourStatus,
-        yourType,
-        yourDateSort
-      ),
-    [yourQuery, yourStatus, yourType, yourDateSort]
+    () => sortEvents(hostingItems, hostingSort),
+    [hostingItems, hostingSort]
   );
 
   const discoverEvents = useMemo(
@@ -147,10 +145,38 @@ export function useEvents(): UseEventsResult {
     [discoverQuery, discoverStatus, discoverType, discoverDateSort]
   );
 
+  const yourEvents = useMemo(() => {
+    const selected = eventsMockData.discoverEvents.filter((event) => {
+      const status = rsvpMap[event.id] ?? "none";
+      return status !== "none";
+    });
+    return applyFilters(
+      selected,
+      yourQuery,
+      yourStatus,
+      yourType,
+      yourDateSort
+    );
+  }, [rsvpMap, yourQuery, yourStatus, yourType, yourDateSort]);
+
+  const getRsvpStatus = useCallback(
+    (id: string): RsvpStatus => rsvpMap[id] ?? "none",
+    [rsvpMap]
+  );
+
+  const setRsvpStatus = useCallback((id: string, status: RsvpStatus) => {
+    setRsvpMap((prev) => ({ ...prev, [id]: status }));
+  }, []);
+
   return {
     hostingEvents,
     yourEvents,
     discoverEvents,
+    addHostedEvent: (event: EventItem) => {
+      setHostingItems((prev) => [event, ...prev]);
+    },
+    getRsvpStatus,
+    setRsvpStatus,
     hostingSortOptions: HOSTING_SORT_OPTIONS,
     hostingSort,
     setHostingSort,

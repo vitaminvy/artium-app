@@ -10,32 +10,29 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 type OptionBase = {
   id: string;
   label: string;
 };
 
 type Props<T extends OptionBase> = {
-  value: T;
+  value: T[];
   options: T[];
-  onChange: (option: T) => void;
-  variant?: "field" | "pill";
+  onChange: (next: T[]) => void;
   placeholder?: string;
   searchable?: boolean;
   searchPlaceholder?: string;
-  showCheckbox?: boolean;
   offset?: number;
 };
 
-export default function SelectSheet<T extends OptionBase>({
+export default function MultiSelectSheet<T extends OptionBase>({
   value,
   options,
   onChange,
-  variant = "field",
-  placeholder,
-  searchable = false,
+  placeholder = "Select",
+  searchable = true,
   searchPlaceholder = "Search...",
-  showCheckbox = false,
   offset,
 }: Props<T>) {
   const insets = useSafeAreaInsets();
@@ -51,12 +48,13 @@ export default function SelectSheet<T extends OptionBase>({
   const triggerRef = useRef<View>(null);
 
   const displayLabel = useMemo(() => {
-    if (placeholder && value.id === "all") return placeholder;
-    return value.label;
-  }, [placeholder, value.id, value.label]);
+    if (value.length === 0) return placeholder;
+    if (value.length === 1) return value[0].label;
+    return `${value.length} selected`;
+  }, [value, placeholder]);
 
   const bottomInset = Math.max(insets.bottom, 16);
-  const dropdownOffset = offset ?? 26;
+  const dropdownOffset = offset ?? 12;
   const topCandidate = anchor.y + anchor.height + dropdownOffset;
   const availableBelow = height - topCandidate - bottomInset;
   const dropdownTop = topCandidate;
@@ -71,64 +69,40 @@ export default function SelectSheet<T extends OptionBase>({
     );
   }, [options, query, searchable]);
 
+  const toggleOption = (option: T) => {
+    const exists = value.some((item) => item.id === option.id);
+    if (exists) {
+      onChange(value.filter((item) => item.id !== option.id));
+    } else {
+      onChange([...value, option]);
+    }
+  };
+
   return (
     <View>
-      {variant === "pill" ? (
-        <Pressable
-          ref={triggerRef}
-          onPress={() => {
-            if (triggerRef.current) {
-              triggerRef.current.measureInWindow((x, y, w, h) => {
-                setAnchor({ x, y, width: w, height: h });
-                setOpen(true);
-              });
-            } else {
+      <Pressable
+        ref={triggerRef}
+        onPress={() => {
+          if (triggerRef.current) {
+            triggerRef.current.measureInWindow((x, y, w, h) => {
+              setAnchor({ x, y, width: w, height: h });
               setOpen(true);
-            }
-          }}
-          className="flex-row items-center gap-2 rounded-full border px-4 py-2"
-          style={{
-            borderColor: value.id !== "all" ? "#0B73FF" : "#E2E8F0",
-            backgroundColor: "#FFFFFF",
-          }}
-        >
-          <Text
-            className="text-[12px] font-semibold"
-            style={{ color: value.id !== "all" ? "#0B73FF" : "#0F172A" }}
-          >
-            {displayLabel}
-          </Text>
-          <Ionicons
-            name={open ? "chevron-up-outline" : "chevron-down-outline"}
-            size={14}
-            color={value.id !== "all" ? "#0B73FF" : "#0F172A"}
-          />
-        </Pressable>
-      ) : (
-        <Pressable
-          ref={triggerRef}
-          onPress={() => {
-            if (triggerRef.current) {
-              triggerRef.current.measureInWindow((x, y, w, h) => {
-                setAnchor({ x, y, width: w, height: h });
-                setOpen(true);
-              });
-            } else {
-              setOpen(true);
-            }
-          }}
-          className="flex-row items-center justify-between rounded-full border border-slate-200 bg-white px-4 py-3"
-        >
-          <Text className="text-[13px] font-semibold text-slate-800">
-            {displayLabel}
-          </Text>
-          <Ionicons
-            name={open ? "chevron-up-outline" : "chevron-down-outline"}
-            size={16}
-            color="#0F172A"
-          />
-        </Pressable>
-      )}
+            });
+          } else {
+            setOpen(true);
+          }
+        }}
+        className="flex-row items-center justify-between rounded-full border border-slate-200 bg-white px-4 py-3"
+      >
+        <Text className="text-[13px] font-semibold text-slate-800">
+          {displayLabel}
+        </Text>
+        <Ionicons
+          name={open ? "chevron-up-outline" : "chevron-down-outline"}
+          size={16}
+          color="#0F172A"
+        />
+      </Pressable>
 
       <Modal
         visible={open}
@@ -150,10 +124,7 @@ export default function SelectSheet<T extends OptionBase>({
           <View
             className="absolute rounded-2xl border border-slate-200 bg-white shadow-lg"
             style={{
-              left: Math.min(
-                Math.max(anchor.x, 16),
-                width - anchor.width - 16
-              ),
+              left: Math.min(Math.max(anchor.x, 16), width - anchor.width - 16),
               top: dropdownTop,
               width: Math.min(anchor.width, width - 32),
               maxHeight,
@@ -177,20 +148,17 @@ export default function SelectSheet<T extends OptionBase>({
                 </View>
               </View>
             ) : null}
+
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingVertical: 4 }}
             >
-              {(searchable ? filteredOptions : options).map((option, index) => {
-                const isActive = option.id === value.id;
+              {filteredOptions.map((option, index) => {
+                const isActive = value.some((item) => item.id === option.id);
                 return (
                   <Pressable
                     key={option.id}
-                    onPress={() => {
-                      onChange(option);
-                      setOpen(false);
-                      setQuery("");
-                    }}
+                    onPress={() => toggleOption(option)}
                     className="flex-row items-center justify-between px-4 py-3"
                     style={{
                       borderTopWidth: index === 0 ? 0 : 1,
@@ -198,19 +166,11 @@ export default function SelectSheet<T extends OptionBase>({
                     }}
                   >
                     <View className="flex-row items-center gap-3">
-                      {showCheckbox ? (
-                        <View
-                          className="h-4 w-4 rounded border items-center justify-center"
-                          style={{
-                            borderColor: isActive ? "#0B73FF" : "#CBD5E1",
-                            backgroundColor: isActive ? "#0B73FF" : "#FFFFFF",
-                          }}
-                        >
-                          {isActive ? (
-                            <Ionicons name="checkmark" size={12} color="#fff" />
-                          ) : null}
-                        </View>
-                      ) : null}
+                      <Ionicons
+                        name={isActive ? "checkbox" : "square-outline"}
+                        size={18}
+                        color={isActive ? "#0B73FF" : "#94A3B8"}
+                      />
                       <Text
                         className="text-[13px] font-semibold"
                         style={{ color: isActive ? "#0B73FF" : "#0F172A" }}
@@ -218,9 +178,6 @@ export default function SelectSheet<T extends OptionBase>({
                         {option.label}
                       </Text>
                     </View>
-                    {!showCheckbox && isActive ? (
-                      <Ionicons name="checkmark" size={18} color="#0B73FF" />
-                    ) : null}
                   </Pressable>
                 );
               })}

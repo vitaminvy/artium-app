@@ -21,6 +21,8 @@ type Props = {
   onChangeDate: (value: EventSortOption) => void;
   query: string;
   onChangeQuery: (value: string) => void;
+  getRsvpStatus: (id: string) => "none" | "going" | "maybe" | "notGoing";
+  onChangeRsvp: (id: string, status: "none" | "going" | "maybe" | "notGoing") => void;
 };
 
 const PAGE_SIZE = 8;
@@ -38,6 +40,8 @@ function DiscoverEventsSection({
   onChangeDate,
   query,
   onChangeQuery,
+  getRsvpStatus,
+  onChangeRsvp,
 }: Props) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const total = events.length;
@@ -104,7 +108,12 @@ function DiscoverEventsSection({
         {events.length ? (
           <View className="gap-4">
             {visibleEvents.map((event) => (
-              <EventCard key={event.id} item={event} />
+              <EventCard
+                key={event.id}
+                item={event}
+                rsvpStatus={getRsvpStatus(event.id)}
+                onRsvpChange={(status) => onChangeRsvp(event.id, status)}
+              />
             ))}
           </View>
         ) : (

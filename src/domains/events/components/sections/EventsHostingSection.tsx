@@ -1,9 +1,11 @@
 import React from "react";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import type { EventItem } from "../../../discover/types";
 import type { EventSortOption } from "../../types";
 import SelectSheet from "../ui/SelectSheet";
 import EmptyStateCard from "../ui/EmptyStateCard";
+import EventCard from "../../../discover/components/cards/EventCard";
 
 type Props = {
   events: EventItem[];
@@ -40,18 +42,21 @@ export default function EventsHostingSection({
         {hasEvents ? (
           <View className="gap-3">
             {events.map((event) => (
-              <View
-                key={event.id}
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-3"
-              >
-                <Text className="text-[14px] font-semibold text-slate-900">
-                  {event.title}
-                </Text>
-                <Text className="mt-1 text-[12px] text-slate-500">
-                  {event.location}
-                </Text>
-              </View>
+              <EventCard key={event.id} item={event} />
             ))}
+            {onCreateEvent ? (
+              <Pressable
+                onPress={onCreateEvent}
+                className="flex-row items-center justify-center gap-2 rounded-full border border-[#0B73FF] px-5 py-2.5"
+              >
+                <View className="h-6 w-6 rounded-full bg-[#0B73FF] items-center justify-center">
+                  <Ionicons name="add" size={14} color="#FFFFFF" />
+                </View>
+                <Text className="text-[13px] font-semibold text-[#0B73FF]">
+                  Create event
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
         ) : (
           <EmptyStateCard

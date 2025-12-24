@@ -40,6 +40,13 @@ export type EventItem = {
   location: string;
   datetime: string; // ISO string
   createdAt?: string; // ISO string
+  endDatetime?: string; // ISO string
+  timeZone?: string;
+  locationType?: "inPerson" | "online";
+  visibility?: "public" | "private";
+  description?: string;
+  venueDetails?: string;
+  websiteUrl?: string;
   image: string;
   category?: string;
   eventType?: string;

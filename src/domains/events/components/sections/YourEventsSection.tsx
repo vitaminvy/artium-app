@@ -1,10 +1,11 @@
 import React from "react";
-import { ScrollView, Text, View } from "react-native";
+import { LayoutChangeEvent, ScrollView, Text, View } from "react-native";
 import type { EventItem } from "../../../discover/types";
 import type { EventFilterOption, EventSortOption } from "../../types";
 import EmptyStateCard from "../ui/EmptyStateCard";
 import SearchInput from "../ui/SearchInput";
 import SelectSheet from "../ui/SelectSheet";
+import EventCard from "../../../discover/components/cards/EventCard";
 
 type Props = {
   events: EventItem[];
@@ -19,6 +20,9 @@ type Props = {
   onChangeDate: (value: EventSortOption) => void;
   query: string;
   onChangeQuery: (value: string) => void;
+  getRsvpStatus: (id: string) => "none" | "going" | "maybe" | "notGoing";
+  onChangeRsvp: (id: string, status: "none" | "going" | "maybe" | "notGoing") => void;
+  onLayout?: (layout: { x: number; y: number; width: number; height: number }) => void;
 };
 
 export default function YourEventsSection({
@@ -34,9 +38,19 @@ export default function YourEventsSection({
   onChangeDate,
   query,
   onChangeQuery,
+  getRsvpStatus,
+  onChangeRsvp,
+  onLayout,
 }: Props) {
+  const handleLayout = (e: LayoutChangeEvent) => {
+    onLayout?.(e.nativeEvent.layout);
+  };
+
   return (
-    <View className="rounded-3xl border border-slate-200 bg-white p-5">
+    <View
+      className="rounded-3xl border border-slate-200 bg-white p-5"
+      onLayout={handleLayout}
+    >
       <Text className="text-lg font-semibold text-slate-900">Your events</Text>
 
       <View className="mt-4">
@@ -77,17 +91,12 @@ export default function YourEventsSection({
         {events.length ? (
           <View className="gap-3">
             {events.map((event) => (
-              <View
+              <EventCard
                 key={event.id}
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-3"
-              >
-                <Text className="text-[14px] font-semibold text-slate-900">
-                  {event.title}
-                </Text>
-                <Text className="mt-1 text-[12px] text-slate-500">
-                  {event.location}
-                </Text>
-              </View>
+                item={event}
+                rsvpStatus={getRsvpStatus(event.id)}
+                onRsvpChange={(status) => onChangeRsvp(event.id, status)}
+              />
             ))}
           </View>
         ) : (
