@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 // Pull required Firebase env vars and fail fast with a clear message if any are missing.
 const getEnvVar = (key: string) => {
@@ -27,5 +28,6 @@ const app = initializeApp(firebaseConfig);
 // Initialize and export services
 export const auth = getAuth(app);
 export const firestore = getFirestore(app);
+export const storage = getStorage(app);
 
 export default app;

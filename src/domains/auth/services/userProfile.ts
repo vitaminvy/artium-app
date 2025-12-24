@@ -59,18 +59,29 @@ export async function upsertUserProfile(
     }
 
     if (Object.keys(updates).length > 0) {
-      await updateDoc(userRef, updates);
+      await updateDoc(userRef, {
+        ...updates,
+        updatedAt: serverTimestamp(),
+      });
     }
   } else {
-    // Create new user
+    // Create new user with new Schema
     await setDoc(userRef, {
       ...userData,
-      role: "art_lover",
-      followerCount: 0,
-      followingCount: 0,
-      profileCompleted: false,
-      profilePromptDismissed: false,
+      username: (userData.email || userData.uid).split("@")[0], // Simple default username
+      roles: {
+        isArtist: false,
+        isAdmin: false,
+      },
+      stats: {
+        followers: 0,
+        following: 0,
+        artworks: 0,
+        sold: 0,
+      },
+      bio: "",
       createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     });
   }
 }

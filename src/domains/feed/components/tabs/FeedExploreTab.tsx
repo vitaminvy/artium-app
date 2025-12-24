@@ -1,18 +1,22 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { ListRenderItemInfo, View, ViewToken } from "react-native";
+import { ListRenderItemInfo, View, ViewToken, ActivityIndicator } from "react-native";
 import Animated from "react-native-reanimated";
 import { FeedPost } from "../../types";
 import FeedPostCard from "../cards/FeedPostCard";
 
 type Props = {
   data: FeedPost[];
-  onToggleLike: (id: string) => void;
+  onToggleLike: (id: string) => void | Promise<void>;
   onToggleReshare: (post: FeedPost) => void;
   onPressComment: (post: FeedPost) => void;
   onPressCard?: (post: FeedPost) => void;
   onPressImage?: (images: { uri: string }[], index: number) => void;
   scrollHandler?: any;
   isTabActive?: boolean;
+  isRefreshing?: boolean;
+  onRefresh?: () => void;
+  onEndReached: () => void;
+  isFetchingNextPage: boolean;
 };
 
 export default function FeedExploreTab({
@@ -24,6 +28,10 @@ export default function FeedExploreTab({
   onPressImage,
   scrollHandler,
   isTabActive = true,
+  isRefreshing,
+  onRefresh,
+  onEndReached,
+  isFetchingNextPage,
 }: Props) {
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
 
@@ -54,8 +62,6 @@ export default function FeedExploreTab({
       if (centerItem && centerItem.item) {
         const post = centerItem.item as FeedPost;
         setActiveVideoId(post.id);
-      } else {
-        setActiveVideoId(null);
       }
     },
     []
@@ -114,6 +120,11 @@ export default function FeedExploreTab({
       showsVerticalScrollIndicator={false}
       onScroll={scrollHandler}
       scrollEventThrottle={16}
+      onRefresh={onRefresh}
+      refreshing={isRefreshing}
+      onEndReached={onEndReached}
+      onEndReachedThreshold={0.5}
+      ListFooterComponent={isFetchingNextPage ? <View className="p-6"><ActivityIndicator size="large" color="#94A3B8" /></View> : null}
     />
   );
 }

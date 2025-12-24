@@ -1,134 +1,107 @@
-import { doc, getDoc, collection, getDocs, query, where, DocumentData, updateDoc, increment, orderBy, limit } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, query, where, DocumentData, updateDoc, increment, orderBy, limit, startAfter, QueryDocumentSnapshot } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 import { ArtworkDetail } from "../types";
-import { Artwork as DiscoverArtwork } from "../../discover/types"; // Import the card's artwork type
+import { Artwork as DiscoverArtwork } from "../../discover/types";
 
 const ARTWORKS_COLLECTION = "artworks";
-const USERS_COLLECTION = "users"; // Changed from ARTISTS_COLLECTION
 
-// --- NEW FUNCTIONS TO UPDATE METRICS ---
+// --- HELPERS ---
 
-/**
- * Increments the view count for a specific artwork.
- */
+const formatPrice = (price: any): string => {
+  if (!price) return "Price on Request";
+  if (typeof price === "string") return price; // Legacy data support
+  if (typeof price === "object" && price.amount) {
+    return `${price.currency === "USD" ? "$" : price.currency + " "}${price.amount.toLocaleString()}`;
+  }
+  return "Price on Request";
+};
+
+const formatWeight = (weight: any): string => {
+  if (!weight) return "";
+  if (typeof weight === "string") return weight;
+  if (typeof weight === "object" && weight.value) {
+    return `${weight.value} ${weight.unit}`;
+  }
+  return "";
+};
+
+// --- METRIC UPDATES ---
+
 export const incrementArtworkView = async (artworkId: string): Promise<void> => {
   if (!artworkId) return;
   const artworkRef = doc(firestore, ARTWORKS_COLLECTION, artworkId);
   try {
-    await updateDoc(artworkRef, {
-      "metrics.views": increment(1),
-    });
+    await updateDoc(artworkRef, { "metrics.views": increment(1) });
   } catch (error) {
-    console.warn("Could  not increment artwork view count:", error);
-    // Non-critical, so we don't throw
+    console.warn("Could not increment artwork view count:", error);
   }
 };
 
-/**
- * Toggles the like status for an artwork, incrementing or decrementing the count.
- */
 export const toggleArtworkLike = async (artworkId: string, isCurrentlyLiked: boolean): Promise<void> => {
   if (!artworkId) return;
   const artworkRef = doc(firestore, ARTWORKS_COLLECTION, artworkId);
   try {
-    await updateDoc(artworkRef, {
-      "metrics.likes": increment(isCurrentlyLiked ? -1 : 1),
-    });
+    await updateDoc(artworkRef, { "metrics.likes": increment(isCurrentlyLiked ? -1 : 1) });
   } catch (error) {
     console.error("Failed to toggle artwork like:", error);
-    throw error; // Re-throw as this is a user-facing action that should be handled
+    throw error;
   }
 };
 
+// --- DATA FETCHING (PAGINATED) ---
 
-// --- EXISTING FUNCTIONS ---
-
-type ArtistData = {
-  name: string;
-  avatar: string;
-  verified: boolean;
+export type PaginatedArtworksResult = {
+  artworks: DiscoverArtwork[];
+  lastVisible: QueryDocumentSnapshot<DocumentData> | null;
 };
-
-type ArtworkDoc = {
-  id: string;
-  title: string;
-  artistId: string;
-  images?: string[];
-  price?: string;
-};
-
-// Helper function to get artist data (from USERS collection)
-const _getArtistById = async (id: string): Promise<ArtistData> => {
-  const userRef = doc(firestore, USERS_COLLECTION, id);
-  const userSnap = await getDoc(userRef);
-
-  if (!userSnap.exists()) {
-    return { name: "Unknown Artist", avatar: "", verified: false };
-  }
-  
-  const userData = userSnap.data();
-  return {
-    name: userData.displayName || "Unknown User",
-    avatar: userData.photoURL || "",
-    verified: false, // Default to false or check userData.role === 'artist' or userData.isVerified
-  };
-};
-
-// Helper to combine artworks and artists (from USERS collection)
-const _combineArtworksWithArtists = async (artworksFromDB: ArtworkDoc[], defaultIsTrending: boolean = false): Promise<DiscoverArtwork[]> => {
-  if (artworksFromDB.length === 0) {
-    return [];
-  }
-
-  const artistIds = [...new Set(artworksFromDB.map(art => art.artistId).filter(id => id))];
-
-  let artistsMap = new Map<string, ArtistData>();
-  if (artistIds.length > 0) {
-    const userQuery = query(collection(firestore, USERS_COLLECTION), where("__name__", "in", artistIds));
-    const userSnapshots = await getDocs(userQuery);
-    userSnapshots.forEach(doc => {
-      const data = doc.data();
-      artistsMap.set(doc.id, {
-        name: data.displayName || "Unknown User",
-        avatar: data.photoURL || "",
-        verified: false, // Default or check data.isVerified
-      });
-    });
-  }
-
-  return artworksFromDB.map(art => {
-    const artist = artistsMap.get(art.artistId) || { name: "Unknown Artist", avatar: "", verified: false };
-        return {
-            id: art.id,
-            title: art.title,
-            artist: artist.name,
-            artistAvatar: artist.avatar,
-            image: art.images?.[0] || "",
-            price: art.price,
-            isTrending: defaultIsTrending, // Apply the trending flag here
-          };  });
-};
-
 
 /**
- * Fetches all artworks and formats them for the Discover screen.
+ * Fetches a paginated list of artworks.
  */
-export const getArtworks = async (): Promise<DiscoverArtwork[]> => {
+export const getArtworks = async (
+  pageSize: number, 
+  lastVisible: QueryDocumentSnapshot<DocumentData> | null = null
+): Promise<PaginatedArtworksResult> => {
   try {
-    const artworkQuery = query(collection(firestore, ARTWORKS_COLLECTION));
-    const artworkSnapshots = await getDocs(artworkQuery);
-    const artworksFromDB = artworkSnapshots.docs.map(
-      doc => ({ id: doc.id, ...doc.data() } as ArtworkDoc)
-    );
-    return await _combineArtworksWithArtists(artworksFromDB, false);
+    let artworkQuery;
+    const baseQuery = [
+      collection(firestore, ARTWORKS_COLLECTION),
+      orderBy("createdAt", "desc"),
+      limit(pageSize)
+    ];
+    
+    if (lastVisible) {
+      artworkQuery = query(baseQuery[0], baseQuery[1], startAfter(lastVisible), baseQuery[2]);
+    } else {
+      artworkQuery = query(baseQuery[0], baseQuery[1], baseQuery[2]);
+    }
+
+    const snapshot = await getDocs(artworkQuery);
+    const artworks = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        title: data.title || "Untitled",
+        artist: data.artistSnapshot?.name || "Unknown Artist",
+        artistAvatar: data.artistSnapshot?.avatar || "",
+        image: data.images?.[0] || "",
+        price: formatPrice(data.price),
+        isTrending: false,
+      };
+    });
+
+    return {
+      artworks,
+      lastVisible: snapshot.docs[snapshot.docs.length - 1] || null,
+    };
   } catch (error) {
-    console.error("Error getting artworks for discover:", error);
+    console.error("Error getting artworks:", error);
     throw error;
   }
 };
 
 /**
- * Fetches trending artworks (ordered by popularityScore) for the Discover screen.
+ * Fetches trending artworks (non-paginated for this example, usually a smaller set).
  */
 export const getTrendingArtworks = async (count: number = 10): Promise<DiscoverArtwork[]> => {
   try {
@@ -138,22 +111,28 @@ export const getTrendingArtworks = async (count: number = 10): Promise<DiscoverA
       orderBy("popularityScore", "desc"),
       limit(count)
     );
-    const artworkSnapshots = await getDocs(artworkQuery);
-    const artworksFromDB = artworkSnapshots.docs.map(
-      doc => ({ id: doc.id, ...doc.data() } as ArtworkDoc)
-    );
-    return await _combineArtworksWithArtists(artworksFromDB, true);
+    const querySnapshot = await getDocs(artworkQuery);
+
+    return querySnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        title: data.title || "Untitled",
+        artist: data.artistSnapshot?.name || "Unknown Artist",
+        artistAvatar: data.artistSnapshot?.avatar || "",
+        image: data.images?.[0] || "",
+        price: formatPrice(data.price),
+        isTrending: true,
+      };
+    });
   } catch (error) {
     console.error("Error getting trending artworks:", error);
-    // Firestore will throw an error if the index is missing.
-    // This error message will contain a link to create it in the Firebase console.
     throw error;
   }
 };
 
-
 /**
- * Fetches an artwork by ID and combines it with its artist's data.
+ * Fetches an artwork by ID.
  */
 export const getArtworkById = async (id: string): Promise<ArtworkDetail | null> => {
   try {
@@ -161,34 +140,35 @@ export const getArtworkById = async (id: string): Promise<ArtworkDetail | null> 
     const artworkSnap = await getDoc(artworkRef);
 
     if (!artworkSnap.exists()) {
-      console.log("No such artwork document!");
       return null;
     }
 
-    const artworkData = artworkSnap.data() as any;
-    const artistId = artworkData.artistId;
-
-    if (!artistId) {
-      throw new Error(`Artwork with ID ${id} is missing an artistId.`);
-    }
-
-    const artistInfo = await _getArtistById(artistId);
-
+    const data = artworkSnap.data();
+    const dimensionData = data.dimension || {};
     const artworkDetail: ArtworkDetail = {
       id: artworkSnap.id,
-      title: artworkData.title,
-      artist: artistInfo,
-      stats: artworkData.stats,
-      price: artworkData.price,
-      availabilityNote: artworkData.availabilityNote,
-      images: artworkData.images,
-      tags: artworkData.tags,
-      dimension: artworkData.dimension,
-      weight: artworkData.weight,
-      year: artworkData.year,
-      edition: artworkData.edition,
-      materials: artworkData.materials,
-      shipping: (artworkData.shipping || []).map((item: any) => ({
+      title: data.title,
+      artist: {
+        name: data.artistSnapshot?.name || "Unknown",
+        avatar: data.artistSnapshot?.avatar || "",
+        verified: data.artistSnapshot?.verified || false,
+      },
+      stats: data.stats || { worksSold: 0, buyers: 0 },
+      price: formatPrice(data.price),
+      availabilityNote: data.availabilityNote,
+      images: data.images || [],
+      tags: data.tags || [],
+      dimension: { 
+        h: dimensionData.height || 0, 
+        w: dimensionData.width || 0, 
+        d: dimensionData.depth || 0, 
+        unit: dimensionData.unit || "in" 
+      },
+      weight: formatWeight(data.weight),
+      year: data.year,
+      edition: data.edition,
+      materials: data.materials,
+      shipping: (data.shipping || []).map((item: any) => ({
         title: item.title,
         subtitle: item.subtitle,
       })),

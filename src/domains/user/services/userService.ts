@@ -1,4 +1,4 @@
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { User } from "firebase/auth";
 import { firestore } from "@/configs/firebase";
 
@@ -15,10 +15,24 @@ export const syncUserToFirestore = async (
       email: user.email,
       displayName: user.displayName,
       photoURL: user.photoURL,
-      createdAt: user.metadata.creationTime,
-      lastLoginAt: user.metadata.lastSignInTime,
+      lastLoginAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
       ...additionalData,
     },
     { merge: true }
   );
+};
+
+export const getUserProfile = async (uid: string) => {
+  try {
+    const userRef = doc(firestore, "users", uid);
+    const snap = await getDoc(userRef);
+    if (snap.exists()) {
+      return snap.data();
+    }
+    return null;
+  } catch (error) {
+    console.error("Error getting user profile:", error);
+    return null;
+  }
 };

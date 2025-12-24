@@ -1,18 +1,34 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { User as AuthUser } from "firebase/auth";
 import { FeedComment, FeedPost, FeedTab } from "../types";
-import { feedMockData } from "../mockData";
-import { CURRENT_USER } from "../constants";
+import { 
+  addCommentToPost, 
+  createPost, 
+  getFeedPosts, 
+  togglePostLike 
+} from "../services/feedService";
+import { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
+
+const POST_PAGE_SIZE = 5;
 
 type UseFeedResult = {
   tab: FeedTab;
   setTab: (tab: FeedTab) => void;
+  loading: boolean;
+  isRefreshing: boolean;
+  onRefresh: () => Promise<void>;
+  error: Error | null;
   explorePosts: FeedPost[];
   followingPosts: FeedPost[];
-  toggleLike: (id: string) => void;
-  createReshare: (targetId: string, note: string) => void;
+  myPosts: FeedPost[];
+  loadMorePosts: () => void;
+  hasMorePosts: boolean;
+  isMorePostsLoading: boolean;
+  toggleLike: (id: string) => Promise<void>;
+  createReshare: (targetPost: FeedPost, note: string) => void;
   commentsByPost: Record<string, FeedComment[]>;
   addComment: (postId: string, content: string) => void;
-  addMomentPost: (post: FeedPost) => void;
+  addMomentPost: (post: Omit<FeedPost, 'id' | 'author' | 'createdAt' | 'metrics' | 'relativeTime'>) => Promise<void>;
 };
 
 const formatTimeAgo = (createdAt: number) => {
@@ -29,163 +45,197 @@ const formatTimeAgo = (createdAt: number) => {
 function attachRelativeTime(posts: FeedPost[]): FeedPost[] {
   return posts.map((post) => ({
     ...post,
-    relativeTime: post.relativeTime ?? formatTimeAgo(post.createdAt),
+    relativeTime: formatTimeAgo(post.createdAt),
     quote: post.quote
       ? {
           ...post.quote,
-          relativeTime:
-            post.quote.relativeTime ?? formatTimeAgo(post.quote.createdAt),
+          relativeTime: formatTimeAgo(post.quote.createdAt),
         }
       : undefined,
   }));
 }
 
-function sortByCreatedAt(posts: FeedPost[]) {
-  return [...posts].sort((a, b) => b.createdAt - a.createdAt);
-}
+export function useFeed(currentUser: AuthUser | null): UseFeedResult {
+  const [tab, setTab] = useState<FeedTab>("explore");
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [lastPostDoc, setLastPostDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [hasMorePosts, setHasMorePosts] = useState(true);
+  const [isMorePostsLoading, setIsMorePostsLoading] = useState(false);
 
-export function useFeed(): UseFeedResult {
-  const [tab, setTab] = useState<FeedTab>(feedMockData.defaultTab ?? "explore");
-  const [posts, setPosts] = useState<FeedPost[]>(() =>
-    attachRelativeTime(feedMockData.posts)
-  );
-  const [commentsByPost, setCommentsByPost] = useState<
-    Record<string, FeedComment[]>
-  >({});
+  const [commentsByPost, setCommentsByPost] = useState<Record<string, FeedComment[]>>({});
 
-  const explorePosts = useMemo(() => sortByCreatedAt(posts), [posts]);
+  const fetchInitialPosts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { posts: newPosts, lastVisible } = await getFeedPosts(POST_PAGE_SIZE);
+      setPosts(attachRelativeTime(newPosts));
+      setLastPostDoc(lastVisible);
+      setHasMorePosts(newPosts.length === POST_PAGE_SIZE);
+    } catch (e: any) {
+      setError(e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchInitialPosts();
+  }, [fetchInitialPosts]);
+
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await fetchInitialPosts();
+    setIsRefreshing(false);
+  }, [fetchInitialPosts]);
+
+  const loadMorePosts = useCallback(async () => {
+    if (isMorePostsLoading || !hasMorePosts) return;
+    setIsMorePostsLoading(true);
+    try {
+      const { posts: newPosts, lastVisible } = await getFeedPosts(POST_PAGE_SIZE, lastPostDoc);
+      setPosts(prev => attachRelativeTime([...prev, ...newPosts]));
+      setLastPostDoc(lastVisible);
+      setHasMorePosts(newPosts.length === POST_PAGE_SIZE);
+    } catch (e: any) {
+      setError(e);
+    } finally {
+      setIsMorePostsLoading(false);
+    }
+  }, [isMorePostsLoading, hasMorePosts, lastPostDoc]);
+
+  const explorePosts = useMemo(() => posts, [posts]);
 
   const followingPosts = useMemo(() => {
-    const filtered = posts.filter(
-      (post) => post.author.isFollowed || post.author.isMe
-    );
-    const sorted = sortByCreatedAt(filtered);
-    sorted.sort((a, b) => Number(!!b.author.isMe) - Number(!!a.author.isMe));
-    return sorted;
-  }, [posts]);
+    if (!currentUser) return [];
+    return posts.filter(p => p.author?.isFollowed || p.author?.id === currentUser.uid);
+  }, [posts, currentUser]);
 
-  const toggleLike = useCallback((id: string) => {
-    setPosts((prev) => {
-      const idx = prev.findIndex((p) => p.id === id);
-      if (idx === -1) return prev;
-      const next = [...prev];
-      const target = prev[idx];
-      next[idx] = {
-        ...target,
-        liked: !target.liked,
-        metrics: {
-          ...target.metrics,
-          likes: target.metrics.likes + (target.liked ? -1 : 1),
-        },
-      };
-      return next;
-    });
-  }, []);
+  const myPosts = useMemo(() => {
+    if (!currentUser) return [];
+    return posts.filter(p => p.author?.id === currentUser.uid);
+  }, [posts, currentUser]);
 
-  const addComment = useCallback(
-    (postId: string, content: string) => {
-      if (!content.trim()) return;
-      const newComment: FeedComment = {
-        id: `cmt-${Date.now()}`,
-        author: CURRENT_USER,
-        content: content.trim(),
-        createdAt: Date.now(),
-        relativeTime: "Just now",
-      };
+  const toggleLike = useCallback(async (id: string) => {
+    if (!currentUser) return;
+    
+    setPosts(prevPosts => prevPosts.map(p => {
+      if (p.id === id) {
+        const newLikedState = !p.liked;
+        const newLikesCount = newLikedState ? p.metrics.likes + 1 : p.metrics.likes - 1;
+        return {
+          ...p,
+          liked: newLikedState,
+          metrics: { ...p.metrics, likes: newLikesCount }
+        }
+      }
+      return p;
+    }));
 
-      setCommentsByPost((prev) => ({
-        ...prev,
-        [postId]: [newComment, ...(prev[postId] ?? [])],
-      }));
-
-      setPosts((prev) =>
-        prev.map((post) =>
-          post.id === postId
-            ? {
-                ...post,
-                metrics: {
-                  ...post.metrics,
-                  comments: post.metrics.comments + 1,
-                },
-              }
-            : post
-        )
-      );
-    },
-    []
-  );
-
-  const createReshare = useCallback((targetId: string, note: string) => {
-    setPosts((prev) => {
-      const target = prev.find((p) => p.id === targetId);
-      if (!target) return prev;
-
-      const nowTs = Date.now();
-
-      const quote: FeedPost["quote"] = {
-        authorName: target.author.name,
-        handle: target.author.handle,
-        content: target.content,
-        createdAt: target.createdAt,
-        relativeTime: target.relativeTime ?? formatTimeAgo(target.createdAt),
-        media: target.media,
-      };
-
-      const newPost: FeedPost = {
-        id: `reshare-${nowTs}`,
-        author: CURRENT_USER,
-        content: note.trim(),
-        createdAt: nowTs,
-        relativeTime: "Just now",
-        quote,
-        isReshare: true,
-        resharedFrom: target.author,
-        metrics: {
-          likes: 0,
-          comments: 0,
-          shares: 0,
-        },
-        liked: false,
-        reshared: false,
-      };
-
-      return [
-        newPost,
-        ...prev.map((post) =>
-          post.id === targetId
-            ? {
-                ...post,
-                metrics: {
-                  ...post.metrics,
-                  shares: post.metrics.shares + 1,
-                },
-              }
-            : post
-        ),
-      ];
-    });
-  }, []);
-
-  const addMomentPost = useCallback((post: FeedPost) => {
-    const normalized: FeedPost = {
-      ...post,
-      relativeTime: post.relativeTime ?? formatTimeAgo(post.createdAt),
-      quote: post.quote
-        ? {
-            ...post.quote,
-            relativeTime:
-              post.quote.relativeTime ?? formatTimeAgo(post.quote.createdAt),
+    try {
+      await togglePostLike(id, currentUser.uid);
+    } catch (error) {
+      console.error("Failed to toggle like:", error);
+      setPosts(prevPosts => prevPosts.map(p => {
+        if (p.id === id) {
+          const originalLikedState = !p.liked;
+          const originalLikesCount = originalLikedState ? p.metrics.likes + 1 : p.metrics.likes - 1;
+          return {
+            ...p,
+            liked: originalLikedState,
+            metrics: { ...p.metrics, likes: originalLikesCount }
           }
-        : undefined,
+        }
+        return p;
+      }));
+    }
+  }, [currentUser]);
+  
+  const addComment = useCallback(async (postId: string, content: string) => {
+    if (!content.trim() || !currentUser) return;
+
+    try {
+      const authorSnapshot = {
+        id: currentUser.uid,
+        name: currentUser.displayName || "User",
+        handle: (currentUser.email || "user").split("@")[0],
+        avatar: currentUser.photoURL || undefined,
+      };
+
+      await addCommentToPost(postId, {
+        authorSnapshot,
+        content: content.trim(),
+      });
+    } catch (error) {
+      console.error("Failed to add comment:", error);
+    }
+  }, [currentUser]);
+
+  const createReshare = useCallback(async (targetPost: FeedPost, note: string) => {
+    if (!currentUser) return;
+
+    const authorSnapshot = {
+      id: currentUser.uid,
+      name: currentUser.displayName || "User",
+      handle: (currentUser.email || "user").split("@")[0],
+      avatar: currentUser.photoURL || undefined,
     };
-    setPosts((prev) => [normalized, ...prev]);
-  }, []);
+
+    const quote = {
+      authorName: targetPost.author.name,
+      handle: targetPost.author.handle,
+      content: targetPost.content,
+      createdAt: targetPost.createdAt,
+      media: targetPost.media,
+    };
+
+    await createPost({
+      authorId: currentUser.uid,
+      authorSnapshot,
+      content: note,
+      media: null,
+      quote: quote,
+      isReshare: true,
+      resharedFrom: targetPost.author,
+    } as any);
+
+    onRefresh();
+  }, [currentUser, onRefresh]);
+
+  const addMomentPost = useCallback(async (post: any) => {
+    if (!currentUser) throw new Error("User not logged in");
+
+    const authorSnapshot = {
+      id: currentUser.uid,
+      name: currentUser.displayName || "User",
+      handle: (currentUser.email || "user").split("@")[0],
+      avatar: currentUser.photoURL || undefined,
+    };
+
+    await createPost({
+      authorId: currentUser.uid,
+      authorSnapshot,
+      content: post.content,
+      media: post.media || null,
+    });
+    onRefresh();
+  }, [currentUser, onRefresh]);
 
   return {
     tab,
     setTab,
+    loading,
+    isRefreshing,
+    onRefresh,
+    error,
     explorePosts,
     followingPosts,
+    myPosts,
+    loadMorePosts,
+    hasMorePosts,
+    isMorePostsLoading,
     toggleLike,
     createReshare,
     commentsByPost,

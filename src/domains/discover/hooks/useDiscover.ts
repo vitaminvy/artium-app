@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
-import { collection, getDocs, query, orderBy, limit, where } from "firebase/firestore";
+import { useEffect, useState, useCallback } from "react";
+import { collection, getDocs, query, orderBy, limit, where, startAfter, QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
-import { getArtworks, getTrendingArtworks } from "../../artwork/services/artworkService"; // IMPORT BOTH SERVICES
+import { getArtworks, getTrendingArtworks } from "../../artwork/services/artworkService";
 import {
   DiscoverTab,
   EventItem,
@@ -10,165 +10,217 @@ import {
 } from "../types";
 import { defaultDiscoverTab, discoverMockData } from "../mockData";
 
+import { getEvents } from "../services/eventService";
+
+const ARTWORK_PAGE_SIZE = 6;
+const MOMENT_PAGE_SIZE = 3;
+const PROFILE_PAGE_SIZE = 10;
+const EVENT_PAGE_SIZE = 3;
+
 type UseDiscoverResult = {
   tab: DiscoverTab;
   setTab: (tab: DiscoverTab) => void;
-  loading: boolean; // Add loading state for artworks
-  error: Error | null; // Add error state for artworks
-  momentsLoading: boolean; // Add loading state for moments
-  momentsError: Error | null; // Add error state for moments
+  loading: boolean;
+  error: Error | null;
   topPicks: Artwork[];
   artworks: Artwork[];
-  profiles: ArtistProfile[];
+  loadMoreArtworks: () => void;
+  isMoreArtworksLoading: boolean;
+  hasMoreArtworks: boolean;
   moments: Artwork[];
+  loadMoreMoments: () => void;
+  isMoreMomentsLoading: boolean;
+  hasMoreMoments: boolean;
+  profiles: ArtistProfile[];
+  loadMoreProfiles: () => void;
+  isMoreProfilesLoading: boolean;
+  hasMoreProfiles: boolean;
   events: EventItem[];
+  loadMoreEvents: () => void;
+  isMoreEventsLoading: boolean;
+  hasMoreEvents: boolean;
 };
 
 export function useDiscover(): UseDiscoverResult {
   const [tab, setTab] = useState<DiscoverTab>(defaultDiscoverTab);
   
-  // --- STATE MANAGEMENT FOR ALL ARTWORK FETCHING ---
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [topPicks, setTopPicks] = useState<Artwork[]>([]);
-  const [loading, setLoading] = useState(true); // For artworks & topPicks
-  const [error, setError] = useState<Error | null>(null); // For artworks & topPicks
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [lastArtworkDoc, setLastArtworkDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [hasMoreArtworks, setHasMoreArtworks] = useState(true);
+  const [isMoreArtworksLoading, setIsMoreArtworksLoading] = useState(false);
 
-  // --- STATE MANAGEMENT FOR MOMENTS FETCHING ---
-  const [realMoments, setRealMoments] = useState<Artwork[]>([]);
-  const [momentsLoading, setMomentsLoading] = useState(true);
-  const [momentsError, setMomentsError] = useState<Error | null>(null);
+  const [moments, setMoments] = useState<Artwork[]>([]);
+  const [lastMomentDoc, setLastMomentDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [hasMoreMoments, setHasMoreMoments] = useState(true);
+  const [isMoreMomentsLoading, setIsMoreMomentsLoading] = useState(false);
+
+  const [profiles, setProfiles] = useState<ArtistProfile[]>([]);
+  const [lastProfileDoc, setLastProfileDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [hasMoreProfiles, setHasMoreProfiles] = useState(true);
+  const [isMoreProfilesLoading, setIsMoreProfilesLoading] = useState(false);
+
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [lastEventDoc, setLastEventDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [hasMoreEvents, setHasMoreEvents] = useState(true);
+  const [isMoreEventsLoading, setIsMoreEventsLoading] = useState(false);
+
+  const fetchInitialArtworks = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [trendingArtworks, initialArtworksResult] = await Promise.all([
+        getTrendingArtworks(),
+        getArtworks(ARTWORK_PAGE_SIZE, null),
+      ]);
+      setTopPicks(trendingArtworks);
+      setArtworks(initialArtworksResult.artworks);
+      setLastArtworkDoc(initialArtworksResult.lastVisible);
+      setHasMoreArtworks(initialArtworksResult.artworks.length === ARTWORK_PAGE_SIZE);
+    } catch (e: any) {
+      setError(e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadMoreArtworks = useCallback(async () => {
+    if (isMoreArtworksLoading || !hasMoreArtworks) return;
+    setIsMoreArtworksLoading(true);
+    try {
+      const { artworks: newArtworks, lastVisible } = await getArtworks(ARTWORK_PAGE_SIZE, lastArtworkDoc);
+      setArtworks(prev => [...prev, ...newArtworks]);
+      setLastArtworkDoc(lastVisible);
+      setHasMoreArtworks(newArtworks.length === ARTWORK_PAGE_SIZE);
+    } catch (e: any) {
+      setError(e);
+    } finally {
+      setIsMoreArtworksLoading(false);
+    }
+  }, [isMoreArtworksLoading, hasMoreArtworks, lastArtworkDoc]);
+
+  const fetchMoments = useCallback(async (lastDoc: QueryDocumentSnapshot<DocumentData> | null = null) => {
+    try {
+      const q = lastDoc 
+        ? query(collection(firestore, "posts"), orderBy("createdAt", "desc"), startAfter(lastDoc), limit(MOMENT_PAGE_SIZE))
+        : query(collection(firestore, "posts"), orderBy("createdAt", "desc"), limit(MOMENT_PAGE_SIZE));
+
+      const snapshot = await getDocs(q);
+      const newMoments = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          title: data.content || "Untitled Moment",
+          artist: data.authorSnapshot?.name || "Unknown",
+          artistAvatar: data.authorSnapshot?.avatar,
+          image: data.media?.items?.[0]?.uri || "https://via.placeholder.com/300",
+        } as Artwork;
+      });
+      
+      setHasMoreMoments(newMoments.length === MOMENT_PAGE_SIZE);
+      setLastMomentDoc(snapshot.docs[snapshot.docs.length - 1] || null);
+      return newMoments;
+    } catch (e: any) {
+      setError(e);
+      return [];
+    }
+  }, []);
+
+  const loadMoreMoments = useCallback(async () => {
+    if (isMoreMomentsLoading || !hasMoreMoments) return;
+    setIsMoreMomentsLoading(true);
+    const newMoments = await fetchMoments(lastMomentDoc);
+    setMoments(prev => [...prev, ...newMoments]);
+    setIsMoreMomentsLoading(false);
+  }, [isMoreMomentsLoading, hasMoreMoments, lastMomentDoc, fetchMoments]);
+
+  const fetchArtists = useCallback(async (lastDoc: QueryDocumentSnapshot<DocumentData> | null = null) => {
+    try {
+      const artistsQuery = lastDoc
+        ? query(collection(firestore, "users"), where("roles.isArtist", "==", true), orderBy("displayName"), startAfter(lastDoc), limit(PROFILE_PAGE_SIZE))
+        : query(collection(firestore, "users"), where("roles.isArtist", "==", true), orderBy("displayName"), limit(PROFILE_PAGE_SIZE));
+      
+      const snapshot = await getDocs(artistsQuery);
+      const artistProfiles = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          name: data.displayName,
+          avatar: data.photoURL,
+          location: "From Firestore",
+          artworks: [],
+        } as ArtistProfile;
+      });
+
+      setHasMoreProfiles(artistProfiles.length === PROFILE_PAGE_SIZE);
+      setLastProfileDoc(snapshot.docs[snapshot.docs.length - 1] || null);
+      return artistProfiles;
+    } catch(e: any) {
+      console.error("Failed to fetch artists:", e);
+      setError(e);
+      return [];
+    }
+  }, []);
+
+  const loadMoreProfiles = useCallback(async () => {
+    if (isMoreProfilesLoading || !hasMoreProfiles) return;
+    setIsMoreProfilesLoading(true);
+    const newProfiles = await fetchArtists(lastProfileDoc);
+    setProfiles(prev => [...prev, ...newProfiles]);
+    setIsMoreProfilesLoading(false);
+  }, [isMoreProfilesLoading, hasMoreProfiles, lastProfileDoc, fetchArtists]);
+
+  const fetchEvents = useCallback(async (lastDoc: QueryDocumentSnapshot<DocumentData> | null = null) => {
+    try {
+      const { events: newEvents, lastVisible } = await getEvents(EVENT_PAGE_SIZE, lastDoc);
+      setHasMoreEvents(newEvents.length === EVENT_PAGE_SIZE);
+      setLastEventDoc(lastVisible);
+      return newEvents;
+    } catch (e: any) {
+      console.error("Failed to fetch events:", e);
+      setError(e);
+      return [];
+    }
+  }, []);
+
+  const loadMoreEvents = useCallback(async () => {
+    if (isMoreEventsLoading || !hasMoreEvents) return;
+    setIsMoreEventsLoading(true);
+    const newEvents = await fetchEvents(lastEventDoc);
+    setEvents(prev => [...prev, ...newEvents]);
+    setIsMoreEventsLoading(false);
+  }, [isMoreEventsLoading, hasMoreEvents, lastEventDoc, fetchEvents]);
 
   useEffect(() => {
-    const fetchAllArtworks = async () => {
-      try {
-        setLoading(true);
-        // Fetch trending and all artworks in parallel
-        const [trendingArtworks, allArtworks] = await Promise.all([
-          getTrendingArtworks(),
-          getArtworks()
-        ]);
-
-        // Create a set of trending IDs for quick lookup
-        const trendingIds = new Set(trendingArtworks.map(art => art.id));
-
-        // Enrich the 'allArtworks' list with the trending status
-        const enrichedArtworks = allArtworks.map(art => ({
-          ...art,
-          isTrending: trendingIds.has(art.id),
-        }));
-
-        setTopPicks(trendingArtworks);
-        setArtworks(enrichedArtworks); // Set the enriched list
-        
-      } catch (e: any) {
-        setError(e);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAllArtworks();
-  }, []); // Run once on mount
-
-  // --- Fetch real moments (posts with media) independently ---
-  useEffect(() => {
-    const fetchMoments = async () => {
-      try {
-        setMomentsLoading(true);
-        console.log('[Discover] Fetching moments...');
-        const postsQuery = query(
-            collection(firestore, "posts"),
-            orderBy("createdAt", "desc"),
-            limit(20)
-        );
-        
-        const postsSnapshot = await getDocs(postsQuery);
-        const fetchedPosts = postsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
-        
-        // --- Fetch Author Details ONLY from 'users' collection ---
-        const authorIds = [...new Set(fetchedPosts.map(p => p.authorId))];
-        const authorsMap = new Map<string, { name: string; avatar: string }>();
-
-        if (authorIds.length > 0) {
-            const chunks = [];
-            for (let i = 0; i < authorIds.length; i += 10) {
-                chunks.push(authorIds.slice(i, i + 10));
-            }
-
-            for (const chunk of chunks) {
-                const usersQuery = query(
-                    collection(firestore, "users"),
-                    where("uid", "in", chunk)
-                );
-                const userSnap = await getDocs(usersQuery);
-                userSnap.forEach(doc => {
-                    const data = doc.data();
-                    authorsMap.set(data.uid, {
-                        name: data.displayName || "Unknown User",
-                        avatar: data.photoURL || "https://i.pravatar.cc/150"
-                    });
-                });
-            }
-        }
-
-        // Filter and map to Artwork type
-        const mappedMoments: Artwork[] = fetchedPosts
-            .filter(post => post.mediaUrl || (post.media && (post.media.uri || (post.media.items && post.media.items.length > 0))))
-            .map(post => {
-                 let imageUrl = "https://via.placeholder.com/300";
-                 if (post.mediaUrl) {
-                     imageUrl = post.mediaUrl;
-                 } else if (post.media) {
-                     if (post.media.type === 'video' && post.media.uri) imageUrl = post.media.uri;
-                     else if (post.media.type === 'image' && post.media.items && post.media.items.length > 0) {
-                         const item = post.media.items[0];
-                         imageUrl = typeof item === 'string' ? item : item.uri;
-                     }
-                 }
-
-                 const author = authorsMap.get(post.authorId) || { name: "Unknown User", avatar: "https://i.pravatar.cc/150" };
-
-                 return {
-                    id: post.id,
-                    title: post.content || "Untitled Moment",
-                    artist: author.name, 
-                    artistAvatar: author.avatar, 
-                    image: imageUrl,
-                    isTrending: (post.metrics?.likes || 0) > 5,
-                    price: undefined,
-                    location: undefined
-                 };
-            });
-            
-        console.log(`[Discover] Fetched ${mappedMoments.length} moments with author info.`);
-        setRealMoments(mappedMoments);
-        setMomentsError(null);
-      } catch (e: any) {
-        console.error("Error fetching moments:", e);
-        setMomentsError(e);
-      } finally {
-        setMomentsLoading(false);
-      }
-    };
-
-    fetchMoments();
-  }, []); // Run once on mount
-
-  // Keep mock data for other sections for now (profiles, events are still mock)
-  const profiles = discoverMockData.profiles;
-  const events = discoverMockData.events;
+    fetchInitialArtworks();
+    fetchMoments(null).then(initialMoments => setMoments(initialMoments));
+    fetchArtists(null).then(initialProfiles => setProfiles(initialProfiles));
+    fetchEvents(null).then(initialEvents => setEvents(initialEvents));
+  }, [fetchInitialArtworks, fetchMoments, fetchArtists, fetchEvents]);
 
   return {
     tab,
     setTab,
-    loading, // For artworks
-    error, // For artworks
-    momentsLoading, // For moments
-    momentsError, // For moments
+    loading,
+    error,
     topPicks,
     artworks,
+    loadMoreArtworks,
+    isMoreArtworksLoading,
+    hasMoreArtworks,
+    moments,
+    loadMoreMoments,
+    isMoreMomentsLoading,
+    hasMoreMoments,
     profiles,
-    moments: realMoments, // Use real moments data
+    loadMoreProfiles,
+    isMoreProfilesLoading,
+    hasMoreProfiles,
     events,
+    loadMoreEvents,
+    isMoreEventsLoading,
+    hasMoreEvents,
   };
 }
+

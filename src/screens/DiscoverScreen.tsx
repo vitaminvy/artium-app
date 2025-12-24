@@ -8,11 +8,11 @@ import { useDiscover } from "../domains/discover/hooks/useDiscover";
 import { DiscoverTab } from "../domains/discover/types";
 import { TabChip } from "../domains/discover/components/ui/DiscoverShared";
 import ChangeLocationSheet from "../domains/discover/components/sheets/ChangeLocationSheet";
-import Loader from "../shared/components/Loader"; // Import Loader
+import Loader from "../shared/components/Loader";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 
-// Import Refactored Tabs
+// Import Tabs
 import DiscoverArtworksTab from "../domains/discover/components/tabs/DiscoverArtworksTab";
 import DiscoverProfilesTab from "../domains/discover/components/tabs/DiscoverProfilesTab";
 import DiscoverEventsTab from "../domains/discover/components/tabs/DiscoverEventsTab";
@@ -34,14 +34,27 @@ export default function DiscoverScreen() {
   const {
     tab,
     setTab,
-    loading, // Get loading state
-    error,   // Get error state
+    loading,
+    error,
     topPicks,
     artworks,
-    profiles,
+    loadMoreArtworks,
+    isMoreArtworksLoading,
+    hasMoreArtworks,
     moments,
+    loadMoreMoments,
+    isMoreMomentsLoading,
+    hasMoreMoments,
+    profiles,
+    loadMoreProfiles,
+    isMoreProfilesLoading,
+    hasMoreProfiles,
     events,
+    loadMoreEvents,
+    isMoreEventsLoading,
+    hasMoreEvents,
   } = useDiscover();
+
   const isGuest = status !== "authenticated";
   const { setHidden } = useTabBarVisibility();
   const lastOffset = useRef(0);
@@ -60,12 +73,11 @@ export default function DiscoverScreen() {
     [setHidden]
   );
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    return () => {
       setHidden(false);
-    },
-    [setHidden]
-  );
+    };
+  }, [setHidden]);
 
   const [showLocationSheet, setShowLocationSheet] = useState(false);
   const [locationText, setLocationText] = useState("Albuquerque, NM, USA");
@@ -76,7 +88,6 @@ export default function DiscoverScreen() {
   }, [navigation]);
 
   const renderContent = () => {
-    // --- HANDLE LOADING AND ERROR STATES ---
     if (loading) {
       return (
         <View className="flex-1 justify-center items-center">
@@ -94,21 +105,20 @@ export default function DiscoverScreen() {
         </View>
       );
     }
-    
-    // --- RENDER TABS ---
+
     const onCardPress = isGuest ? handleRequireSignUp : undefined;
 
     switch (tab) {
       case "topPicks":
-        return <DiscoverArtworksTab data={topPicks} onCardPress={onCardPress} onScroll={handleScroll} />;
+        return <DiscoverArtworksTab data={topPicks} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={() => {}} isFetchingNextPage={false} />;
       case "artworks":
-        return <DiscoverArtworksTab data={artworks} onCardPress={onCardPress} onScroll={handleScroll} />;
+        return <DiscoverArtworksTab data={artworks} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreArtworks} isFetchingNextPage={isMoreArtworksLoading} />;
       case "profiles":
-        return <DiscoverProfilesTab data={profiles} onCardPress={onCardPress} onScroll={handleScroll} />;
+        return <DiscoverProfilesTab data={profiles} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreProfiles} isFetchingNextPage={isMoreProfilesLoading} />;
       case "events":
-        return <DiscoverEventsTab data={events} onCardPress={onCardPress} onScroll={handleScroll} />;
+        return <DiscoverEventsTab data={events} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreEvents} isFetchingNextPage={isMoreEventsLoading} />;
       case "moments":
-        return <DiscoverMomentsTab data={moments} onCardPress={onCardPress} onScroll={handleScroll} />;
+        return <DiscoverMomentsTab data={moments} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreMoments} isFetchingNextPage={isMoreMomentsLoading} />;
       case "nearby":
         return (
           <DiscoverNearbyTab
@@ -233,3 +243,4 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 });
+
