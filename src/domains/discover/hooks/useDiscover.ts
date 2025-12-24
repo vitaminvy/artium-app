@@ -10,9 +10,12 @@ import {
 } from "../types";
 import { defaultDiscoverTab, discoverMockData } from "../mockData";
 
+import { getEvents } from "../services/eventService";
+
 const ARTWORK_PAGE_SIZE = 6;
 const MOMENT_PAGE_SIZE = 3;
 const PROFILE_PAGE_SIZE = 10;
+const EVENT_PAGE_SIZE = 3;
 
 type UseDiscoverResult = {
   tab: DiscoverTab;
@@ -33,6 +36,9 @@ type UseDiscoverResult = {
   isMoreProfilesLoading: boolean;
   hasMoreProfiles: boolean;
   events: EventItem[];
+  loadMoreEvents: () => void;
+  isMoreEventsLoading: boolean;
+  hasMoreEvents: boolean;
 };
 
 export function useDiscover(): UseDiscoverResult {
@@ -55,6 +61,11 @@ export function useDiscover(): UseDiscoverResult {
   const [lastProfileDoc, setLastProfileDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMoreProfiles, setHasMoreProfiles] = useState(true);
   const [isMoreProfilesLoading, setIsMoreProfilesLoading] = useState(false);
+
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [lastEventDoc, setLastEventDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [hasMoreEvents, setHasMoreEvents] = useState(true);
+  const [isMoreEventsLoading, setIsMoreEventsLoading] = useState(false);
 
   const fetchInitialArtworks = useCallback(async () => {
     try {
@@ -160,13 +171,33 @@ export function useDiscover(): UseDiscoverResult {
     setIsMoreProfilesLoading(false);
   }, [isMoreProfilesLoading, hasMoreProfiles, lastProfileDoc, fetchArtists]);
 
+  const fetchEvents = useCallback(async (lastDoc: QueryDocumentSnapshot<DocumentData> | null = null) => {
+    try {
+      const { events: newEvents, lastVisible } = await getEvents(EVENT_PAGE_SIZE, lastDoc);
+      setHasMoreEvents(newEvents.length === EVENT_PAGE_SIZE);
+      setLastEventDoc(lastVisible);
+      return newEvents;
+    } catch (e: any) {
+      console.error("Failed to fetch events:", e);
+      setError(e);
+      return [];
+    }
+  }, []);
+
+  const loadMoreEvents = useCallback(async () => {
+    if (isMoreEventsLoading || !hasMoreEvents) return;
+    setIsMoreEventsLoading(true);
+    const newEvents = await fetchEvents(lastEventDoc);
+    setEvents(prev => [...prev, ...newEvents]);
+    setIsMoreEventsLoading(false);
+  }, [isMoreEventsLoading, hasMoreEvents, lastEventDoc, fetchEvents]);
+
   useEffect(() => {
     fetchInitialArtworks();
     fetchMoments(null).then(initialMoments => setMoments(initialMoments));
     fetchArtists(null).then(initialProfiles => setProfiles(initialProfiles));
-  }, [fetchInitialArtworks, fetchMoments, fetchArtists]);
-
-  const events = discoverMockData.events;
+    fetchEvents(null).then(initialEvents => setEvents(initialEvents));
+  }, [fetchInitialArtworks, fetchMoments, fetchArtists, fetchEvents]);
 
   return {
     tab,
@@ -187,6 +218,9 @@ export function useDiscover(): UseDiscoverResult {
     isMoreProfilesLoading,
     hasMoreProfiles,
     events,
+    loadMoreEvents,
+    isMoreEventsLoading,
+    hasMoreEvents,
   };
 }
 

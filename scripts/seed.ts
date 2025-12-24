@@ -55,6 +55,9 @@ async function main() {
     // 4. Seed Posts (10 per User)
     await seedPosts(db, users, 10);
 
+    // 5. Seed Events (10 per User)
+    // await seedEvents(db, users, 10);
+
     console.log("\n🎉 SEED COMPLETE! The database is populated.");
     process.exit(0);
   } catch (error) {

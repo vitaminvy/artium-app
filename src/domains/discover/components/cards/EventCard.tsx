@@ -20,7 +20,7 @@ type Props = {
 };
 
 export default function EventCard({ item, onPress }: Props) {
-  const date = new Date(item.datetime);
+  const date = new Date(item.startDate);
   const month = date.toLocaleString("en-US", { month: "short" }).toUpperCase();
   const day = date.getDate();
   const [rsvp, setRsvp] = useState<"none" | "going" | "maybe" | "notGoing">(

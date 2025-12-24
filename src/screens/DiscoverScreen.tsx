@@ -50,6 +50,9 @@ export default function DiscoverScreen() {
     isMoreProfilesLoading,
     hasMoreProfiles,
     events,
+    loadMoreEvents,
+    isMoreEventsLoading,
+    hasMoreEvents,
   } = useDiscover();
 
   const isGuest = status !== "authenticated";
@@ -113,7 +116,7 @@ export default function DiscoverScreen() {
       case "profiles":
         return <DiscoverProfilesTab data={profiles} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreProfiles} isFetchingNextPage={isMoreProfilesLoading} />;
       case "events":
-        return <DiscoverEventsTab data={events} onCardPress={onCardPress} />;
+        return <DiscoverEventsTab data={events} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreEvents} isFetchingNextPage={isMoreEventsLoading} />;
       case "moments":
         return <DiscoverMomentsTab data={moments} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreMoments} isFetchingNextPage={isMoreMomentsLoading} />;
       case "nearby":

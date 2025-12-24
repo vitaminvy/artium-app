@@ -1,0 +1,34 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow public read on artworks, artists, events, and posts
+    match /artworks/{artworkId} {
+      allow read: if true;
+      allow write: if request.auth != null; // Only logged-in users can write (for now)
+    }
+    match /artists/{artistId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == artistId;
+    }
+     match /events/{eventId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /posts/{postId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Users can read their own data, and public profiles can be read by anyone
+    match /users/{userId} {
+      allow get: if request.auth.uid == userId;
+      allow list: if true; // Allows querying the user list for artists
+      allow write: if request.auth.uid == userId;
+    }
+
+    // Allow logged-in users to manage their own subcollections
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth.uid == userId;
+    }
+  }
+}
