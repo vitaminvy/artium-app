@@ -15,6 +15,7 @@ export type HomeBlogItem = {
   dateLabel: string;
   image: string;
   authorAvatar?: string;
+  excerpt?: string;
 };
 
 export type HomeEventItem = {

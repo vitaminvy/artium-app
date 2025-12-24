@@ -12,6 +12,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { HomeNewsItem } from "../../types";
 import { HOME_CONSTANTS, HOME_COLORS } from "../../constants";
+import { useNavigation } from "@react-navigation/native"; // Import useNavigation
 
 const cardShadow = {
   shadowColor: HOME_COLORS.SHADOW,
@@ -23,12 +24,12 @@ const cardShadow = {
 
 type Props = {
   data: HomeNewsItem[];
-  onPressItem?: (item: HomeNewsItem) => void;
 };
 
-export default function HomeNewsCarousel({ data, onPressItem }: Props) {
+export default function HomeNewsCarousel({ data }: Props) {
   const { width } = useWindowDimensions();
   const progress = useSharedValue(0);
+  const navigation = useNavigation<any>(); // Get navigation hook
 
   if (!data.length) return null;
 
@@ -53,7 +54,8 @@ export default function HomeNewsCarousel({ data, onPressItem }: Props) {
             item={item}
             width={cardWidth}
             height={cardHeight}
-            onPress={onPressItem}
+            // Pass navigation directly to NewsCard for handling onPress
+            onPress={(newsItem) => navigation.navigate("BlogDetail", { blogId: newsItem.id })}
           />
         )}
       />

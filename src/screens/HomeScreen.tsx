@@ -150,17 +150,17 @@ export default function HomeScreen() {
                 paddingBottom: 4,
               }}
               ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
-              renderItem={({ item }) =>
-                item.type === "blog" ? (
-                  <HomeBlogCard
-                    item={item.item}
-                    width={highlightCardWidth}
-                    height={highlightCardHeight}
-                  />
-                ) : (
-                  <HomeEventCard
-                    item={item.item}
-                    width={highlightCardWidth}
+                          renderItem={({ item }) =>
+                            item.type === "blog" ? (
+                              <HomeBlogCard
+                                item={item.item}
+                                width={highlightCardWidth}
+                                height={highlightCardHeight}
+                                onPress={(blog) => navigation.navigate("BlogDetailScreen", { blogId: blog.id })}
+                              />
+                            ) : (
+                              <HomeEventCard
+                                item={item.item}                    width={highlightCardWidth}
                     height={highlightCardHeight}
                   />
                 )
