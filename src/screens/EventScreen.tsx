@@ -198,6 +198,8 @@ export default function EventScreen() {
           sortValue={hostingSort}
           onChangeSort={setHostingSort}
           onCreateEvent={handleCreateEvent}
+          getRsvpStatus={getRsvpStatus}
+          onChangeRsvp={handleRsvpChange}
         />
 
         <YourEventsSection

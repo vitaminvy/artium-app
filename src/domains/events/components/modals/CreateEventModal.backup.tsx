@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Image, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import type { EventItem } from "../../../discover/types";
 import type { EventFilterOption, TimeZoneOption } from "../../types";
-import { DEFAULT_TIME_ZONE_ID, TIME_ZONE_OPTIONS } from "../../constants.optimized";
-import SelectSheet from "../ui/SelectSheet.optimized";
+import { DEFAULT_TIME_ZONE_ID, TIME_ZONE_OPTIONS } from "../../constants";
+import SelectSheet from "../ui/SelectSheet";
 import MultiSelectSheet from "../ui/MultiSelectSheet";
 
 const MAX_TITLE = 255;
@@ -120,18 +121,6 @@ export default function CreateEventModal({
   const handleEndDateChange = useCallback((date: Date) => {
     setEndDate(date);
   }, []);
-
-  // Memoized handlers for radio buttons to avoid recreating callbacks every render
-  const handleInPerson = useCallback(() => setLocationMode("inPerson"), []);
-  const handleOnline = useCallback(() => setLocationMode("online"), []);
-  const handleVisibilityPublic = useCallback(
-    () => setVisibility("public"),
-    []
-  );
-  const handleVisibilityPrivate = useCallback(
-    () => setVisibility("private"),
-    []
-  );
 
   const pickCoverImage = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -292,7 +281,8 @@ export default function CreateEventModal({
             </Pressable>
           </View>
 
-          <ScrollView
+          <KeyboardAwareScrollView
+            enableOnAndroid
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ paddingBottom: 12 }}
@@ -386,12 +376,12 @@ export default function CreateEventModal({
                   <RadioOption
                     label="In-person"
                     selected={locationMode === "inPerson"}
-                    onPress={handleInPerson}
+                    onPress={() => setLocationMode("inPerson")}
                   />
                   <RadioOption
                     label="Online"
                     selected={locationMode === "online"}
-                    onPress={handleOnline}
+                    onPress={() => setLocationMode("online")}
                   />
                 </View>
               </View>
@@ -445,12 +435,12 @@ export default function CreateEventModal({
                   <RadioOption
                     label="Public"
                     selected={visibility === "public"}
-                    onPress={handleVisibilityPublic}
+                    onPress={() => setVisibility("public")}
                   />
                   <RadioOption
                     label="Private"
                     selected={visibility === "private"}
-                    onPress={handleVisibilityPrivate}
+                    onPress={() => setVisibility("private")}
                   />
                 </View>
               </View>
@@ -521,7 +511,7 @@ export default function CreateEventModal({
                 </Pressable>
               </View>
             </View>
-          </ScrollView>
+          </KeyboardAwareScrollView>
 
           <View className="mt-4 flex-row items-center gap-3">
             <Pressable
@@ -558,17 +548,12 @@ type RadioProps = {
   onPress: () => void;
 };
 
-// OPTIMIZED: React.memo to prevent unnecessary re-renders + larger hit area
-const RadioOption = React.memo(({ label, selected, onPress }: RadioProps) => {
+function RadioOption({ label, selected, onPress }: RadioProps) {
   return (
-    <Pressable
-      onPress={onPress}
-      hitSlop={12}
-      className="flex-row items-center gap-2 py-2"
-    >
+    <Pressable onPress={onPress} className="flex-row items-center gap-2">
       <Ionicons
         name={selected ? "radio-button-on" : "radio-button-off"}
-        size={18}
+        size={16}
         color={selected ? "#0B73FF" : "#94A3B8"}
       />
       <Text className="text-[13px] font-semibold text-slate-800">
@@ -576,7 +561,7 @@ const RadioOption = React.memo(({ label, selected, onPress }: RadioProps) => {
       </Text>
     </Pressable>
   );
-});
+}
 
 type DateTimeFieldProps = {
   value: Date;
@@ -584,12 +569,10 @@ type DateTimeFieldProps = {
 };
 
 // Memoize date/time options OUTSIDE component để tránh re-calculate
-// OPTIMIZED: Reduced date/time options for performance
 const generateDateOptions = () => {
   const start = new Date();
   start.setHours(0, 0, 0, 0);
-  // OPTIMIZED: 90 → 14 days (2 weeks only)
-  return Array.from({ length: 14 }, (_, index) => {
+  return Array.from({ length: 90 }, (_, index) => {
     const next = new Date(start);
     next.setDate(start.getDate() + index);
     return next;
@@ -598,9 +581,10 @@ const generateDateOptions = () => {
 
 const generateTimeOptions = () => {
   const options: { hours: number; minutes: number }[] = [];
-  // OPTIMIZED: 15min → 1-hour intervals (96 → 24 items)
   for (let hour = 0; hour < 24; hour += 1) {
-    options.push({ hours: hour, minutes: 0 });
+    for (let minute = 0; minute < 60; minute += 15) {
+      options.push({ hours: hour, minutes: minute });
+    }
   }
   return options;
 };
@@ -630,7 +614,7 @@ function DateTimeField({ value, onChange }: DateTimeFieldProps) {
   };
 
   const selectedDateKey = dateKey(tempDate);
-  const selectedTimeKey = `${pad(tempTime.hours)}:00`; // OPTIMIZED: hourly intervals
+  const selectedTimeKey = `${pad(tempTime.hours)}:${pad(tempTime.minutes)}`;
 
   return (
     <>
@@ -707,7 +691,7 @@ function DateTimeField({ value, onChange }: DateTimeFieldProps) {
                 >
                   <View className="px-3 py-2">
                     {TIME_OPTIONS.map((option) => {
-                      const key = `${pad(option.hours)}:00`; // OPTIMIZED: hourly display
+                      const key = `${pad(option.hours)}:${pad(option.minutes)}`;
                       const active = key === selectedTimeKey;
                       return (
                         <Pressable

@@ -13,6 +13,8 @@ type Props = {
   sortValue: EventSortOption;
   onChangeSort: (option: EventSortOption) => void;
   onCreateEvent?: () => void;
+  getRsvpStatus: (id: string) => "none" | "going" | "maybe" | "notGoing";
+  onChangeRsvp: (id: string, status: "none" | "going" | "maybe" | "notGoing") => void;
 };
 
 export default function EventsHostingSection({
@@ -21,6 +23,8 @@ export default function EventsHostingSection({
   sortValue,
   onChangeSort,
   onCreateEvent,
+  getRsvpStatus,
+  onChangeRsvp,
 }: Props) {
   const hasEvents = events.length > 0;
 
@@ -42,7 +46,12 @@ export default function EventsHostingSection({
         {hasEvents ? (
           <View className="gap-3">
             {events.map((event) => (
-              <EventCard key={event.id} item={event} />
+              <EventCard
+                key={event.id}
+                item={event}
+                rsvpStatus={getRsvpStatus(event.id)}
+                onRsvpChange={(status) => onChangeRsvp(event.id, status)}
+              />
             ))}
             {onCreateEvent ? (
               <Pressable

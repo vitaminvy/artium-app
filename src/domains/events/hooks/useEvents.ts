@@ -106,6 +106,9 @@ export function useEvents(): UseEventsResult {
   const [hostingItems, setHostingItems] = useState<EventItem[]>(
     eventsMockData.hostingEvents
   );
+  const [hostingRsvpMap, setHostingRsvpMap] = useState<Record<string, RsvpStatus>>(
+    {}
+  );
   const [yourStatus, setYourStatus] = useState<EventFilterOption>(
     EVENT_STATUS_OPTIONS[0]
   );
@@ -116,6 +119,9 @@ export function useEvents(): UseEventsResult {
     HOSTING_SORT_OPTIONS[0]
   );
   const [rsvpMap, setRsvpMap] = useState<Record<string, RsvpStatus>>({});
+  const [discoverItems, setDiscoverItems] = useState<EventItem[]>(
+    eventsMockData.discoverEvents
+  );
   const [discoverStatus, setDiscoverStatus] = useState<EventFilterOption>(
     EVENT_STATUS_OPTIONS[0]
   );
@@ -133,21 +139,28 @@ export function useEvents(): UseEventsResult {
     [hostingItems, hostingSort]
   );
 
+  const mergedEvents = useMemo(() => {
+    const map = new Map<string, EventItem>();
+    hostingItems.forEach((event) => map.set(event.id, event));
+    discoverItems.forEach((event) => map.set(event.id, event));
+    return Array.from(map.values());
+  }, [hostingItems, discoverItems]);
+
   const discoverEvents = useMemo(
     () =>
       applyFilters(
-        eventsMockData.discoverEvents,
+        mergedEvents,
         discoverQuery,
         discoverStatus,
         discoverType,
         discoverDateSort
       ),
-    [discoverQuery, discoverStatus, discoverType, discoverDateSort]
+    [mergedEvents, discoverQuery, discoverStatus, discoverType, discoverDateSort]
   );
 
   const yourEvents = useMemo(() => {
-    const selected = eventsMockData.discoverEvents.filter((event) => {
-      const status = rsvpMap[event.id] ?? "none";
+    const selected = mergedEvents.filter((event) => {
+      const status = (rsvpMap[event.id] ?? hostingRsvpMap[event.id]) ?? "none";
       return status !== "none";
     });
     return applyFilters(
@@ -157,15 +170,17 @@ export function useEvents(): UseEventsResult {
       yourType,
       yourDateSort
     );
-  }, [rsvpMap, yourQuery, yourStatus, yourType, yourDateSort]);
+  }, [mergedEvents, rsvpMap, hostingRsvpMap, yourQuery, yourStatus, yourType, yourDateSort]);
 
   const getRsvpStatus = useCallback(
-    (id: string): RsvpStatus => rsvpMap[id] ?? "none",
-    [rsvpMap]
+    (id: string): RsvpStatus =>
+      (rsvpMap[id] ?? hostingRsvpMap[id]) ?? "none",
+    [rsvpMap, hostingRsvpMap]
   );
 
   const setRsvpStatus = useCallback((id: string, status: RsvpStatus) => {
     setRsvpMap((prev) => ({ ...prev, [id]: status }));
+    setHostingRsvpMap((prev) => ({ ...prev, [id]: status }));
   }, []);
 
   return {
@@ -174,6 +189,7 @@ export function useEvents(): UseEventsResult {
     discoverEvents,
     addHostedEvent: (event: EventItem) => {
       setHostingItems((prev) => [event, ...prev]);
+      setDiscoverItems((prev) => [event, ...prev]);
     },
     getRsvpStatus,
     setRsvpStatus,
