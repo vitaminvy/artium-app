@@ -1,5 +1,5 @@
 import React from "react";
-import { FlatList, ListRenderItemInfo, NativeScrollEvent, NativeSyntheticEvent } from "react-native";
+import { FlatList, ListRenderItemInfo, NativeScrollEvent, NativeSyntheticEvent, ActivityIndicator } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Artwork } from "../../types";
 import MomentCard from "../cards/MomentCard";
@@ -8,9 +8,11 @@ type Props = {
   data: Artwork[];
   onCardPress?: (item: Artwork) => void;
   onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  onEndReached: () => void;
+  isFetchingNextPage: boolean;
 };
 
-export default function DiscoverMomentsTab({ data, onCardPress, onScroll }: Props) {
+export default function DiscoverMomentsTab({ data, onCardPress, onScroll, onEndReached, isFetchingNextPage }: Props) {
   const navigation = useNavigation();
 
   return (
@@ -27,6 +29,9 @@ export default function DiscoverMomentsTab({ data, onCardPress, onScroll }: Prop
           }
         />
       )}
+      onEndReached={onEndReached}
+      onEndReachedThreshold={0.5}
+      ListFooterComponent={isFetchingNextPage ? <ActivityIndicator size="large" color="#94A3B8" style={{ marginVertical: 20 }} /> : null}
       contentContainerStyle={{
         paddingHorizontal: 12,
         paddingTop: 12,

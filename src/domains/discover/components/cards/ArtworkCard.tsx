@@ -63,7 +63,7 @@ export default function ArtworkCard({
         ) : null}
       </View>
 
-      <View className="px-4 py-4 bg-white rounded-b-[28px] flex-1 justify-between">
+      <View className="px-4 py-4 bg-white rounded-b-[28px] justify-between">
         <View className="flex-row items-center gap-3">
           <View className="h-7 w-7 rounded-full bg-slate-200 overflow-hidden">
             {item.artistAvatar ? (
