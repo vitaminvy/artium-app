@@ -65,6 +65,12 @@ export default function EventScreen() {
     discoverQuery,
     setDiscoverQuery,
   } = useEvents();
+  const handleOpenEvent = useCallback(
+    (event: any) => {
+      navigation.navigate("EventDetail", { id: event.id });
+    },
+    [navigation]
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -200,6 +206,7 @@ export default function EventScreen() {
           onCreateEvent={handleCreateEvent}
           getRsvpStatus={getRsvpStatus}
           onChangeRsvp={handleRsvpChange}
+          onPressEvent={handleOpenEvent}
         />
 
         <YourEventsSection
@@ -235,6 +242,7 @@ export default function EventScreen() {
           onChangeQuery={setDiscoverQuery}
           getRsvpStatus={getRsvpStatus}
           onChangeRsvp={handleRsvpChange}
+          onPressEvent={handleOpenEvent}
         />
       </KeyboardAwareScrollView>
 

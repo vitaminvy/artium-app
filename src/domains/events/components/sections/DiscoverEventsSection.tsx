@@ -23,6 +23,7 @@ type Props = {
   onChangeQuery: (value: string) => void;
   getRsvpStatus: (id: string) => "none" | "going" | "maybe" | "notGoing";
   onChangeRsvp: (id: string, status: "none" | "going" | "maybe" | "notGoing") => void;
+  onPressEvent?: (event: EventItem) => void;
 };
 
 const PAGE_SIZE = 8;
@@ -42,6 +43,7 @@ function DiscoverEventsSection({
   onChangeQuery,
   getRsvpStatus,
   onChangeRsvp,
+  onPressEvent,
 }: Props) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const total = events.length;
@@ -113,6 +115,7 @@ function DiscoverEventsSection({
                 item={event}
                 rsvpStatus={getRsvpStatus(event.id)}
                 onRsvpChange={(status) => onChangeRsvp(event.id, status)}
+                onPress={() => onPressEvent?.(event)}
               />
             ))}
           </View>

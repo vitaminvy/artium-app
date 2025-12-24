@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 type Props = {
   title?: string;
   onPressBack?: () => void;
-  onPressMenu?: () => void;
   onLayout?: (e: any) => void;
 };
 
@@ -15,7 +14,6 @@ const EVENT_ACCENT = "#9BE163";
 export default function EventHeader({
   title = "EVENTS",
   onPressBack,
-  onPressMenu,
   onLayout,
 }: Props) {
   const insets = useSafeAreaInsets();
@@ -45,13 +43,7 @@ export default function EventHeader({
           </View>
         </View>
 
-        <Pressable
-          onPress={onPressMenu}
-          hitSlop={10}
-          className="h-10 w-10 items-center justify-center"
-        >
-          <Ionicons name="menu-outline" size={24} color="#0F172A" />
-        </Pressable>
+        <View className="h-10 w-10" />
       </View>
     </View>
   );

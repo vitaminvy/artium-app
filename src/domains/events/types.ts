@@ -20,3 +20,41 @@ export type EventsMockData = {
   yourEvents: EventItem[];
   discoverEvents: EventItem[];
 };
+
+export type EventGuest = {
+  id: string;
+  name: string;
+  status: "going" | "maybe" | "invited";
+  ticketType?: string;
+  quantity?: number;
+};
+
+export type EventExhibitor = {
+  id: string;
+  name: string;
+  status: "accepted" | "pending" | "declined";
+  artwork?: string;
+  booth?: string;
+};
+
+export type EventOrganizer = {
+  name: string;
+  handle?: string;
+  avatar?: string;
+  verified?: boolean;
+};
+
+export type EventDetail = {
+  id: string;
+  overview: {
+    location: string;
+    start: string; // ISO
+    end: string; // ISO
+    timeZone: string;
+    visibility: string;
+    description: string;
+    organizer: EventOrganizer;
+  };
+  guests: EventGuest[];
+  exhibitors: EventExhibitor[];
+};

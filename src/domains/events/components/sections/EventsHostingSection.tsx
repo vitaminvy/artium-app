@@ -15,6 +15,7 @@ type Props = {
   onCreateEvent?: () => void;
   getRsvpStatus: (id: string) => "none" | "going" | "maybe" | "notGoing";
   onChangeRsvp: (id: string, status: "none" | "going" | "maybe" | "notGoing") => void;
+  onPressEvent?: (event: EventItem) => void;
 };
 
 export default function EventsHostingSection({
@@ -25,6 +26,7 @@ export default function EventsHostingSection({
   onCreateEvent,
   getRsvpStatus,
   onChangeRsvp,
+  onPressEvent,
 }: Props) {
   const hasEvents = events.length > 0;
 
@@ -51,6 +53,7 @@ export default function EventsHostingSection({
                 item={event}
                 rsvpStatus={getRsvpStatus(event.id)}
                 onRsvpChange={(status) => onChangeRsvp(event.id, status)}
+                onPress={() => onPressEvent?.(event)}
               />
             ))}
             {onCreateEvent ? (
