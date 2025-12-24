@@ -40,6 +40,8 @@ export type EventItem = {
   location: string;
   datetime: string; // ISO string
   image: string;
+  category?: string;
+  timeLabel?: string;
   attendees?: number;
   status?: "ongoing" | "upcoming";
   rsvpLabel?: string;

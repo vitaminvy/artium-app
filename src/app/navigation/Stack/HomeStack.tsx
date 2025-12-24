@@ -2,6 +2,7 @@ import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import HomeScreen from "../../../screens/HomeScreen";
 import InventoryScreen from "../../../screens/InventoryScreen";
+import EventScreen from "../../../screens/EventScreen";
 import ArtworkDetailScreen from "../../../screens/ArtworkDetailScreen";
 import ProfileScreen from "../../../screens/ProfileScreen";
 import EditProfileScreen from "../../../screens/EditProfileScreen";
@@ -11,6 +12,7 @@ import type { ArtworkDetail } from "../../../domains/artwork/types";
 export type HomeStackParamList = {
   HomeMain: undefined;
   Inventory: undefined;
+  Events: undefined;
   ArtworkDetail: { id?: string };
   Profile: undefined;
   EditProfile: undefined;
@@ -24,6 +26,7 @@ export default function HomeStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="HomeMain" component={HomeScreen} />
       <Stack.Screen name="Inventory" component={InventoryScreen} />
+      <Stack.Screen name="Events" component={EventScreen} />
       <Stack.Screen name="ArtworkDetail" component={ArtworkDetailScreen} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen

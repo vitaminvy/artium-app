@@ -187,6 +187,7 @@ const events: EventItem[] = [
     datetime: "2025-04-29T18:00:00Z",
     image:
       "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=1400&q=80",
+    category: "Dinner, Networking",
     attendees: 26,
     status: "ongoing",
     rsvpLabel: "RSVP",
@@ -198,6 +199,7 @@ const events: EventItem[] = [
     datetime: "2025-03-20T08:00:00Z",
     image:
       "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80",
+    category: "Exhibition",
     attendees: 6,
     status: "upcoming",
     rsvpLabel: "Invite",
@@ -209,6 +211,7 @@ const events: EventItem[] = [
     datetime: "2025-04-15T09:00:00Z",
     image:
       "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
+    category: "Workshop",
     attendees: 12,
     status: "upcoming",
     rsvpLabel: "RSVP",
@@ -220,6 +223,7 @@ const events: EventItem[] = [
     datetime: "2025-05-10T09:00:00Z",
     image:
       "https://images.unsplash.com/photo-1515165562835-c3b8c9ea0f5b?auto=format&fit=crop&w=1000&q=80",
+    category: "Conference",
     attendees: 18,
     status: "upcoming",
     rsvpLabel: "Invite",
