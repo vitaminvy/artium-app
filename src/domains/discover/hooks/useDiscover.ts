@@ -12,33 +12,32 @@ import { defaultDiscoverTab, discoverMockData } from "../mockData";
 
 const ARTWORK_PAGE_SIZE = 6;
 const MOMENT_PAGE_SIZE = 3;
+const PROFILE_PAGE_SIZE = 10;
 
 type UseDiscoverResult = {
   tab: DiscoverTab;
   setTab: (tab: DiscoverTab) => void;
   loading: boolean;
   error: Error | null;
-  
   topPicks: Artwork[];
-  
   artworks: Artwork[];
   loadMoreArtworks: () => void;
   isMoreArtworksLoading: boolean;
   hasMoreArtworks: boolean;
-
   moments: Artwork[];
   loadMoreMoments: () => void;
   isMoreMomentsLoading: boolean;
   hasMoreMoments: boolean;
-
   profiles: ArtistProfile[];
+  loadMoreProfiles: () => void;
+  isMoreProfilesLoading: boolean;
+  hasMoreProfiles: boolean;
   events: EventItem[];
 };
 
 export function useDiscover(): UseDiscoverResult {
   const [tab, setTab] = useState<DiscoverTab>(defaultDiscoverTab);
   
-  // --- Artworks State ---
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [topPicks, setTopPicks] = useState<Artwork[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,11 +46,15 @@ export function useDiscover(): UseDiscoverResult {
   const [hasMoreArtworks, setHasMoreArtworks] = useState(true);
   const [isMoreArtworksLoading, setIsMoreArtworksLoading] = useState(false);
 
-  // --- Moments State ---
   const [moments, setMoments] = useState<Artwork[]>([]);
   const [lastMomentDoc, setLastMomentDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMoreMoments, setHasMoreMoments] = useState(true);
   const [isMoreMomentsLoading, setIsMoreMomentsLoading] = useState(false);
+
+  const [profiles, setProfiles] = useState<ArtistProfile[]>([]);
+  const [lastProfileDoc, setLastProfileDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [hasMoreProfiles, setHasMoreProfiles] = useState(true);
+  const [isMoreProfilesLoading, setIsMoreProfilesLoading] = useState(false);
 
   const fetchInitialArtworks = useCallback(async () => {
     try {
@@ -86,7 +89,6 @@ export function useDiscover(): UseDiscoverResult {
     }
   }, [isMoreArtworksLoading, hasMoreArtworks, lastArtworkDoc]);
 
-  // --- Moments Fetching ---
   const fetchMoments = useCallback(async (lastDoc: QueryDocumentSnapshot<DocumentData> | null = null) => {
     try {
       const q = lastDoc 
@@ -122,14 +124,48 @@ export function useDiscover(): UseDiscoverResult {
     setIsMoreMomentsLoading(false);
   }, [isMoreMomentsLoading, hasMoreMoments, lastMomentDoc, fetchMoments]);
 
+  const fetchArtists = useCallback(async (lastDoc: QueryDocumentSnapshot<DocumentData> | null = null) => {
+    try {
+      const artistsQuery = lastDoc
+        ? query(collection(firestore, "users"), where("roles.isArtist", "==", true), orderBy("displayName"), startAfter(lastDoc), limit(PROFILE_PAGE_SIZE))
+        : query(collection(firestore, "users"), where("roles.isArtist", "==", true), orderBy("displayName"), limit(PROFILE_PAGE_SIZE));
+      
+      const snapshot = await getDocs(artistsQuery);
+      const artistProfiles = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          name: data.displayName,
+          avatar: data.photoURL,
+          location: "From Firestore",
+          artworks: [],
+        } as ArtistProfile;
+      });
+
+      setHasMoreProfiles(artistProfiles.length === PROFILE_PAGE_SIZE);
+      setLastProfileDoc(snapshot.docs[snapshot.docs.length - 1] || null);
+      return artistProfiles;
+    } catch(e: any) {
+      console.error("Failed to fetch artists:", e);
+      setError(e);
+      return [];
+    }
+  }, []);
+
+  const loadMoreProfiles = useCallback(async () => {
+    if (isMoreProfilesLoading || !hasMoreProfiles) return;
+    setIsMoreProfilesLoading(true);
+    const newProfiles = await fetchArtists(lastProfileDoc);
+    setProfiles(prev => [...prev, ...newProfiles]);
+    setIsMoreProfilesLoading(false);
+  }, [isMoreProfilesLoading, hasMoreProfiles, lastProfileDoc, fetchArtists]);
 
   useEffect(() => {
     fetchInitialArtworks();
     fetchMoments(null).then(initialMoments => setMoments(initialMoments));
-  }, [fetchInitialArtworks, fetchMoments]);
+    fetchArtists(null).then(initialProfiles => setProfiles(initialProfiles));
+  }, [fetchInitialArtworks, fetchMoments, fetchArtists]);
 
-  // Keep mock data for other sections
-  const profiles = discoverMockData.profiles;
   const events = discoverMockData.events;
 
   return {
@@ -147,6 +183,10 @@ export function useDiscover(): UseDiscoverResult {
     isMoreMomentsLoading,
     hasMoreMoments,
     profiles,
+    loadMoreProfiles,
+    isMoreProfilesLoading,
+    hasMoreProfiles,
     events,
   };
 }
+

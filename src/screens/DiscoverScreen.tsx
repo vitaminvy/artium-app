@@ -8,11 +8,11 @@ import { useDiscover } from "../domains/discover/hooks/useDiscover";
 import { DiscoverTab } from "../domains/discover/types";
 import { TabChip } from "../domains/discover/components/ui/DiscoverShared";
 import ChangeLocationSheet from "../domains/discover/components/sheets/ChangeLocationSheet";
-import Loader from "../shared/components/Loader"; // Import Loader
+import Loader from "../shared/components/Loader";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 
-// Import Refactored Tabs
+// Import Tabs
 import DiscoverArtworksTab from "../domains/discover/components/tabs/DiscoverArtworksTab";
 import DiscoverProfilesTab from "../domains/discover/components/tabs/DiscoverProfilesTab";
 import DiscoverEventsTab from "../domains/discover/components/tabs/DiscoverEventsTab";
@@ -34,211 +34,210 @@ export default function DiscoverScreen() {
   const {
     tab,
     setTab,
-    loading, // Get loading state
-        error,
-        topPicks,
-        artworks,
-        loadMoreArtworks,
-        isMoreArtworksLoading,
-        hasMoreArtworks,
-        moments,
-        loadMoreMoments,
-        isMoreMomentsLoading,
-        hasMoreMoments,
-        profiles,
-        events,
-      } = useDiscover();
-      const isGuest = status !== "authenticated";
-      const { setHidden } = useTabBarVisibility();
-      const lastOffset = useRef(0);
-    
-      const handleScroll = useCallback(
-        (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-          const y = e.nativeEvent.contentOffset.y;
-          const diff = y - lastOffset.current;
-          if ((diff > 6 && y > 16) || y > 120) {
-            setHidden(true);
-          }
-          else if (diff < -6) {
-            setHidden(false);
-          }
-          lastOffset.current = y;
-        },
-        [setHidden]
-      );
-    
-      useEffect(
-        () => () => {
-          setHidden(false);
-        },
-        [setHidden]
-      );
-    
-      const [showLocationSheet, setShowLocationSheet] = useState(false);
-      const [locationText, setLocationText] = useState("Albuquerque, NM, USA");
-      const [radius, setRadius] = useState("10 miles");
-      const [showRadiusOptions, setShowRadiusOptions] = useState(false);
-      const handleRequireSignUp = useCallback(() => {
-        navigation.navigate("SignUp");
-      }, [navigation]);
-    
-      const renderContent = () => {
-        // --- HANDLE LOADING AND ERROR STATES ---
-        if (loading) {
-          return (
-            <View className="flex-1 justify-center items-center">
-              <Loader />
-            </View>
-          );
-        }
-    
-        if (error) {
-          return (
-            <View className="flex-1 justify-center items-center p-4">
-              <Text className="text-lg text-red-500 text-center">
-                Failed to load content. Please try again later.
-              </Text>
-            </View>
-          );
-        }
-        
-        // --- RENDER TABS ---
-        const onCardPress = isGuest ? handleRequireSignUp : undefined;
-    
-        switch (tab) {
-          case "topPicks":
-            // Top picks are not paginated for this example
-            return <DiscoverArtworksTab data={topPicks} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={() => {}} isFetchingNextPage={false} />;
-          case "artworks":
-            return <DiscoverArtworksTab data={artworks} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreArtworks} isFetchingNextPage={isMoreArtworksLoading} />;
-          case "profiles":
-            return <DiscoverProfilesTab data={profiles} onCardPress={onCardPress} onScroll={handleScroll} />;
-          case "events":
-            return <DiscoverEventsTab data={events} onCardPress={onCardPress} onScroll={handleScroll} />;
-          case "moments":
-            return <DiscoverMomentsTab data={moments} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreMoments} isFetchingNextPage={isMoreMomentsLoading} />;
-          case "nearby":
-            return (
-              <DiscoverNearbyTab
-                artworks={artworks}
-                profiles={profiles}
-                events={events}
-                locationText={locationText}
-                radius={radius}
-                onOpenLocationSheet={() => setShowLocationSheet(true)}
-                onSwitchTab={setTab}
-                onCardPress={onCardPress}
-                onScroll={handleScroll}
-              />
-            );
-          default:
-            return null;
-        }
-      };
-    
+    loading,
+    error,
+    topPicks,
+    artworks,
+    loadMoreArtworks,
+    isMoreArtworksLoading,
+    hasMoreArtworks,
+    moments,
+    loadMoreMoments,
+    isMoreMomentsLoading,
+    hasMoreMoments,
+    profiles,
+    loadMoreProfiles,
+    isMoreProfilesLoading,
+    hasMoreProfiles,
+    events,
+  } = useDiscover();
+
+  const isGuest = status !== "authenticated";
+  const { setHidden } = useTabBarVisibility();
+  const lastOffset = useRef(0);
+
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const y = e.nativeEvent.contentOffset.y;
+      const diff = y - lastOffset.current;
+      if ((diff > 6 && y > 16) || y > 120) {
+        setHidden(true);
+      } else if (diff < -6) {
+        setHidden(false);
+      }
+      lastOffset.current = y;
+    },
+    [setHidden]
+  );
+
+  useEffect(() => {
+    return () => {
+      setHidden(false);
+    };
+  }, [setHidden]);
+
+  const [showLocationSheet, setShowLocationSheet] = useState(false);
+  const [locationText, setLocationText] = useState("Albuquerque, NM, USA");
+  const [radius, setRadius] = useState("10 miles");
+  const [showRadiusOptions, setShowRadiusOptions] = useState(false);
+  const handleRequireSignUp = useCallback(() => {
+    navigation.navigate("SignUp");
+  }, [navigation]);
+
+  const renderContent = () => {
+    if (loading) {
       return (
-        <View className="flex-1 bg-white">
-          <ScreenHeader
-            title="Discover"
-            badgeLabel="Blog"
-            actionType="search"
-            onPressAction={() => {}}
-            underlineSource={UnderlineHome}
-          />
-    
-          <View className="bg-white border-b border-slate-100 pt-2 pb-3">
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={tabBarContent}
-            >
-              {TABS.map((item) => (
-                <TabChip
-                  key={item.key}
-                  label={item.label}
-                  active={tab === item.key}
-                  onPress={() => setTab(item.key)}
-                />
-              ))}
-            </ScrollView>
-          </View>
-    
-          {renderContent()}
-    
-          <ChangeLocationSheet
-            visible={showLocationSheet}
-            locationText={locationText}
-            radius={radius}
-            onChangeLocation={setLocationText}
-            onChangeRadius={setRadius}
-            showRadiusOptions={showRadiusOptions}
-            setShowRadiusOptions={setShowRadiusOptions}
-            onClose={() => setShowLocationSheet(false)}
-            onApply={() => setShowLocationSheet(false)}
-          />
-    
-          {isGuest && (
-            <View style={styles.guestSheet}>
-              <Text style={styles.guestText}>
-                Create an account for the full Artium experience
-              </Text>
-              <Pressable style={styles.guestButton} onPress={handleRequireSignUp}>
-                <Text style={styles.guestButtonText}>SIGN UP NOW</Text>
-              </Pressable>
-            </View>
-          )}
+        <View className="flex-1 justify-center items-center">
+          <Loader />
         </View>
       );
     }
-    
-    const tabBarContent = {
-      paddingHorizontal: 16,
-      paddingVertical: 6,
-      flexDirection: "row" as const,
-      gap: 10,
-      alignItems: "center" as const,
-    };
-    
-    const GUEST_SHEET_HEIGHT = 170;
-    
-    const styles = StyleSheet.create({
-      guestSheet: {
-        position: "absolute",
-        left: 16,
-        right: 16,
-        bottom: 18,
-        height: GUEST_SHEET_HEIGHT,
-        backgroundColor: "white",
-        borderRadius: 28,
-        paddingHorizontal: 20,
-        paddingVertical: 18,
-        shadowColor: "#000",
-        shadowOpacity: 0.08,
-        shadowRadius: 16,
-        shadowOffset: { width: 0, height: 6 },
-        elevation: 6,
-        zIndex: 10,
-      },
-      guestText: {
-        textAlign: "center",
-        color: "#334155",
-        fontSize: 16,
-        lineHeight: 22,
-        marginBottom: 16,
-      },
-      guestButton: {
-        backgroundColor: "#2D74ED",
-        borderRadius: 999,
-        paddingVertical: 14,
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: "#2D74ED",
-      },
-      guestButtonText: {
-        fontSize: 16,
-        fontWeight: "700",
-        color: "#FFFFFF",
-        letterSpacing: 0.5,
-      },
-    });
-    
+
+    if (error) {
+      return (
+        <View className="flex-1 justify-center items-center p-4">
+          <Text className="text-lg text-red-500 text-center">
+            Failed to load content. Please try again later.
+          </Text>
+        </View>
+      );
+    }
+
+    const onCardPress = isGuest ? handleRequireSignUp : undefined;
+
+    switch (tab) {
+      case "topPicks":
+        return <DiscoverArtworksTab data={topPicks} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={() => {}} isFetchingNextPage={false} />;
+      case "artworks":
+        return <DiscoverArtworksTab data={artworks} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreArtworks} isFetchingNextPage={isMoreArtworksLoading} />;
+      case "profiles":
+        return <DiscoverProfilesTab data={profiles} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreProfiles} isFetchingNextPage={isMoreProfilesLoading} />;
+      case "events":
+        return <DiscoverEventsTab data={events} onCardPress={onCardPress} />;
+      case "moments":
+        return <DiscoverMomentsTab data={moments} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreMoments} isFetchingNextPage={isMoreMomentsLoading} />;
+      case "nearby":
+        return (
+          <DiscoverNearbyTab
+            artworks={artworks}
+            profiles={profiles}
+            events={events}
+            locationText={locationText}
+            radius={radius}
+            onOpenLocationSheet={() => setShowLocationSheet(true)}
+            onSwitchTab={setTab}
+            onCardPress={onCardPress}
+            onScroll={handleScroll}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <View className="flex-1 bg-white">
+      <ScreenHeader
+        title="Discover"
+        badgeLabel="Blog"
+        actionType="search"
+        onPressAction={() => {}}
+        underlineSource={UnderlineHome}
+      />
+
+      <View className="bg-white border-b border-slate-100 pt-2 pb-3">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={tabBarContent}
+        >
+          {TABS.map((item) => (
+            <TabChip
+              key={item.key}
+              label={item.label}
+              active={tab === item.key}
+              onPress={() => setTab(item.key)}
+            />
+          ))}
+        </ScrollView>
+      </View>
+
+      {renderContent()}
+
+      <ChangeLocationSheet
+        visible={showLocationSheet}
+        locationText={locationText}
+        radius={radius}
+        onChangeLocation={setLocationText}
+        onChangeRadius={setRadius}
+        showRadiusOptions={showRadiusOptions}
+        setShowRadiusOptions={setShowRadiusOptions}
+        onClose={() => setShowLocationSheet(false)}
+        onApply={() => setShowLocationSheet(false)}
+      />
+
+      {isGuest && (
+        <View style={styles.guestSheet}>
+          <Text style={styles.guestText}>
+            Create an account for the full Artium experience
+          </Text>
+          <Pressable style={styles.guestButton} onPress={handleRequireSignUp}>
+            <Text style={styles.guestButtonText}>SIGN UP NOW</Text>
+          </Pressable>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const tabBarContent = {
+  paddingHorizontal: 16,
+  paddingVertical: 6,
+  flexDirection: "row" as const,
+  gap: 10,
+  alignItems: "center" as const,
+};
+
+const GUEST_SHEET_HEIGHT = 170;
+
+const styles = StyleSheet.create({
+  guestSheet: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 18,
+    height: GUEST_SHEET_HEIGHT,
+    backgroundColor: "white",
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+    zIndex: 10,
+  },
+  guestText: {
+    textAlign: "center",
+    color: "#334155",
+    fontSize: 16,
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  guestButton: {
+    backgroundColor: "#2D74ED",
+    borderRadius: 999,
+    paddingVertical: 14,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#2D74ED",
+  },
+  guestButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    letterSpacing: 0.5,
+  },
+});
+
