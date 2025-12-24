@@ -2,7 +2,7 @@ import React from "react";
 import { Text, View } from "react-native";
 import type { EventItem } from "../../../discover/types";
 import type { EventSortOption } from "../../types";
-import DropdownSelect from "../ui/DropdownSelect";
+import SelectSheet from "../ui/SelectSheet";
 import EmptyStateCard from "../ui/EmptyStateCard";
 
 type Props = {
@@ -29,7 +29,7 @@ export default function EventsHostingSection({
       </Text>
 
       <View className="mt-4">
-        <DropdownSelect
+        <SelectSheet
           value={sortValue}
           options={sortOptions}
           onChange={onChangeSort}

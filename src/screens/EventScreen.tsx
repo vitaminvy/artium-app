@@ -3,9 +3,7 @@ import { NativeScrollEvent, NativeSyntheticEvent, ScrollView, View } from "react
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-import ScreenHeader from "../shared/components/ScreenHeader";
 import Sidebar from "../shared/components/Sidebar";
-import UnderlineHome from "../../assets/headers/underline-home.svg";
 import { useSidebarItems, type SidebarKey } from "../shared/hooks/useSidebar";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
@@ -14,6 +12,7 @@ import { useEvents } from "../domains/events/hooks/useEvents";
 import EventsHostingSection from "../domains/events/components/sections/EventsHostingSection";
 import YourEventsSection from "../domains/events/components/sections/YourEventsSection";
 import DiscoverEventsSection from "../domains/events/components/sections/DiscoverEventsSection";
+import EventHeader from "../domains/events/components/ui/EventHeader";
 
 type NavigationProp = NativeStackNavigationProp<HomeStackParamList, "Events">;
 
@@ -21,6 +20,7 @@ export default function EventScreen() {
   const navigation = useNavigation<NavigationProp>();
   const items = useSidebarItems();
   const { height: tabBarHeight, setHidden } = useTabBarVisibility();
+  const scrollRef = useRef<ScrollView>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(96);
   const [activeKey, setActiveKey] = useState<SidebarKey>("events");
@@ -33,8 +33,21 @@ export default function EventScreen() {
     hostingSortOptions,
     hostingSort,
     setHostingSort,
-    yourFilters,
-    discoverFilters,
+    statusOptions,
+    typeOptions,
+    dateOptions,
+    yourStatus,
+    setYourStatus,
+    yourType,
+    setYourType,
+    yourDateSort,
+    setYourDateSort,
+    discoverStatus,
+    setDiscoverStatus,
+    discoverType,
+    setDiscoverType,
+    discoverDateSort,
+    setDiscoverDateSort,
     yourQuery,
     setYourQuery,
     discoverQuery,
@@ -96,20 +109,31 @@ export default function EventScreen() {
   };
 
   const handleCreateEvent = () => {};
+  const handleDiscoverPageChange = useCallback(() => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({
+        y: lastOffset.current,
+        animated: false,
+      });
+    });
+  }, []);
 
   return (
     <View className="flex-1 bg-white">
-      <ScreenHeader
-        title="Events"
-        badgeLabel="Blog"
-        actionType="menu"
-        isMenuOpen={sidebarOpen}
-        onPressAction={() => setSidebarOpen((prev) => !prev)}
-        onHeightChange={(h) => setHeaderHeight(h)}
-        underlineSource={UnderlineHome}
+      <EventHeader
+        onPressBack={() => {
+          if (navigation.canGoBack()) {
+            navigation.goBack();
+          } else {
+            navigation.navigate("HomeMain");
+          }
+        }}
+        onPressMenu={() => setSidebarOpen((prev) => !prev)}
+        onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
       />
 
       <ScrollView
+        ref={scrollRef}
         className="flex-1"
         contentContainerStyle={{
           paddingHorizontal: 16,
@@ -132,16 +156,33 @@ export default function EventScreen() {
 
         <YourEventsSection
           events={yourEvents}
-          filters={yourFilters}
+          statusOptions={statusOptions}
+          typeOptions={typeOptions}
+          dateOptions={dateOptions}
+          statusValue={yourStatus}
+          typeValue={yourType}
+          dateValue={yourDateSort}
+          onChangeStatus={setYourStatus}
+          onChangeType={setYourType}
+          onChangeDate={setYourDateSort}
           query={yourQuery}
           onChangeQuery={setYourQuery}
         />
 
         <DiscoverEventsSection
           events={discoverEvents}
-          filters={discoverFilters}
+          statusOptions={statusOptions}
+          typeOptions={typeOptions}
+          dateOptions={dateOptions}
+          statusValue={discoverStatus}
+          typeValue={discoverType}
+          dateValue={discoverDateSort}
+          onChangeStatus={setDiscoverStatus}
+          onChangeType={setDiscoverType}
+          onChangeDate={setDiscoverDateSort}
           query={discoverQuery}
           onChangeQuery={setDiscoverQuery}
+          onPageChange={handleDiscoverPageChange}
         />
       </ScrollView>
 

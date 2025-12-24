@@ -5,8 +5,8 @@ import type { EventFilterOption, EventSortOption } from "../types";
 import {
   eventsMockData,
   HOSTING_SORT_OPTIONS,
-  YOUR_EVENT_FILTERS,
-  DISCOVER_EVENT_FILTERS,
+  EVENT_STATUS_OPTIONS,
+  EVENT_TYPE_OPTIONS,
 } from "../mockData";
 
 const filterByQuery = (events: EventItem[], query: string) => {
@@ -20,6 +20,51 @@ const filterByQuery = (events: EventItem[], query: string) => {
   });
 };
 
+const resolveStatus = (event: EventItem) => {
+  const now = new Date();
+  const eventDate = new Date(event.datetime);
+  if (eventDate < now) return "past";
+  if (event.status === "ongoing") return "ongoing";
+  return "upcoming";
+};
+
+const sortEvents = (events: EventItem[], sortBy: EventSortOption) => {
+  const sorted = [...events];
+  if (sortBy.id === "oldest") {
+    sorted.sort(
+      (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
+    );
+    return sorted;
+  }
+  if (sortBy.id === "attendees") {
+    sorted.sort((a, b) => (b.attendees ?? 0) - (a.attendees ?? 0));
+    return sorted;
+  }
+  sorted.sort(
+    (a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime()
+  );
+  return sorted;
+};
+
+const applyFilters = (
+  events: EventItem[],
+  query: string,
+  status: EventFilterOption,
+  type: EventFilterOption,
+  sortBy: EventSortOption
+) => {
+  let result = filterByQuery(events, query);
+  if (status.id !== "all") {
+    result = result.filter((event) => resolveStatus(event) === status.id);
+  }
+  if (type.id !== "all") {
+    result = result.filter(
+      (event) => (event.eventType ?? event.category) === type.id
+    );
+  }
+  return sortEvents(result, sortBy);
+};
+
 type UseEventsResult = {
   hostingEvents: EventItem[];
   yourEvents: EventItem[];
@@ -27,8 +72,21 @@ type UseEventsResult = {
   hostingSortOptions: EventSortOption[];
   hostingSort: EventSortOption;
   setHostingSort: (option: EventSortOption) => void;
-  yourFilters: EventFilterOption[];
-  discoverFilters: EventFilterOption[];
+  statusOptions: EventFilterOption[];
+  typeOptions: EventFilterOption[];
+  dateOptions: EventSortOption[];
+  yourStatus: EventFilterOption;
+  setYourStatus: (option: EventFilterOption) => void;
+  yourType: EventFilterOption;
+  setYourType: (option: EventFilterOption) => void;
+  yourDateSort: EventSortOption;
+  setYourDateSort: (option: EventSortOption) => void;
+  discoverStatus: EventFilterOption;
+  setDiscoverStatus: (option: EventFilterOption) => void;
+  discoverType: EventFilterOption;
+  setDiscoverType: (option: EventFilterOption) => void;
+  discoverDateSort: EventSortOption;
+  setDiscoverDateSort: (option: EventSortOption) => void;
   yourQuery: string;
   setYourQuery: (value: string) => void;
   discoverQuery: string;
@@ -39,22 +97,54 @@ export function useEvents(): UseEventsResult {
   const [hostingSort, setHostingSort] = useState<EventSortOption>(
     HOSTING_SORT_OPTIONS[0]
   );
+  const [yourStatus, setYourStatus] = useState<EventFilterOption>(
+    EVENT_STATUS_OPTIONS[1]
+  );
+  const [yourType, setYourType] = useState<EventFilterOption>(
+    EVENT_TYPE_OPTIONS[0]
+  );
+  const [yourDateSort, setYourDateSort] = useState<EventSortOption>(
+    HOSTING_SORT_OPTIONS[0]
+  );
+  const [discoverStatus, setDiscoverStatus] = useState<EventFilterOption>(
+    EVENT_STATUS_OPTIONS[0]
+  );
+  const [discoverType, setDiscoverType] = useState<EventFilterOption>(
+    EVENT_TYPE_OPTIONS[0]
+  );
+  const [discoverDateSort, setDiscoverDateSort] = useState<EventSortOption>(
+    HOSTING_SORT_OPTIONS[0]
+  );
   const [yourQuery, setYourQuery] = useState("");
   const [discoverQuery, setDiscoverQuery] = useState("");
 
   const hostingEvents = useMemo(
-    () => eventsMockData.hostingEvents,
-    []
+    () => sortEvents(eventsMockData.hostingEvents, hostingSort),
+    [hostingSort]
   );
 
   const yourEvents = useMemo(
-    () => filterByQuery(eventsMockData.yourEvents, yourQuery),
-    [yourQuery]
+    () =>
+      applyFilters(
+        eventsMockData.yourEvents,
+        yourQuery,
+        yourStatus,
+        yourType,
+        yourDateSort
+      ),
+    [yourQuery, yourStatus, yourType, yourDateSort]
   );
 
   const discoverEvents = useMemo(
-    () => filterByQuery(eventsMockData.discoverEvents, discoverQuery),
-    [discoverQuery]
+    () =>
+      applyFilters(
+        eventsMockData.discoverEvents,
+        discoverQuery,
+        discoverStatus,
+        discoverType,
+        discoverDateSort
+      ),
+    [discoverQuery, discoverStatus, discoverType, discoverDateSort]
   );
 
   return {
@@ -64,8 +154,21 @@ export function useEvents(): UseEventsResult {
     hostingSortOptions: HOSTING_SORT_OPTIONS,
     hostingSort,
     setHostingSort,
-    yourFilters: YOUR_EVENT_FILTERS,
-    discoverFilters: DISCOVER_EVENT_FILTERS,
+    statusOptions: EVENT_STATUS_OPTIONS,
+    typeOptions: EVENT_TYPE_OPTIONS,
+    dateOptions: HOSTING_SORT_OPTIONS,
+    yourStatus,
+    setYourStatus,
+    yourType,
+    setYourType,
+    yourDateSort,
+    setYourDateSort,
+    discoverStatus,
+    setDiscoverStatus,
+    discoverType,
+    setDiscoverType,
+    discoverDateSort,
+    setDiscoverDateSort,
     yourQuery,
     setYourQuery,
     discoverQuery,

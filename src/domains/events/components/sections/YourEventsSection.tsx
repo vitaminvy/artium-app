@@ -1,21 +1,37 @@
 import React from "react";
 import { ScrollView, Text, View } from "react-native";
 import type { EventItem } from "../../../discover/types";
-import type { EventFilterOption } from "../../types";
+import type { EventFilterOption, EventSortOption } from "../../types";
 import EmptyStateCard from "../ui/EmptyStateCard";
-import FilterPill from "../ui/FilterPill";
 import SearchInput from "../ui/SearchInput";
+import SelectSheet from "../ui/SelectSheet";
 
 type Props = {
   events: EventItem[];
-  filters: EventFilterOption[];
+  statusOptions: EventFilterOption[];
+  typeOptions: EventFilterOption[];
+  dateOptions: EventSortOption[];
+  statusValue: EventFilterOption;
+  typeValue: EventFilterOption;
+  dateValue: EventSortOption;
+  onChangeStatus: (value: EventFilterOption) => void;
+  onChangeType: (value: EventFilterOption) => void;
+  onChangeDate: (value: EventSortOption) => void;
   query: string;
   onChangeQuery: (value: string) => void;
 };
 
 export default function YourEventsSection({
   events,
-  filters,
+  statusOptions,
+  typeOptions,
+  dateOptions,
+  statusValue,
+  typeValue,
+  dateValue,
+  onChangeStatus,
+  onChangeType,
+  onChangeDate,
   query,
   onChangeQuery,
 }: Props) {
@@ -36,9 +52,25 @@ export default function YourEventsSection({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ gap: 10, paddingVertical: 12 }}
       >
-        {filters.map((filter) => (
-          <FilterPill key={filter.id} label={filter.label} />
-        ))}
+        <SelectSheet
+          variant="pill"
+          value={statusValue}
+          options={statusOptions}
+          onChange={onChangeStatus}
+        />
+        <SelectSheet
+          variant="pill"
+          value={typeValue}
+          options={typeOptions}
+          onChange={onChangeType}
+          placeholder="Event Type"
+        />
+        <SelectSheet
+          variant="pill"
+          value={dateValue}
+          options={dateOptions}
+          onChange={onChangeDate}
+        />
       </ScrollView>
 
       <View className="mt-2">
