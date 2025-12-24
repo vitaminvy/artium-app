@@ -38,7 +38,7 @@ export default function SimilarSavedScreen() {
 
       <View className="px-4 pt-3 pb-2">
         <Text className="text-[18px] font-semibold text-slate-900">
-          Similar to What You Recently Saved
+          Picked For You
         </Text>
       </View>
 

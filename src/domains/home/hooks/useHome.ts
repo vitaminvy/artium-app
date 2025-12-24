@@ -1,22 +1,40 @@
-import { useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { homeMockData } from "../mockData";
 import { HOME_CONSTANTS } from "../constants";
-
-// TODO: When ready for API integration, replace this with useHomeWithAPI
-// See example implementation at the bottom of this file
+import { getLatestBlogs, getOldestEditorialsAsNews } from "../services/blogService";
+import type { HomeBlogItem, HomeNewsItem } from "../types";
 
 /**
- * Hook for home screen data
- *
- * Currently returns mock data synchronously for backward compatibility.
- * When ready to integrate with API:
- * 1. Rename this to useHomeMock
- * 2. Rename useHomeWithAPI to useHome
- * 3. Update all imports
+ * Hook for home screen data.
+ * Fetches real blog and news data, and uses mock data for other sections.
  */
 export function useHome() {
-  const news = useMemo(() => homeMockData.news, []);
-  const blogs = useMemo(() => homeMockData.blogs, []);
+  const [blogs, setBlogs] = useState<HomeBlogItem[]>([]);
+  const [news, setNews] = useState<HomeNewsItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        // Fetch real data for blogs and news in parallel
+        const [fetchedBlogs, fetchedNews] = await Promise.all([
+          getLatestBlogs(),
+          getOldestEditorialsAsNews(),
+        ]);
+        setBlogs(fetchedBlogs);
+        setNews(fetchedNews);
+      } catch (err: any) {
+        setError(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // Continue using mock data for other sections for now
   const events = useMemo(() => homeMockData.events, []);
   const sellItems = useMemo(() => homeMockData.sellItems, []);
   const sellItemsPreview = useMemo(
@@ -37,6 +55,8 @@ export function useHome() {
     following,
     popularArtists,
     sellItemsPreview,
+    isLoading, // Expose loading state for UI
+    error,     // Expose error state for UI
   };
 }
 

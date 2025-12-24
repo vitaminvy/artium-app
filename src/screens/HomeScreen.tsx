@@ -31,6 +31,7 @@ import {
 } from "../domains/home/types";
 import ArtworkCard from "../domains/discover/components/cards/ArtworkCard";
 import type { Artwork } from "../domains/discover/types";
+import Loader from "../shared/components/Loader";
 
 type HomeScreenNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<HomeStackParamList, "HomeMain">,
@@ -46,7 +47,7 @@ export default function HomeScreen() {
     number | null
   >(null);
   const { width } = useWindowDimensions();
-  const { news, blogs, events, sellItemsPreview, following } = useHome();
+  const { news, blogs, events, sellItemsPreview, following, isLoading } = useHome();
   const { isFollowing, toggleFollow } = useProfileContext();
   const highlightCardWidth = Math.min(320, Math.round(width * 0.72));
   const highlightCardHeight = Math.round(highlightCardWidth * 0.55);
@@ -119,6 +120,11 @@ export default function HomeScreen() {
         onHeightChange={(h) => setHeaderHeight(h)}
         underlineSource={UnderlineHome}
       />
+      {isLoading ? (
+        <View className="flex-1 justify-center items-center">
+          <Loader />
+        </View>
+      ) : (
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
@@ -157,7 +163,7 @@ export default function HomeScreen() {
         </View>
 
         <SectionHeader
-          title="Similar to What You Recently Saved"
+          title="Pick For You"
           onPressAction={handleSeeAllSaved}
         />
         <FlatList
@@ -217,6 +223,7 @@ export default function HomeScreen() {
           ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
         />
       </ScrollView>
+      )}
 
       <Sidebar
         visible={sidebarOpen}
