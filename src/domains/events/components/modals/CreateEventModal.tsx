@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Image, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Image, Keyboard, Modal, Pressable, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import DateTimePickerModal from "react-native-modal-datetime-picker";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import type { EventItem } from "../../../discover/types";
 import type { EventFilterOption, TimeZoneOption } from "../../types";
 import { DEFAULT_TIME_ZONE_ID, TIME_ZONE_OPTIONS } from "../../constants.optimized";
@@ -12,23 +14,9 @@ const MAX_TITLE = 255;
 const MAX_VENUE = 255;
 const MAX_DESCRIPTION = 10000;
 
-const formatDateTime = (date: Date) => {
-  const pad = (value: number) => `${value}`.padStart(2, "0");
-  const month = pad(date.getMonth() + 1);
-  const day = pad(date.getDate());
-  const year = date.getFullYear();
-  const hours = pad(date.getHours());
-  const minutes = pad(date.getMinutes());
-  return `${month}/${day}/${year} ${hours}:${minutes}`;
-};
-
 const getDefaultTimeZone = () =>
   TIME_ZONE_OPTIONS.find((option) => option.id === DEFAULT_TIME_ZONE_ID) ??
   TIME_ZONE_OPTIONS[0];
-
-const pad = (value: number) => `${value}`.padStart(2, "0");
-const dateKey = (date: Date) =>
-  `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
 
 type LocationMode = "inPerson" | "online";
@@ -292,9 +280,12 @@ export default function CreateEventModal({
             </Pressable>
           </View>
 
-          <ScrollView
+          <KeyboardAwareScrollView
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            extraScrollHeight={32}
+            enableOnAndroid
+            enableAutomaticScroll
             contentContainerStyle={{ paddingBottom: 12 }}
           >
             <View className="gap-4">
@@ -400,16 +391,21 @@ export default function CreateEventModal({
                 <View className="gap-3">
                   <View className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
                     <TextInput
+                      ref={addressRef}
                       value={address}
                       onChangeText={setAddress}
                       placeholder="Search address"
                       placeholderTextColor="#94A3B8"
                       className="text-[14px] text-slate-900"
                       style={{ paddingVertical: 0 }}
+                      returnKeyType="next"
+                      blurOnSubmit={false}
+                      onSubmitEditing={() => venueRef.current?.focus()}
                     />
                   </View>
                   <View className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 flex-row items-center">
                     <TextInput
+                      ref={venueRef}
                       value={venueDetails}
                       onChangeText={setVenueDetails}
                       placeholder="Venue details (Optional)"
@@ -417,6 +413,9 @@ export default function CreateEventModal({
                       maxLength={MAX_VENUE}
                       className="flex-1 text-[14px] text-slate-900"
                       style={{ paddingVertical: 0 }}
+                      returnKeyType="next"
+                      blurOnSubmit={false}
+                      onSubmitEditing={() => descriptionRef.current?.focus()}
                     />
                     <Text className="text-[11px] text-slate-400">
                       {venueDetails.length}/{MAX_VENUE}
@@ -426,6 +425,7 @@ export default function CreateEventModal({
               ) : (
                 <View className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
                   <TextInput
+                    ref={websiteRef}
                     value={websiteUrl}
                     onChangeText={setWebsiteUrl}
                     placeholder="https://www.example.com"
@@ -433,6 +433,9 @@ export default function CreateEventModal({
                     className="text-[14px] text-slate-900"
                     style={{ paddingVertical: 0 }}
                     autoCapitalize="none"
+                    returnKeyType="next"
+                    blurOnSubmit={false}
+                    onSubmitEditing={() => descriptionRef.current?.focus()}
                   />
                 </View>
               )}
@@ -461,14 +464,18 @@ export default function CreateEventModal({
                 </Text>
                 <View className="mt-2 rounded-2xl border border-slate-200 bg-white px-4 py-3">
                   <TextInput
+                    ref={descriptionRef}
                     value={description}
                     onChangeText={setDescription}
                     placeholder="Tell people a little more about your event"
                     placeholderTextColor="#94A3B8"
                     maxLength={MAX_DESCRIPTION}
-                    multiline
+                    multiline={false}
+                    returnKeyType="done"
+                    blurOnSubmit
+                    onSubmitEditing={Keyboard.dismiss}
                     className="text-[14px] text-slate-900"
-                    style={{ minHeight: 120, textAlignVertical: "top" }}
+                    style={{ paddingVertical: 4, minHeight: 48 }}
                   />
                   <Text className="text-[11px] text-slate-400 text-right mt-2">
                     {description.length}/{MAX_DESCRIPTION}
@@ -521,7 +528,7 @@ export default function CreateEventModal({
                 </Pressable>
               </View>
             </View>
-          </ScrollView>
+          </KeyboardAwareScrollView>
 
           <View className="mt-4 flex-row items-center gap-3">
             <Pressable
@@ -583,175 +590,41 @@ type DateTimeFieldProps = {
   onChange: (date: Date) => void;
 };
 
-// Memoize date/time options OUTSIDE component để tránh re-calculate
-// OPTIMIZED: Reduced date/time options for performance
-const generateDateOptions = () => {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  // OPTIMIZED: 90 → 14 days (2 weeks only)
-  return Array.from({ length: 14 }, (_, index) => {
-    const next = new Date(start);
-    next.setDate(start.getDate() + index);
-    return next;
-  });
-};
-
-const generateTimeOptions = () => {
-  const options: { hours: number; minutes: number }[] = [];
-  // OPTIMIZED: 15min → 1-hour intervals (96 → 24 items)
-  for (let hour = 0; hour < 24; hour += 1) {
-    options.push({ hours: hour, minutes: 0 });
-  }
-  return options;
-};
-
-const DATE_OPTIONS = generateDateOptions();
-const TIME_OPTIONS = generateTimeOptions();
-
 function DateTimeField({ value, onChange }: DateTimeFieldProps) {
-  const [open, setOpen] = useState(false);
-  const [tempDate, setTempDate] = useState<Date>(value);
-  const [tempTime, setTempTime] = useState({
-    hours: value.getHours(),
-    minutes: value.getMinutes(),
-  });
-
-  const openPicker = () => {
-    setTempDate(value);
-    setTempTime({ hours: value.getHours(), minutes: value.getMinutes() });
-    setOpen(true);
-  };
-
-  const applySelection = () => {
-    const next = new Date(tempDate);
-    next.setHours(tempTime.hours, tempTime.minutes, 0, 0);
-    onChange(next);
-    setOpen(false);
-  };
-
-  const selectedDateKey = dateKey(tempDate);
-  const selectedTimeKey = `${pad(tempTime.hours)}:00`; // OPTIMIZED: hourly intervals
+  const [pickerVisible, setPickerVisible] = useState(false);
 
   return (
     <>
       <Pressable
-        onPress={openPicker}
+        onPress={() => setPickerVisible(true)}
         className="mt-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 flex-row items-center"
       >
         <Ionicons name="calendar-outline" size={16} color="#0F172A" />
         <Text className="ml-3 text-[14px] text-slate-900">
-          {formatDateTime(value)}
+          {value.toLocaleString("en-US", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          })}
         </Text>
       </Pressable>
 
-      <Modal
-        visible={open}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setOpen(false)}
-      >
-        <View className="flex-1 bg-black/30 justify-center px-4">
-          <Pressable className="absolute inset-0" onPress={() => setOpen(false)} />
-          <View className="rounded-3xl bg-white p-5 shadow-2xl">
-            <Text className="text-[15px] font-semibold text-slate-900 text-center">
-              Select date & time
-            </Text>
-
-            <View className="mt-4 flex-row gap-4">
-              <View className="flex-1">
-                <Text className="text-[12px] font-semibold text-slate-500 mb-2">
-                  Date
-                </Text>
-                <ScrollView
-                  className="rounded-2xl border border-slate-200 bg-white"
-                  style={{ maxHeight: 224 }}
-                  showsVerticalScrollIndicator={true}
-                >
-                  <View className="px-3 py-2">
-                    {DATE_OPTIONS.map((option) => {
-                      const key = dateKey(option);
-                      const active = key === selectedDateKey;
-                      return (
-                        <Pressable
-                          key={key}
-                          onPress={() => setTempDate(option)}
-                          className="py-2 px-2 rounded-xl"
-                          style={{ backgroundColor: active ? "#E8F1FF" : "transparent" }}
-                        >
-                          <Text
-                            className="text-[12px] font-semibold"
-                            style={{ color: active ? "#0B73FF" : "#0F172A" }}
-                          >
-                            {option.toLocaleDateString("en-US", {
-                              weekday: "short",
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </ScrollView>
-              </View>
-
-              <View className="w-24">
-                <Text className="text-[12px] font-semibold text-slate-500 mb-2">
-                  Time
-                </Text>
-                <ScrollView
-                  className="rounded-2xl border border-slate-200 bg-white"
-                  style={{ maxHeight: 224 }}
-                  showsVerticalScrollIndicator={true}
-                >
-                  <View className="px-3 py-2">
-                    {TIME_OPTIONS.map((option) => {
-                      const key = `${pad(option.hours)}:00`; // OPTIMIZED: hourly display
-                      const active = key === selectedTimeKey;
-                      return (
-                        <Pressable
-                          key={key}
-                          onPress={() => setTempTime(option)}
-                          className="py-2 px-2 rounded-xl"
-                          style={{ backgroundColor: active ? "#E8F1FF" : "transparent" }}
-                        >
-                          <Text
-                            className="text-[12px] font-semibold text-center"
-                            style={{ color: active ? "#0B73FF" : "#0F172A" }}
-                          >
-                            {key}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </ScrollView>
-              </View>
-            </View>
-
-            <View className="mt-5 flex-row items-center gap-3">
-              <Pressable
-                onPress={() => setOpen(false)}
-                className="flex-1 rounded-full border border-slate-200 py-3 items-center"
-              >
-                <Text className="text-[14px] font-semibold text-slate-700">
-                  Cancel
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={applySelection}
-                className="flex-1 rounded-full py-3 items-center"
-                style={{ backgroundColor: "#0B73FF" }}
-              >
-                <Text className="text-[14px] font-semibold text-white">
-                  Apply
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <DateTimePickerModal
+        isVisible={pickerVisible}
+        mode="datetime"
+        date={value}
+        onConfirm={(date) => {
+          onChange(date);
+          setPickerVisible(false);
+        }}
+        onCancel={() => setPickerVisible(false)}
+        headerTextIOS="Select date & time"
+        confirmTextIOS="Done"
+        cancelTextIOS="Cancel"
+      />
     </>
   );
 }

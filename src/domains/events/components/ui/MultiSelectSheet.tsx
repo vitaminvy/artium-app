@@ -49,8 +49,9 @@ export default function MultiSelectSheet<T extends OptionBase>({
 
   const displayLabel = useMemo(() => {
     if (value.length === 0) return placeholder;
-    if (value.length === 1) return value[0].label;
-    return `${value.length} selected`;
+    if (value.length <= 3) return value.map((v) => v.label).join(", ");
+    const firstTwo = value.slice(0, 2).map((v) => v.label).join(", ");
+    return `${firstTwo} +${value.length - 2}`;
   }, [value, placeholder]);
 
   const bottomInset = Math.max(insets.bottom, 16);
