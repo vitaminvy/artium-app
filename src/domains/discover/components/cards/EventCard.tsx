@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { EventItem } from "../../types";
 import { openShareLink } from "../../../../shared/utils/share";
+import EventEmailModal from "../../../events/components/modals/EventEmailModal";
 
 const cardShadow = {
   shadowColor: "#000",
@@ -51,6 +52,7 @@ export default function EventCard({
   const [showMenu, setShowMenu] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showEmail, setShowEmail] = useState(false);
 
   const stopPropagation =
     (fn?: (event?: GestureResponderEvent) => void) => (event: GestureResponderEvent) => {
@@ -175,7 +177,7 @@ export default function EventCard({
             </Pressable>
             <Pressable
               className="h-11 w-11 rounded-full border border-slate-200 items-center justify-center active:opacity-90"
-              onPress={stopPropagation()}
+              onPress={stopPropagation(() => setShowEmail(true))}
             >
               <Ionicons name="mail-outline" size={18} color="#0F172A" />
             </Pressable>
@@ -280,6 +282,8 @@ export default function EventCard({
           ) : null}
         </View>
       </View>
+
+      <EventEmailModal visible={showEmail} onClose={() => setShowEmail(false)} event={item} />
     </Container>
   );
 }

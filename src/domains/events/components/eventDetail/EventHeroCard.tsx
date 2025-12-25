@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Image, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { EventItem } from "../../../discover/types";
+import EventEmailModal from "../modals/EventEmailModal";
 
 type RsvpStatus = "none" | "going" | "maybe" | "notGoing";
 
@@ -32,6 +33,7 @@ export default function EventHeroCard({
 }: Props) {
   const [localRsvp, setLocalRsvp] = useState<RsvpStatus>(initialRsvp);
   const [openMenu, setOpenMenu] = useState(false);
+  const [showEmail, setShowEmail] = useState(false);
 
   // Keep local state in sync with controlled prop or updated initial value
   useEffect(() => {
@@ -118,7 +120,10 @@ export default function EventHeroCard({
             />
           </Pressable>
 
-          <Pressable className="h-11 w-11 rounded-full border border-slate-200 items-center justify-center active:opacity-90">
+          <Pressable
+            className="h-11 w-11 rounded-full border border-slate-200 items-center justify-center active:opacity-90"
+            onPress={() => setShowEmail(true)}
+          >
             <Ionicons name="mail-outline" size={18} color="#0F172A" />
           </Pressable>
           <Pressable className="h-11 w-11 rounded-full border border-slate-200 items-center justify-center active:opacity-90">
@@ -149,6 +154,12 @@ export default function EventHeroCard({
           </View>
         ) : null}
       </View>
+
+      <EventEmailModal
+        visible={showEmail}
+        onClose={() => setShowEmail(false)}
+        event={event}
+      />
     </View>
   );
 }
