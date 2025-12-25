@@ -125,7 +125,11 @@ export const subscribeToFeedPosts = (
 /**
  * Toggle Like cho bài viết
  */
-export const togglePostLike = async (postId: string, userId: string) => {
+export const togglePostLike = async (
+  postId: string,
+  userId: string,
+  _currentLikedStatus?: boolean
+) => {
   const postRef = doc(firestore, POSTS_COLLECTION, postId);
   const likeRef = doc(postRef, "likes", userId);
 
@@ -186,4 +190,3 @@ export const addCommentToPost = async (postId: string, params: { authorSnapshot:
     throw error;
   }
 };
-

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { User as AuthUser } from "firebase/auth";
 import { FeedComment, FeedPost, FeedTab } from "../types";
 import { 
@@ -65,6 +65,7 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
   const [pageSize, setPageSize] = useState(POST_PAGE_SIZE);
   const [hasMorePosts, setHasMorePosts] = useState(true);
   const [isMorePostsLoading, setIsMorePostsLoading] = useState(false);
+  const likeInFlight = useRef<Set<string>>(new Set());
 
   const [commentsByPost, setCommentsByPost] = useState<Record<string, FeedComment[]>>({});
 
@@ -130,6 +131,8 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
 
   const toggleLike = useCallback(async (id: string, currentLikedStatus: boolean) => {
     if (!currentUser) return;
+    if (likeInFlight.current.has(id)) return;
+    likeInFlight.current.add(id);
     
     // Optimistic update
     setPosts(prevPosts => prevPosts.map(p => {
@@ -149,7 +152,7 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
     }));
 
     try {
-      await togglePostLike(id, currentUser.uid);
+      await togglePostLike(id, currentUser.uid, currentLikedStatus);
     } catch (error) {
       console.error("Failed to toggle like:", error);
       // Revert optimistic update
@@ -166,6 +169,8 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
         }
         return p;
       }));
+    } finally {
+      likeInFlight.current.delete(id);
     }
   }, [currentUser]);
   
