@@ -14,12 +14,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as MailComposer from "expo-mail-composer";
 import {
   collection,
+  doc,
   getDocs,
   limit,
   orderBy,
   query,
+  serverTimestamp,
   startAfter,
   startAt,
+  writeBatch,
   endAt,
   type QueryDocumentSnapshot,
   type DocumentData,
@@ -42,6 +45,7 @@ const pillText = "#FFFFFF";
 
 type UserOption = {
   id: string;
+  uid: string;
   label: string;
   email: string;
 };
@@ -75,6 +79,39 @@ export default function EventEmailModal({ visible, onClose, event, organizerName
   }, [event.datetime, event.startDate]);
 
   const canSend = recipients.length > 0 && !isSending;
+
+  const markInvitedRecipients = useCallback(
+    async (targetRecipients: UserOption[]) => {
+      const validRecipients = targetRecipients.filter((recipient) => recipient.uid);
+      if (!validRecipients.length) return;
+
+      const chunkSize = 400;
+      for (let i = 0; i < validRecipients.length; i += chunkSize) {
+        const batch = writeBatch(firestore);
+        const chunk = validRecipients.slice(i, i + chunkSize);
+        chunk.forEach((recipient) => {
+          const rsvpRef = doc(
+            firestore,
+            "users",
+            recipient.uid,
+            "event_rsvps",
+            event.id
+          );
+          batch.set(
+            rsvpRef,
+            {
+              eventId: event.id,
+              status: "invited",
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+        });
+        await batch.commit();
+      }
+    },
+    [event.id]
+  );
 
   const fetchUsers = useCallback(
     async ({ reset }: { reset: boolean }) => {
@@ -111,7 +148,8 @@ export default function EventEmailModal({ visible, onClose, event, organizerName
             if (!email) return null;
             const name = String(data.displayName || "").trim();
             return {
-              id: email,
+              id: doc.id,
+              uid: doc.id,
               label: name || email,
               email,
             } as UserOption;
@@ -122,12 +160,12 @@ export default function EventEmailModal({ visible, onClose, event, organizerName
 
         setUserOptions((prev) => {
           const base = reset ? [] : prev;
-          const seen = new Set(base.map((item) => item.email));
+          const seen = new Set(base.map((item) => item.uid));
           const merged = [...base];
           nextOptions.forEach((option) => {
-            if (!seen.has(option.email)) {
+            if (!seen.has(option.uid)) {
               merged.push(option);
-              seen.add(option.email);
+              seen.add(option.uid);
             }
           });
           return merged;
@@ -208,12 +246,15 @@ export default function EventEmailModal({ visible, onClose, event, organizerName
         setIsSending(false);
         return;
       }
-      await MailComposer.composeAsync({
+      const result = await MailComposer.composeAsync({
         recipients: recipients.map((recipient) => recipient.email),
         subject: `[Artium] ${event.title}`,
         body: buildBody(),
         isHtml: false,
       });
+      if (result.status !== MailComposer.MailComposerStatus.CANCELLED) {
+        await markInvitedRecipients(recipients);
+      }
 
       // Đóng modal ngay sau khi mở mail app
       onClose();

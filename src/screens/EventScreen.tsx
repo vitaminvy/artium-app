@@ -1,5 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { NativeScrollEvent, NativeSyntheticEvent, View, Text } from "react-native";
+import {
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  RefreshControl,
+  View,
+  Text,
+} from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -30,6 +36,7 @@ export default function EventScreen() {
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const lastOffset = useRef(0);
   const yourLayoutRef = useRef<{ y: number; height: number }>({
     y: 0,
@@ -46,6 +53,7 @@ export default function EventScreen() {
     isMoreEventsLoading,
     hasMoreEvents,
     loadMoreEvents,
+    refreshEvents,
     error,
     addHostedEvent,
     getRsvpStatus,
@@ -135,6 +143,16 @@ export default function EventScreen() {
     setShowCreateEvent(true);
   };
 
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await refreshEvents();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, refreshEvents]);
+
   const handleRsvpChange = useCallback(
     (id: string, status: "none" | "going" | "maybe" | "notGoing") => {
       setRsvpStatus(id, status);
@@ -211,6 +229,9 @@ export default function EventScreen() {
         enableAutomaticScroll={true}
         extraScrollHeight={20}
         extraHeight={150}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+        }
       >
         <EventsHostingSection
           events={hostingEvents}

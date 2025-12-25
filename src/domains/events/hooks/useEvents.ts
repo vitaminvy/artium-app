@@ -84,6 +84,7 @@ type UseEventsResult = {
   isMoreEventsLoading: boolean;
   hasMoreEvents: boolean;
   loadMoreEvents: () => void;
+  refreshEvents: () => Promise<void>;
   error: Error | null;
   addHostedEvent: (event: EventItem) => void;
   setHostingEvents: (events: EventItem[]) => void;
@@ -211,36 +212,28 @@ export function useEvents(): UseEventsResult {
     }
   }, [fetchEventsPage, recomputeTypes, currentUser?.uid]);
 
-  // Load RSVPs for current user
-  useEffect(() => {
-    if (!currentUser?.uid) return;
+  const loadRsvps = useCallback(async () => {
+    if (!currentUser?.uid) {
+      setRsvpMap({});
+      setRsvpEventItems([]);
+      return;
+    }
 
-    let isMounted = true;
-    const loadRsvps = async () => {
-      const { rsvpMap: fetchedRsvps, eventIds } = await fetchUserRsvps(currentUser.uid);
-      if (!isMounted) return;
-      
-      setRsvpMap(fetchedRsvps);
+    const { rsvpMap: fetchedRsvps, eventIds } = await fetchUserRsvps(currentUser.uid);
+    setRsvpMap(fetchedRsvps);
 
-      // Now ensure we have EventItems for all these IDs
-      // Filter out IDs that are already in discoverItems (optimization)
-      // Note: discoverItems might update later, but this is an initial sync.
-      // Ideally we check against the current state of discoverItems, but here we can just fetch all needed and dedup in useMemo.
-      
-      if (eventIds.length > 0) {
-          const missingIds = eventIds; // Ideally filter, but safe to fetch again or improve logic.
-          // Let's rely on fetchEventsByIds to be reasonably efficient or just fetch.
-          // To be safe, let's fetch them.
-          const fetchedEvents = await fetchEventsByIds(missingIds);
-          if (isMounted) {
-             setRsvpEventItems(fetchedEvents);
-          }
-      }
-    };
-    loadRsvps();
-    return () => { isMounted = false; };
+    if (eventIds.length > 0) {
+      const fetchedEvents = await fetchEventsByIds(eventIds);
+      setRsvpEventItems(fetchedEvents);
+    } else {
+      setRsvpEventItems([]);
+    }
   }, [currentUser?.uid]);
 
+  // Load RSVPs for current user
+  useEffect(() => {
+    loadRsvps();
+  }, [loadRsvps]);
 
   const loadMoreEvents = useCallback(async () => {
     if (isMoreEventsLoading || !hasMoreEvents) return;
@@ -321,6 +314,10 @@ export function useEvents(): UseEventsResult {
     }
   }, [currentUser?.uid]);
 
+  const refreshEvents = useCallback(async () => {
+    await Promise.all([loadInitial(), loadRsvps()]);
+  }, [loadInitial, loadRsvps]);
+
   return {
     hostingEvents,
     yourEvents,
@@ -330,6 +327,7 @@ export function useEvents(): UseEventsResult {
     isMoreEventsLoading,
     hasMoreEvents,
     loadMoreEvents,
+    refreshEvents,
     error,
     addHostedEvent: (event: EventItem) => {
       setHostingItems((prev) => [event, ...prev]);

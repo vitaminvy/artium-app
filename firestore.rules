@@ -1,14 +1,46 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isEventOrganizer(eventId) {
+      return (
+        isSignedIn() &&
+        get(/databases/$(database)/documents/events/$(eventId)).data.organizerId == request.auth.uid
+      );
+    }
+
+    function isInvitedRsvp(eventId) {
+      return request.resource.data.eventId == eventId
+        && request.resource.data.status == "invited";
+    }
+
+    // Chỉ cho phép update các field liên quan follow counters
+    function onlyFollowCountersChanged() {
+      // changedKeys on nested maps returns top-level keys only (e.g., "stats"),
+      // so we allow stats as a whole plus the top-level counters.
+      let diffKeys = request.resource.data.diff(resource.data).changedKeys();
+      return diffKeys.hasOnly([
+        "followerCount",
+        "followingCount",
+        "stats",
+      ]);
+    }
+
     // Allow public read on artworks, artists, events, and posts
     match /artworks/{artworkId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if false;
     }
     match /artists/{artistId} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == artistId;
+      allow write: if false;
     }
     match /editorials/{editorialId} {
       allow read: if true;
@@ -16,11 +48,11 @@ service cloud.firestore {
     }
      match /events/{eventId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if false;
     }
     match /posts/{postId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isSignedIn();
       
       // Allow any authenticated user to like/unlike
       match /likes/{userId} {
@@ -38,22 +70,29 @@ service cloud.firestore {
     // Users can read their own data, and public profiles can be read by anyone
     match /users/{userId} {
       allow read: if true;
-      allow write: if request.auth.uid == userId;
+      allow create, delete: if isOwner(userId);
+      allow update: if isOwner(userId) || (isSignedIn() && onlyFollowCountersChanged());
 
       // Explicitly allow access to event_rsvps subcollection
       match /event_rsvps/{rsvpId} {
+        allow read: if true;
+        allow create, update: if isOwner(userId) || (isEventOrganizer(rsvpId) && isInvitedRsvp(rsvpId));
+        allow delete: if isOwner(userId);
+      }
+      
+      // Allow users to follow each other
+      match /followers/{followerId} {
+        allow read: if true;
+        allow write: if request.auth.uid == followerId;
+      }
+      
+      match /following/{followingId} {
         allow read: if true;
         allow write: if request.auth.uid == userId;
       }
     }
 
-    // Allow logged-in users to manage their own subcollections (catch-all for others like addresses)
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth.uid == userId;
-    }
-
     // Allow collection group query for event_rsvps
-    // This allows fetching guest counts and lists via collectionGroup
     match /{path=**}/event_rsvps/{rsvpId} {
       allow read: if true;
     }

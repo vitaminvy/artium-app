@@ -22,6 +22,18 @@ type Props = {
 const INITIAL_COUNT = 4;
 const INCREMENT = 4;
 
+const EventCardSkeleton = () => (
+  <View className="rounded-3xl border border-slate-200 bg-white overflow-hidden animate-pulse">
+    <View className="h-40 bg-slate-200" />
+    <View className="p-4 gap-3">
+      <View className="h-3 w-24 rounded bg-slate-200" />
+      <View className="h-5 w-40 rounded bg-slate-200" />
+      <View className="h-3 w-32 rounded bg-slate-200" />
+      <View className="h-10 rounded-full bg-slate-200" />
+    </View>
+  </View>
+);
+
 export default function EventsHostingSection({
   events,
   sortOptions,
@@ -74,8 +86,9 @@ export default function EventsHostingSection({
 
       <View className="mt-4">
         {isLoading ? (
-          <View className="py-4 items-center">
-            <Text className="text-[12px] text-slate-500">Loading your events...</Text>
+          <View className="gap-4">
+            <EventCardSkeleton />
+            <EventCardSkeleton />
           </View>
         ) : hasEvents ? (
           <View className="gap-4">

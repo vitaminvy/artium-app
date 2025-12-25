@@ -4,6 +4,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   View,
@@ -39,14 +40,15 @@ export default function EventDetailScreen() {
   const [detail, setDetail] = useState<EventDetail | null>(null);
   const [guestCounts, setGuestCounts] = useState<{ going: number; maybe: number; invited: number }>({ going: 0, maybe: 0, invited: 0 });
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchDetail = async () => {
+  const fetchDetail = useCallback(
+    async (showLoader: boolean) => {
       const eventId = params?.id || params?.event?.id;
-      
+
       if (!eventId) {
-        setIsLoading(false);
+        if (showLoader) setIsLoading(false);
         setLoadError("Missing event id");
         return;
       }
@@ -56,37 +58,37 @@ export default function EventDetailScreen() {
       }
 
       try {
-        setIsLoading(true);
+        if (showLoader) setIsLoading(true);
         setLoadError(null);
 
         // Parallel fetch: Event Data, Guest Counts, Guest List (limited)
         const [eventResult, counts, guests] = await Promise.all([
-           !params?.event || !params.event.description ? getEventById(eventId) : Promise.resolve(null),
-           fetchEventGuestCounts(eventId),
-           fetchEventGuests(eventId)
+          !params?.event || !params.event.description ? getEventById(eventId) : Promise.resolve(null),
+          fetchEventGuestCounts(eventId),
+          fetchEventGuests(eventId),
         ]);
 
         let finalEvent = params?.event;
         let rawData: any = {};
 
         if (eventResult) {
-            finalEvent = eventResult.event;
-            rawData = eventResult.raw;
+          finalEvent = eventResult.event;
+          rawData = eventResult.raw;
         }
 
         if (!finalEvent) {
           setLoadError("Event not found");
-          setIsLoading(false);
+          if (showLoader) setIsLoading(false);
           return;
         }
-        
+
         setEventItem(finalEvent);
         setGuestCounts(counts);
 
         const start = finalEvent.datetime ? new Date(finalEvent.datetime) : finalEvent.startDate ? new Date(finalEvent.startDate) : new Date();
         const end = finalEvent.endDatetime ? new Date(finalEvent.endDatetime) : undefined;
         const organizerSnapshot = finalEvent.organizerSnapshot ?? rawData?.organizerSnapshot;
-        
+
         setDetail({
           id: finalEvent.id,
           overview: {
@@ -110,11 +112,15 @@ export default function EventDetailScreen() {
         console.error(e);
         setLoadError("Failed to load event");
       } finally {
-        setIsLoading(false);
+        if (showLoader) setIsLoading(false);
       }
-    };
-    fetchDetail();
-  }, [params?.id, params?.event]);
+    },
+    [params?.event, params?.id]
+  );
+
+  useEffect(() => {
+    fetchDetail(true);
+  }, [fetchDetail]);
 
   const [showGuests, setShowGuests] = useState(false);
   const [rsvpStatus, setRsvpStatus] = useState<RsvpStatus>(params?.initialRsvp ?? "none");
@@ -135,6 +141,16 @@ export default function EventDetailScreen() {
     },
     [params?.onRsvpChange, eventItem?.id]
   );
+
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await fetchDetail(false);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchDetail, isRefreshing]);
 
   const guestStats = useMemo(() => {
     return [
@@ -178,6 +194,9 @@ export default function EventDetailScreen() {
         keyboardDismissMode="on-drag"
         contentContainerStyle={{ padding: 16, paddingBottom: 32, rowGap: 16 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+        }
       >
         <EventHeroCard
           event={eventItem}
