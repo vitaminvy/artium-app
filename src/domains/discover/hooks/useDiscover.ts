@@ -17,6 +17,18 @@ const MOMENT_PAGE_SIZE = 3;
 const PROFILE_PAGE_SIZE = 10;
 const EVENT_PAGE_SIZE = 3;
 
+const adaptEvent = (ev: any): EventItem => {
+  const date =
+    ev.startDate instanceof Date ? ev.startDate : new Date(ev.startDate ?? ev.datetime);
+  return {
+    ...ev,
+    // UI expects `datetime` as ISO string
+    datetime: date.toISOString(),
+    // Keep original startDate if other screens rely on it
+    startDate: date.toISOString(),
+  };
+};
+
 type UseDiscoverResult = {
   tab: DiscoverTab;
   setTab: (tab: DiscoverTab) => void;
@@ -174,9 +186,10 @@ export function useDiscover(): UseDiscoverResult {
   const fetchEvents = useCallback(async (lastDoc: QueryDocumentSnapshot<DocumentData> | null = null) => {
     try {
       const { events: newEvents, lastVisible } = await getEvents(EVENT_PAGE_SIZE, lastDoc);
-      setHasMoreEvents(newEvents.length === EVENT_PAGE_SIZE);
+      const mapped = newEvents.map(adaptEvent);
+      setHasMoreEvents(mapped.length === EVENT_PAGE_SIZE);
       setLastEventDoc(lastVisible);
-      return newEvents;
+      return mapped;
     } catch (e: any) {
       console.error("Failed to fetch events:", e);
       setError(e);

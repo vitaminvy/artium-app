@@ -38,9 +38,28 @@ export type EventItem = {
   id: string;
   title: string;
   location: string;
-  startDate: string; // ISO string
+  startDate?: string; // ISO string
+  datetime?: string; // ISO string (backward-compat for UI)
+  createdAt?: string; // ISO string
+  endDatetime?: string; // ISO string
+  timeZone?: string;
+  locationType?: "inPerson" | "online";
+  visibility?: "public" | "private";
+  description?: string;
+  venueDetails?: string;
+  websiteUrl?: string;
   image: string;
+  category?: string;
+  eventType?: string;
+  timeLabel?: string;
   attendees?: number;
+  organizerSnapshot?: {
+    id?: string;
+    name?: string;
+    handle?: string;
+    avatar?: string;
+    verified?: boolean;
+  };
   status?: "ongoing" | "upcoming";
   rsvpLabel?: string;
 };

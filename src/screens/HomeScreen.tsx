@@ -101,6 +101,11 @@ export default function HomeScreen() {
       return;
     }
 
+    if (key === "events") {
+      navigation.navigate("Events");
+      return;
+    }
+
     console.log("Sidebar selected:", key);
   };
 
@@ -115,6 +120,7 @@ export default function HomeScreen() {
       <ScreenHeader
         title="Home"
         badgeLabel="Blog"
+        onPressBadge={() => navigation.navigate("Blog")}
         actionType="menu"
         isMenuOpen={sidebarOpen}
         onPressAction={() => setSidebarOpen((prev) => !prev)}

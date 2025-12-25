@@ -128,6 +128,11 @@ export default function ProfileScreen() {
       return;
     }
 
+    if (key === "events") {
+      navigation.navigate("Events");
+      return;
+    }
+
     if (key === "profile") return;
     
     // console.log("Sidebar selected:", key);
