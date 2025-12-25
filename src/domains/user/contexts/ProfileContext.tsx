@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { doc, getDoc, serverTimestamp, setDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc, collection, getDocs, onSnapshot } from "firebase/firestore";
 import type { User } from "firebase/auth";
 
 import { firestore } from "@/configs/firebase";
@@ -265,6 +265,28 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void refreshProfile();
   }, [refreshProfile]);
+
+  // Realtime sync for current user's profile doc to keep stats (followers/following) up to date
+  useEffect(() => {
+    if (!currentUser) return;
+    const userRef = doc(firestore, "users", currentUser.uid);
+    const unsubscribe = onSnapshot(
+      userRef,
+      (snap) => {
+        const data = (snap.data() ?? {}) as UserDoc;
+        const nextProfile = buildProfileFromUserDoc(
+          data,
+          currentUser,
+          baseProfile
+        );
+        setProfile(nextProfile);
+      },
+      (err) => {
+        console.warn("Profile snapshot error:", err);
+      }
+    );
+    return () => unsubscribe();
+  }, [currentUser]);
 
   const updateProfile = useCallback(
     async (values: EditProfileFormValues) => {

@@ -9,11 +9,28 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isEventOrganizer(eventId) {
+      return (
+        isSignedIn() &&
+        get(/databases/$(database)/documents/events/$(eventId)).data.organizerId == request.auth.uid
+      );
+    }
+
+    function isInvitedRsvp(eventId) {
+      return request.resource.data.eventId == eventId
+        && request.resource.data.status == "invited";
+    }
+
     // Chỉ cho phép update các field liên quan follow counters
     function onlyFollowCountersChanged() {
-      // Allow updates when only the stats map changes (followers/following)
+      // changedKeys on nested maps returns top-level keys only (e.g., "stats"),
+      // so we allow stats as a whole plus the top-level counters.
       let diffKeys = request.resource.data.diff(resource.data).changedKeys();
-      return diffKeys.hasOnly(["stats"]);
+      return diffKeys.hasOnly([
+        "followerCount",
+        "followingCount",
+        "stats",
+      ]);
     }
 
     // Allow public read on artworks, artists, events, and posts
@@ -59,7 +76,8 @@ service cloud.firestore {
       // Explicitly allow access to event_rsvps subcollection
       match /event_rsvps/{rsvpId} {
         allow read: if true;
-        allow write: if request.auth.uid == userId;
+        allow create, update: if isOwner(userId) || (isEventOrganizer(rsvpId) && isInvitedRsvp(rsvpId));
+        allow delete: if isOwner(userId);
       }
       
       // Allow users to follow each other

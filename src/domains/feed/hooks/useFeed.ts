@@ -8,7 +8,8 @@ import {
   togglePostLike,
   subscribeToFeedPosts
 } from "../services/feedService";
-import { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
+import { QueryDocumentSnapshot, DocumentData, collection, onSnapshot } from "firebase/firestore";
+import { firestore } from "@/configs/firebase";
 
 const POST_PAGE_SIZE = 5;
 
@@ -65,14 +66,33 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
   const [hasMorePosts, setHasMorePosts] = useState(true);
   const [isMorePostsLoading, setIsMorePostsLoading] = useState(false);
   const likeInFlight = useRef<Set<string>>(new Set());
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let unsubscribe: () => void;
+    let unsubFollowing: () => void;
 
     const setupSubscription = async () => {
       // If we are refreshing, we might want to reset pageSize, but let's handle that in onRefresh
       try {
         setLoading(true);
+
+        if (currentUser) {
+          const followingCol = collection(
+            firestore,
+            "users",
+            currentUser.uid,
+            "following"
+          );
+          unsubFollowing = onSnapshot(followingCol, (snap) => {
+            const ids = new Set<string>();
+            snap.forEach((doc) => ids.add(doc.id));
+            setFollowingIds(ids);
+          });
+        } else {
+          setFollowingIds(new Set());
+        }
+
         unsubscribe = subscribeToFeedPosts(
           pageSize,
           (newPosts, lastVisible) => {
@@ -96,6 +116,7 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
 
     return () => {
       if (unsubscribe) unsubscribe();
+      if (unsubFollowing) unsubFollowing();
     };
   }, [pageSize, currentUser]); // Re-subscribe if pageSize increases or user changes
 
@@ -118,8 +139,12 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
 
   const followingPosts = useMemo(() => {
     if (!currentUser) return [];
-    return posts.filter(p => p.author?.isFollowed || p.author?.id === currentUser.uid);
-  }, [posts, currentUser]);
+    return posts.filter(
+      (p) =>
+        (p.author?.id && followingIds.has(p.author.id)) ||
+        p.author?.id === currentUser.uid
+    );
+  }, [posts, currentUser, followingIds]);
 
   const myPosts = useMemo(() => {
     if (!currentUser) return [];
