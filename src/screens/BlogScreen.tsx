@@ -57,7 +57,7 @@ export default function BlogScreen() {
   );
 
   useEffect(() => {
-    setVisibleAllCount((prev) => Math.max(6, Math.min(allArticles.length, prev)));
+    setVisibleAllCount((prev) => Math.max(5, Math.min(allArticles.length, prev)));
   }, [allArticles]);
 
   useEffect(() => {
