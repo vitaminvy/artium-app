@@ -190,3 +190,31 @@ export const addCommentToPost = async (postId: string, params: { authorSnapshot:
     throw error;
   }
 };
+
+/**
+ * Subscribes to the comments of a specific post.
+ */
+export const subscribeToPostComments = (
+  postId: string,
+  onUpdate: (comments: FeedComment[]) => void
+) => {
+  const commentsRef = collection(firestore, POSTS_COLLECTION, postId, "comments");
+  // Order by createdAt descending (newest on top) or ascending depending on UI.
+  // Usually comments are Oldest first or Newest first?
+  // Let's go with Newest first for now as per "Be the first..." usually implying top.
+  const q = query(commentsRef, orderBy("createdAt", "desc"));
+
+  return onSnapshot(q, (snapshot) => {
+    const comments = snapshot.docs.map((docSnapshot) => {
+      const data = docSnapshot.data();
+      return {
+        id: docSnapshot.id,
+        ...data,
+        createdAt: (data.createdAt as Timestamp)?.toMillis() || Date.now(),
+      } as FeedComment;
+    });
+    onUpdate(comments);
+  }, (error) => {
+    console.error(`Error subscribing to comments for post ${postId}:`, error);
+  });
+};

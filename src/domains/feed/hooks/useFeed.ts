@@ -27,7 +27,6 @@ type UseFeedResult = {
   isMorePostsLoading: boolean;
   toggleLike: (id: string, currentLikedStatus: boolean) => Promise<void>;
   createReshare: (targetPost: FeedPost, note: string) => void;
-  commentsByPost: Record<string, FeedComment[]>;
   addComment: (postId: string, content: string) => void;
   addMomentPost: (post: Omit<FeedPost, 'id' | 'author' | 'createdAt' | 'metrics' | 'relativeTime'>) => Promise<void>;
 };
@@ -66,8 +65,6 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
   const [hasMorePosts, setHasMorePosts] = useState(true);
   const [isMorePostsLoading, setIsMorePostsLoading] = useState(false);
   const likeInFlight = useRef<Set<string>>(new Set());
-
-  const [commentsByPost, setCommentsByPost] = useState<Record<string, FeedComment[]>>({});
 
   useEffect(() => {
     let unsubscribe: () => void;
@@ -259,7 +256,6 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
     isMorePostsLoading,
     toggleLike,
     createReshare,
-    commentsByPost,
     addComment,
     addMomentPost,
   };

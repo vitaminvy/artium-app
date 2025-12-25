@@ -246,7 +246,6 @@ export default function FeedScreen() {
       <CommentsSheet
         visible={!!commentTarget}
         target={commentTarget}
-        comments={commentTarget ? (commentsByPost[commentTarget.id] ?? []) : []}
         onClose={closeComments}
         onSubmit={submitComment}
       />
