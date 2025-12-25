@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, Image, Pressable, Modal } from "react-native";
+import { View, Text, Image, Pressable, Modal, GestureResponderEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { EventItem } from "../../types";
@@ -52,6 +52,12 @@ export default function EventCard({
   const [showShare, setShowShare] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const stopPropagation =
+    (fn?: (event?: GestureResponderEvent) => void) => (event: GestureResponderEvent) => {
+      event?.stopPropagation?.();
+      fn?.(event);
+    };
+
   const RSVP_META: Record<
     typeof rsvp,
     {
@@ -95,7 +101,7 @@ export default function EventCard({
       style={cardShadow}
       onPress={onPress}
     >
-      <View pointerEvents={onPress ? "none" : "auto"}>
+      <View>
         <View className="relative">
           <Image
             source={{ uri: item.image }}
@@ -146,7 +152,7 @@ export default function EventCard({
                 backgroundColor: RSVP_META[rsvp].bg,
                 borderColor: rsvp === "none" ? "#E2E8F0" : RSVP_META[rsvp].bg,
               }}
-              onPress={() => setShowMenu((prev) => !prev)}
+              onPress={stopPropagation(() => setShowMenu((prev) => !prev))}
             >
               {rsvp !== "none" ? (
                 <Ionicons
@@ -167,12 +173,15 @@ export default function EventCard({
                 color={RSVP_META[rsvp].color}
               />
             </Pressable>
-            <Pressable className="h-11 w-11 rounded-full border border-slate-200 items-center justify-center active:opacity-90">
+            <Pressable
+              className="h-11 w-11 rounded-full border border-slate-200 items-center justify-center active:opacity-90"
+              onPress={stopPropagation()}
+            >
               <Ionicons name="mail-outline" size={18} color="#0F172A" />
             </Pressable>
             <Pressable
               className="h-11 w-11 rounded-full border border-slate-200 items-center justify-center active:opacity-90"
-              onPress={() => setShowShare(true)}
+              onPress={stopPropagation(() => setShowShare(true))}
             >
               <Ionicons name="share-outline" size={18} color="#0F172A" />
             </Pressable>
@@ -193,12 +202,12 @@ export default function EventCard({
                   className={`px-4 py-3 flex-row items-center gap-2 ${
                     idx < 2 ? "border-b border-slate-100" : ""
                   }`}
-                  onPress={() => {
+                  onPress={stopPropagation(() => {
                     const next = opt.key as RsvpStatus;
                     setRsvp(next);
                     onRsvpChange?.(next);
                     setShowMenu(false);
-                  }}
+                  })}
                 >
                   <Ionicons
                     name={RSVP_META[opt.key as keyof typeof RSVP_META].icon}

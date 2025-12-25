@@ -24,7 +24,11 @@ export type HomeStackParamList = {
   PopularArtists: undefined;
   SimilarSaved: undefined;
   BlogDetail: { blogId: string };
-  EventDetail: { id?: string };
+  EventDetail: {
+    id?: string;
+    initialRsvp?: "none" | "going" | "maybe" | "notGoing";
+    onRsvpChange?: (status: "none" | "going" | "maybe" | "notGoing") => void;
+  };
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();

@@ -67,9 +67,14 @@ export default function EventScreen() {
   } = useEvents();
   const handleOpenEvent = useCallback(
     (event: any) => {
-      navigation.navigate("EventDetail", { id: event.id });
+      const initialRsvp = getRsvpStatus(event.id);
+      navigation.navigate("EventDetail", {
+        id: event.id,
+        initialRsvp,
+        onRsvpChange: (status) => handleRsvpChange(event.id, status),
+      });
     },
-    [navigation]
+    [navigation, getRsvpStatus, handleRsvpChange]
   );
 
   useFocusEffect(

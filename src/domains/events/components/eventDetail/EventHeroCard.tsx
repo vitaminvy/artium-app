@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Image, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { EventItem } from "../../../discover/types";
@@ -8,6 +8,7 @@ type RsvpStatus = "none" | "going" | "maybe" | "notGoing";
 type Props = {
   event: EventItem;
   initialRsvp?: RsvpStatus;
+  rsvp?: RsvpStatus;
   onChangeRsvp?: (status: RsvpStatus) => void;
 };
 
@@ -23,9 +24,25 @@ const RSVP_META: Record<
 
 const RSVP_OPTIONS: RsvpStatus[] = ["going", "maybe", "notGoing"];
 
-export default function EventHeroCard({ event, initialRsvp = "none", onChangeRsvp }: Props) {
-  const [rsvp, setRsvp] = useState<RsvpStatus>(initialRsvp);
+export default function EventHeroCard({
+  event,
+  initialRsvp = "none",
+  rsvp,
+  onChangeRsvp,
+}: Props) {
+  const [localRsvp, setLocalRsvp] = useState<RsvpStatus>(initialRsvp);
   const [openMenu, setOpenMenu] = useState(false);
+
+  // Keep local state in sync with controlled prop or updated initial value
+  useEffect(() => {
+    if (rsvp !== undefined) {
+      setLocalRsvp(rsvp);
+    } else {
+      setLocalRsvp(initialRsvp);
+    }
+  }, [rsvp, initialRsvp]);
+
+  const displayedRsvp = rsvp ?? localRsvp;
 
   const month = useMemo(
     () => new Date(event.datetime).toLocaleString("en-US", { month: "short" }),
@@ -37,7 +54,7 @@ export default function EventHeroCard({ event, initialRsvp = "none", onChangeRsv
   );
 
   const handleSelect = (status: RsvpStatus) => {
-    setRsvp(status);
+    setLocalRsvp(status);
     onChangeRsvp?.(status);
     setOpenMenu(false);
   };
@@ -75,28 +92,29 @@ export default function EventHeroCard({ event, initialRsvp = "none", onChangeRsv
           <Pressable
             className="flex-1 flex-row items-center justify-center gap-2 px-4 py-3 rounded-full border"
             style={{
-              backgroundColor: RSVP_META[rsvp].bg,
-              borderColor: rsvp === "none" ? "#E2E8F0" : RSVP_META[rsvp].bg,
+              backgroundColor: RSVP_META[displayedRsvp].bg,
+              borderColor:
+                displayedRsvp === "none" ? "#E2E8F0" : RSVP_META[displayedRsvp].bg,
             }}
             onPress={() => setOpenMenu((prev) => !prev)}
           >
-            {rsvp !== "none" ? (
+            {displayedRsvp !== "none" ? (
               <Ionicons
-                name={RSVP_META[rsvp].icon}
+                name={RSVP_META[displayedRsvp].icon}
                 size={16}
-                color={RSVP_META[rsvp].color}
+                color={RSVP_META[displayedRsvp].color}
               />
             ) : null}
             <Text
               className="text-xs font-semibold"
-              style={{ color: RSVP_META[rsvp].color }}
+              style={{ color: RSVP_META[displayedRsvp].color }}
             >
-              {RSVP_META[rsvp].label}
+              {RSVP_META[displayedRsvp].label}
             </Text>
             <Ionicons
               name="chevron-down-outline"
               size={14}
-              color={RSVP_META[rsvp].color}
+              color={RSVP_META[displayedRsvp].color}
             />
           </Pressable>
 
