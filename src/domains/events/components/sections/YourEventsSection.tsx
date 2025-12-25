@@ -23,6 +23,7 @@ type Props = {
   onChangeQuery: (value: string) => void;
   getRsvpStatus: (id: string) => "none" | "going" | "maybe" | "notGoing";
   onChangeRsvp: (id: string, status: "none" | "going" | "maybe" | "notGoing") => void;
+  onPressEvent?: (event: EventItem) => void;
   onLayout?: (layout: { x: number; y: number; width: number; height: number }) => void;
 };
 
@@ -44,6 +45,7 @@ export default function YourEventsSection({
   onChangeQuery,
   getRsvpStatus,
   onChangeRsvp,
+  onPressEvent,
   onLayout,
 }: Props) {
   const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT);
@@ -109,6 +111,7 @@ export default function YourEventsSection({
                 item={event}
                 rsvpStatus={getRsvpStatus(event.id)}
                 onRsvpChange={(status) => onChangeRsvp(event.id, status)}
+                onPress={() => onPressEvent?.(event)}
               />
             ))}
           </View>

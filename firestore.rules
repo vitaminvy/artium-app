@@ -37,14 +37,19 @@ service cloud.firestore {
 
     // Users can read their own data, and public profiles can be read by anyone
     match /users/{userId} {
-      allow get: if request.auth.uid == userId;
-      allow list: if true;
+      allow read: if true; // Changed from restricted 'get' to allow fetching user profiles for guest lists
       allow write: if request.auth.uid == userId;
     }
 
     // Allow logged-in users to manage their own subcollections
     match /users/{userId}/{document=**} {
       allow read, write: if request.auth.uid == userId;
+    }
+
+    // Allow collection group query for event_rsvps
+    // This allows fetching guest counts and lists
+    match /{path=**}/event_rsvps/{rsvpId} {
+      allow read: if true;
     }
   }
 }

@@ -239,6 +239,7 @@ export default function EventScreen() {
           onChangeQuery={setYourQuery}
           getRsvpStatus={getRsvpStatus}
           onChangeRsvp={handleRsvpChange}
+          onPressEvent={handleOpenEvent}
           onLayout={handleYourLayout}
         />
 

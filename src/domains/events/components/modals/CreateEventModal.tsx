@@ -10,6 +10,7 @@ import { DEFAULT_TIME_ZONE_ID, TIME_ZONE_OPTIONS } from "../../constants.optimiz
 import SelectSheet from "../ui/SelectSheet.optimized";
 import MultiSelectSheet from "../ui/MultiSelectSheet";
 import Loader from "../../../../shared/components/Loader";
+import { useAuth } from "@/domains/auth/contexts/AuthContext";
 
 const MAX_TITLE = 255;
 const MAX_VENUE = 255;
@@ -35,6 +36,7 @@ export default function CreateEventModal({
   onClose,
   onCreate,
 }: Props) {
+  const { currentUser } = useAuth();
   // Refs for keyboard navigation
   const titleRef = useRef<TextInput>(null);
   const addressRef = useRef<TextInput>(null);
@@ -214,7 +216,7 @@ export default function CreateEventModal({
     const startDateTime = startDate.toISOString();
     const endDateTime = endDate.toISOString();
 
-    const newEvent: EventItem = {
+    const newEvent: any = {
       id: `event-${Date.now()}`,
       title: title.trim(),
       location: locationValue,
@@ -233,16 +235,23 @@ export default function CreateEventModal({
       attendees: 0,
       status: "upcoming",
       rsvpLabel: "RSVP",
-      // Thêm các field cần thiết cho EventCard
       timeLabel: startDate.toLocaleString("en-US", {
         weekday: "short",
         hour: "2-digit",
         minute: "2-digit",
         hour12: false,
       }),
+      // Inject Organizer Info
+      organizerId: currentUser?.uid,
+      organizerSnapshot: {
+        name: currentUser?.displayName || "Unknown Organizer",
+        handle: currentUser?.username || "user",
+        avatar: currentUser?.photoURL || "",
+        verified: currentUser?.roles?.isArtist || false,
+      },
     };
 
-    onCreate(newEvent);
+    onCreate(newEvent as EventItem);
     setIsCreating(false);
     onClose();
   }, [
@@ -262,6 +271,7 @@ export default function CreateEventModal({
     coverImage,
     onCreate,
     onClose,
+    currentUser
   ]);
 
   return (

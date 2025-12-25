@@ -125,6 +125,16 @@ export const createEvent = async (event: EventItem): Promise<EventItem> => {
     : event.eventType
       ? [event.eventType]
       : [];
+  
+  // Ensure we have an organizer ID. If not present in the event object, it might be added by the UI layer.
+  // Ideally, the UI should pass the current user's ID as organizerId.
+  // The 'organizerId' is hidden in 'event' as 'any' in some calls, let's make it explicit.
+  const organizerId = (event as any).organizerId;
+  
+  if (!organizerId) {
+      console.warn("Creating event without organizerId. Firestore rules might reject this.");
+  }
+
   const payload: any = {
     title: event.title,
     image: event.image,
@@ -139,16 +149,22 @@ export const createEvent = async (event: EventItem): Promise<EventItem> => {
     },
     tags,
     category: event.eventType ?? event.category,
-    description: (event as any).description,
+    description: (event as any).description ?? "",
     timeZone: (event as any).timeZone ?? "UTC",
     visibility: (event as any).visibility ?? (event.isOnline ? "online" : "public"),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-    organizerId: (event as any).organizerId,
-    organizerSnapshot: (event as any).organizerSnapshot,
+    organizerId: organizerId,
+    organizerSnapshot: (event as any).organizerSnapshot || {},
   };
-  const docRef = await addDoc(collection(firestore, EVENTS_COLLECTION), payload);
-  return { ...event, id: docRef.id, datetime: start.toISOString(), startDate: start.toISOString(), endDatetime: end?.toISOString(), category: tags.join(", ") };
+  
+  try {
+    const docRef = await addDoc(collection(firestore, EVENTS_COLLECTION), payload);
+    return { ...event, id: docRef.id, datetime: start.toISOString(), startDate: start.toISOString(), endDatetime: end?.toISOString(), category: tags.join(", ") };
+  } catch (e) {
+    console.error("Failed to create event in Firestore:", e);
+    throw e;
+  }
 };
 
 export const getEventsByOrganizer = async (
