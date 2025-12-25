@@ -6,12 +6,13 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc, collection, getDocs } from "firebase/firestore";
 import type { User } from "firebase/auth";
 
 import { firestore } from "@/configs/firebase";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
 import { upsertUserProfile } from "@/domains/auth/services/userProfile";
+import { toggleFollow as toggleFollowService } from "../services/followService";
 import { EDIT_PROFILE_DEFAULTS } from "../constants/editProfile";
 import { PROFILE_ACCENT } from "../constants/profile";
 import { profileMockData } from "../mockData";
@@ -247,6 +248,13 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       );
       setProfile(nextProfile);
       setEditProfile(buildEditProfileFromDoc(data, nextProfile));
+
+      // Load following list
+      const followingRef = collection(firestore, "users", currentUser.uid, "following");
+      const followingSnap = await getDocs(followingRef);
+      const ids = new Set(followingSnap.docs.map(d => d.id));
+      setFollowingIds(ids);
+
     } catch (error) {
       console.warn("Failed to load profile:", error);
       setProfile(baseProfile);
@@ -306,7 +314,10 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     return followingIds.has(userId);
   }, [followingIds]);
 
-  const toggleFollow = useCallback((userId: string) => {
+  const toggleFollow = useCallback(async (userId: string) => {
+    if (!currentUser) return;
+
+    // Optimistic update
     setFollowingIds((prev) => {
       const next = new Set(prev);
       if (next.has(userId)) {
@@ -316,7 +327,23 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       }
       return next;
     });
-  }, []);
+
+    try {
+      await toggleFollowService(currentUser.uid, userId);
+    } catch (error) {
+      console.error("Failed to toggle follow in context:", error);
+      // Revert if failed
+      setFollowingIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(userId)) {
+          next.delete(userId);
+        } else {
+          next.add(userId);
+        }
+        return next;
+      });
+    }
+  }, [currentUser]);
 
   const value = useMemo(
     () => ({
