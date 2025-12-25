@@ -5,7 +5,8 @@ import {
   addCommentToPost, 
   createPost, 
   getFeedPosts, 
-  togglePostLike 
+  togglePostLike,
+  subscribeToFeedPosts
 } from "../services/feedService";
 import { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 
@@ -61,50 +62,59 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [lastPostDoc, setLastPostDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [pageSize, setPageSize] = useState(POST_PAGE_SIZE);
   const [hasMorePosts, setHasMorePosts] = useState(true);
   const [isMorePostsLoading, setIsMorePostsLoading] = useState(false);
 
   const [commentsByPost, setCommentsByPost] = useState<Record<string, FeedComment[]>>({});
 
-  const fetchInitialPosts = useCallback(async () => {
-    try {
-      setLoading(true);
-      const { posts: newPosts, lastVisible } = await getFeedPosts(POST_PAGE_SIZE);
-      setPosts(attachRelativeTime(newPosts));
-      setLastPostDoc(lastVisible);
-      setHasMorePosts(newPosts.length === POST_PAGE_SIZE);
-    } catch (e: any) {
-      setError(e);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchInitialPosts();
-  }, [fetchInitialPosts]);
+    let unsubscribe: () => void;
+
+    const setupSubscription = async () => {
+      // If we are refreshing, we might want to reset pageSize, but let's handle that in onRefresh
+      try {
+        setLoading(true);
+        unsubscribe = subscribeToFeedPosts(
+          pageSize,
+          (newPosts, lastVisible) => {
+            setPosts(attachRelativeTime(newPosts));
+            // Check if we reached the end (fewer posts returned than requested, or just heuristic)
+            // Note: This heuristic might be slightly off if total posts is exact multiple of pageSize
+            // But good enough for now.
+            setHasMorePosts(newPosts.length >= pageSize); 
+            setLoading(false);
+            setIsMorePostsLoading(false);
+          },
+          currentUser?.uid
+        );
+      } catch (e: any) {
+        setError(e);
+        setLoading(false);
+      }
+    };
+
+    setupSubscription();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [pageSize, currentUser]); // Re-subscribe if pageSize increases or user changes
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    await fetchInitialPosts();
-    setIsRefreshing(false);
-  }, [fetchInitialPosts]);
+    setPageSize(POST_PAGE_SIZE); // This will trigger the effect above
+    // We wait a bit to simulate refresh or let the subscription update
+    setTimeout(() => {
+        setIsRefreshing(false);
+    }, 1000);
+  }, []);
 
-  const loadMorePosts = useCallback(async () => {
+  const loadMorePosts = useCallback(() => {
     if (isMorePostsLoading || !hasMorePosts) return;
     setIsMorePostsLoading(true);
-    try {
-      const { posts: newPosts, lastVisible } = await getFeedPosts(POST_PAGE_SIZE, lastPostDoc);
-      setPosts(prev => attachRelativeTime([...prev, ...newPosts]));
-      setLastPostDoc(lastVisible);
-      setHasMorePosts(newPosts.length === POST_PAGE_SIZE);
-    } catch (e: any) {
-      setError(e);
-    } finally {
-      setIsMorePostsLoading(false);
-    }
-  }, [isMorePostsLoading, hasMorePosts, lastPostDoc]);
+    setPageSize(prev => prev + POST_PAGE_SIZE);
+  }, [isMorePostsLoading, hasMorePosts]);
 
   const explorePosts = useMemo(() => posts, [posts]);
 
@@ -121,6 +131,7 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
   const toggleLike = useCallback(async (id: string) => {
     if (!currentUser) return;
     
+    // Optimistic update
     setPosts(prevPosts => prevPosts.map(p => {
       if (p.id === id) {
         const newLikedState = !p.liked;
@@ -138,6 +149,12 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
       await togglePostLike(id, currentUser.uid);
     } catch (error) {
       console.error("Failed to toggle like:", error);
+      // Revert optimistic update happens automatically via snapshot listener eventually, 
+      // but strictly we should revert manually here to be responsive if offline.
+      // However, since we have the listener, the listener will provide the "source of truth" 
+      // shortly after the write confirms (or fails). 
+      // If write fails, the snapshot won't fire for the update, so our optimistic state might be stuck "wrong" 
+      // until next fetch? No, revert manually is safer.
       setPosts(prevPosts => prevPosts.map(p => {
         if (p.id === id) {
           const originalLikedState = !p.liked;
