@@ -120,6 +120,7 @@ export default function HomeScreen() {
       <ScreenHeader
         title="Home"
         badgeLabel="Blog"
+        onPressBadge={() => navigation.navigate("Blog")}
         actionType="menu"
         isMenuOpen={sidebarOpen}
         onPressAction={() => setSidebarOpen((prev) => !prev)}

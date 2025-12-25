@@ -11,7 +11,9 @@ import PopularArtistsScreen from "../../../screens/PopularArtistsScreen";
 import SimilarSavedScreen from "../../../screens/SimilarSavedScreen";
 import EventDetailScreen from "../../../screens/EventDetailScreen";
 import type { ArtworkDetail } from "../../../domains/artwork/types";
+import type { EventItem } from "../../../domains/discover/types";
 import BlogDetailScreen from "../../../screens/BlogDetailScreen"; // Renamed import
+import BlogScreen from "../../../screens/BlogScreen";
 
 export type HomeStackParamList = {
   HomeMain: undefined;
@@ -28,8 +30,9 @@ export type HomeStackParamList = {
     id?: string;
     initialRsvp?: "none" | "going" | "maybe" | "notGoing";
     onRsvpChange?: (status: "none" | "going" | "maybe" | "notGoing") => void;
-    event?: import("../../domains/discover/types").EventItem;
+    event?: EventItem;
   };
+  Blog: undefined;
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -45,6 +48,7 @@ export default function HomeStack() {
       <Stack.Screen name="PopularArtists" component={PopularArtistsScreen} />
       <Stack.Screen name="SimilarSaved" component={SimilarSavedScreen} />
       <Stack.Screen name="BlogDetail" component={BlogDetailScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Blog" component={BlogScreen} />
       <Stack.Screen
         name="EditProfile"
         component={EditProfileScreen}
