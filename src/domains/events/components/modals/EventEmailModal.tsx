@@ -165,17 +165,20 @@ export default function EventEmailModal({ visible, onClose, event, organizerName
                     </View>
                   ))}
                 </View>
-                <View className="mt-3 flex-row items-center gap-2">
+                <View className="flex-row items-center gap-2">
                   <TextInput
                     value={input}
                     onChangeText={setInput}
                     placeholder="Nhập email và nhấn Thêm"
                     placeholderTextColor="#94A3B8"
-                    className="text-[14px] text-slate-900"
+                    className="text-slate-900"
                     style={{
                       flex: 1,
-                      paddingVertical: 10,
+                      fontSize: 14,
+                      paddingVertical: 12,
+                      paddingHorizontal: 0,
                       minHeight: 44,
+                      textAlignVertical: "center",
                     }}
                     keyboardType="email-address"
                     autoCapitalize="none"
@@ -199,17 +202,19 @@ export default function EventEmailModal({ visible, onClose, event, organizerName
 
             <View className="gap-2">
               <Text className="text-[12px] font-semibold text-slate-600">Ghi chú thêm</Text>
-              <View className="rounded-2xl border border-slate-200 bg-white px-3 py-2">
+              <View className="rounded-2xl border border-slate-200 bg-white px-3">
                 <TextInput
                   value={note}
                   onChangeText={setNote}
                   placeholder="Lời nhắn gửi kèm (tuỳ chọn)"
                   placeholderTextColor="#94A3B8"
-                  className="text-[14px] text-slate-900"
+                  className="text-slate-900"
                   style={{
+                    fontSize: 14,
                     paddingVertical: 8,
-                    minHeight: note ? 120 : 60,
-                    textAlignVertical: "top",
+                    paddingHorizontal: 0,
+                    minHeight: 60,
+                    textAlignVertical: "center",
                   }}
                   multiline
                 />
