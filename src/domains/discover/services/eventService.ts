@@ -14,9 +14,14 @@ import {
   Timestamp,
   DocumentSnapshot,
   serverTimestamp,
+  collectionGroup,
+  setDoc,
+  getCountFromServer,
+  writeBatch
 } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 import { EventItem } from "../types";
+import { EventGuest } from "@/domains/events/types";
 
 const EVENTS_COLLECTION = "events";
 
@@ -173,3 +178,135 @@ export const getEventsByOrganizer = async (
     throw error;
   }
 };
+
+export const fetchEventsByIds = async (ids: string[]): Promise<EventItem[]> => {
+  if (!ids.length) return [];
+  try {
+    // Firestore 'in' query supports max 10 items.
+    // We need to batch requests or just fetch individually.
+    // Fetching individually in parallel is often simpler for < 30 items.
+    
+    const promises = ids.map(id => getEventById(id));
+    const results = await Promise.all(promises);
+    return results
+      .filter((r): r is EventWithRaw => r !== null)
+      .map(r => r.event);
+  } catch (error) {
+    console.error("Error fetching events by IDs:", error);
+    return [];
+  }
+};
+
+// --- RSVP SERVICES ---
+
+export const fetchUserRsvps = async (userId: string) => {
+  try {
+    const q = query(collection(firestore, "users", userId, "event_rsvps"));
+    const snapshot = await getDocs(q);
+    const rsvpMap: Record<string, "going" | "maybe" | "notGoing"> = {};
+    const eventIds: string[] = [];
+    
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.status) {
+        rsvpMap[doc.id] = data.status;
+        if (data.status !== 'notGoing') {
+           eventIds.push(doc.id);
+        }
+      }
+    });
+    return { rsvpMap, eventIds };
+  } catch (error) {
+    console.error("Error fetching user RSVPs:", error);
+    return { rsvpMap: {}, eventIds: [] };
+  }
+};
+
+export const toggleEventRsvp = async (
+  userId: string,
+  eventId: string,
+  status: "going" | "maybe" | "notGoing"
+) => {
+  try {
+    const ref = doc(firestore, "users", userId, "event_rsvps", eventId);
+    await setDoc(ref, {
+      eventId,
+      status,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  } catch (error) {
+    console.error("Error toggling RSVP:", error);
+    throw error;
+  }
+};
+
+export const fetchEventGuestCounts = async (eventId: string) => {
+  try {
+    const rsvpsRef = collectionGroup(firestore, "event_rsvps");
+    
+    const goingQuery = query(rsvpsRef, where("eventId", "==", eventId), where("status", "==", "going"));
+    const maybeQuery = query(rsvpsRef, where("eventId", "==", eventId), where("status", "==", "maybe"));
+
+    const [goingSnap, maybeSnap] = await Promise.all([
+      getCountFromServer(goingQuery),
+      getCountFromServer(maybeQuery)
+    ]);
+
+    return {
+      going: goingSnap.data().count,
+      maybe: maybeSnap.data().count
+    };
+  } catch (error) {
+    console.error("Error counting guests:", error);
+    return { going: 0, maybe: 0 };
+  }
+};
+
+export const fetchEventGuests = async (eventId: string): Promise<EventGuest[]> => {
+  try {
+    const rsvpsRef = collectionGroup(firestore, "event_rsvps");
+    const q = query(rsvpsRef, where("eventId", "==", eventId));
+    
+    // Limit to 50 guests for performance in this demo
+    // In a real app, we would paginate this
+    const snapshot = await getDocs(query(q, limit(50)));
+    
+    const guests: EventGuest[] = [];
+    
+    // We need to fetch user details for each RSVP
+    // Using promise.all with map might trigger too many reads at once if 50+
+    // But for <50 it's fine.
+    
+    const userPromises = snapshot.docs.map(async (rsvpDoc) => {
+      const data = rsvpDoc.data();
+      // The parent of 'event_rsvps' is the user doc
+      // Path: users/{uid}/event_rsvps/{eventId}
+      const userRef = rsvpDoc.ref.parent.parent;
+      
+      if (userRef) {
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+           const userData = userSnap.data();
+           return {
+             id: userSnap.id,
+             name: userData.displayName || "Unknown User",
+             status: data.status,
+             // Fallbacks for missing schema fields
+             ticketType: "General", 
+             quantity: 1,
+             avatar: userData.photoURL
+           } as EventGuest;
+        }
+      }
+      return null;
+    });
+
+    const results = await Promise.all(userPromises);
+    return results.filter(Boolean) as EventGuest[];
+
+  } catch (error) {
+    console.error("Error fetching event guests:", error);
+    return [];
+  }
+};
+

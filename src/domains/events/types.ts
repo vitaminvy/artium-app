@@ -24,9 +24,10 @@ export type EventsMockData = {
 export type EventGuest = {
   id: string;
   name: string;
-  status: "going" | "maybe" | "invited";
+  status: "going" | "maybe" | "invited" | "notGoing";
   ticketType?: string;
   quantity?: number;
+  avatar?: string;
 };
 
 export type EventExhibitor = {

@@ -1,5 +1,6 @@
-import React from "react";
-import { LayoutChangeEvent, ScrollView, Text, View } from "react-native";
+import React, { useState } from "react";
+import { LayoutChangeEvent, ScrollView, Text, View, Pressable } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import type { EventItem } from "../../../discover/types";
 import type { EventFilterOption, EventSortOption } from "../../types";
 import EmptyStateCard from "../ui/EmptyStateCard";
@@ -25,6 +26,9 @@ type Props = {
   onLayout?: (layout: { x: number; y: number; width: number; height: number }) => void;
 };
 
+const INITIAL_COUNT = 4;
+const INCREMENT = 4;
+
 export default function YourEventsSection({
   events,
   statusOptions,
@@ -42,8 +46,17 @@ export default function YourEventsSection({
   onChangeRsvp,
   onLayout,
 }: Props) {
+  const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT);
+
   const handleLayout = (e: LayoutChangeEvent) => {
     onLayout?.(e.nativeEvent.layout);
+  };
+
+  const visibleEvents = events.slice(0, visibleCount);
+  const hasMore = visibleCount < events.length;
+
+  const handleShowMore = () => {
+    setVisibleCount((prev) => prev + INCREMENT);
   };
 
   return (
@@ -88,9 +101,9 @@ export default function YourEventsSection({
       </ScrollView>
 
       <View className="mt-2">
-        {events.length ? (
-          <View className="gap-3">
-            {events.map((event) => (
+        {visibleEvents.length ? (
+          <View className="gap-4">
+            {visibleEvents.map((event) => (
               <EventCard
                 key={event.id}
                 item={event}
@@ -106,6 +119,26 @@ export default function YourEventsSection({
           />
         )}
       </View>
+
+      {events.length > 0 && (
+        <View className="mt-5 items-center gap-3">
+          <Text className="text-[12px] text-slate-500">
+            Showing {visibleCount} of {events.length} events
+          </Text>
+
+          {hasMore && (
+            <Pressable
+              onPress={handleShowMore}
+              className="flex-row items-center gap-2 rounded-full bg-slate-900 px-6 py-3"
+            >
+              <Text className="text-[14px] font-semibold text-white">
+                Show More
+              </Text>
+              <Ionicons name="chevron-down" size={16} color="#fff" />
+            </Pressable>
+          )}
+        </View>
+      )}
     </View>
   );
 }

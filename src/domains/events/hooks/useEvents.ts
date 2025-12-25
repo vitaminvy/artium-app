@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState, useEffect } from "react";
 import type { EventItem } from "../../discover/types";
 import type { EventFilterOption, EventSortOption } from "../types";
 import { HOSTING_SORT_OPTIONS, EVENT_STATUS_OPTIONS, EVENT_TYPE_OPTIONS } from "../mockData";
-import { getEvents } from "../../discover/services/eventService";
+import { getEvents, fetchUserRsvps, toggleEventRsvp, fetchEventsByIds } from "../../discover/services/eventService";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
 import type { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 
@@ -119,9 +119,7 @@ export function useEvents(): UseEventsResult {
     HOSTING_SORT_OPTIONS[0]
   );
   const [hostingItems, setHostingItems] = useState<EventItem[]>([]);
-  const [hostingRsvpMap, setHostingRsvpMap] = useState<Record<string, RsvpStatus>>(
-    {}
-  );
+  
   const [yourStatus, setYourStatus] = useState<EventFilterOption>(
     EVENT_STATUS_OPTIONS[0]
   );
@@ -132,6 +130,9 @@ export function useEvents(): UseEventsResult {
     HOSTING_SORT_OPTIONS[0]
   );
   const [rsvpMap, setRsvpMap] = useState<Record<string, RsvpStatus>>({});
+  // extra events fetched specifically because the user RSVP'd to them but they weren't in discoverItems
+  const [rsvpEventItems, setRsvpEventItems] = useState<EventItem[]>([]);
+
   const [discoverItems, setDiscoverItems] = useState<EventItem[]>([]);
   const [discoverStatus, setDiscoverStatus] = useState<EventFilterOption>(
     EVENT_STATUS_OPTIONS[0]
@@ -191,17 +192,46 @@ export function useEvents(): UseEventsResult {
     const events = await fetchEventsPage(null);
     setDiscoverItems(events);
     recomputeTypes(events);
-    // Hosting: tạm thời không query organizerId (tránh yêu cầu index), giữ rỗng hoặc các event tạo trong phiên
     setHostingItems((prev) => prev);
     setIsInitialLoading(false);
-  }, [fetchEventsPage, recomputeTypes, currentUser?.uid]);
+  }, [fetchEventsPage, recomputeTypes]);
+
+  // Load RSVPs for current user
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+
+    let isMounted = true;
+    const loadRsvps = async () => {
+      const { rsvpMap: fetchedRsvps, eventIds } = await fetchUserRsvps(currentUser.uid);
+      if (!isMounted) return;
+      
+      setRsvpMap(fetchedRsvps);
+
+      // Now ensure we have EventItems for all these IDs
+      // Filter out IDs that are already in discoverItems (optimization)
+      // Note: discoverItems might update later, but this is an initial sync.
+      // Ideally we check against the current state of discoverItems, but here we can just fetch all needed and dedup in useMemo.
+      
+      if (eventIds.length > 0) {
+          const missingIds = eventIds; // Ideally filter, but safe to fetch again or improve logic.
+          // Let's rely on fetchEventsByIds to be reasonably efficient or just fetch.
+          // To be safe, let's fetch them.
+          const fetchedEvents = await fetchEventsByIds(missingIds);
+          if (isMounted) {
+             setRsvpEventItems(fetchedEvents);
+          }
+      }
+    };
+    loadRsvps();
+    return () => { isMounted = false; };
+  }, [currentUser?.uid]);
+
 
   const loadMoreEvents = useCallback(async () => {
     if (isMoreEventsLoading || !hasMoreEvents) return;
     setIsMoreEventsLoading(true);
     const more = await fetchEventsPage(lastEventDoc);
     if (more.length) {
-      // Deduplicate by id for discover list
       setDiscoverItems((prev) => {
         const map = new Map<string, EventItem>();
         [...prev, ...more].forEach((e) => map.set(e.id, e));
@@ -226,13 +256,19 @@ export function useEvents(): UseEventsResult {
     const map = new Map<string, EventItem>();
     hostingItems.forEach((event) => map.set(event.id, event));
     discoverItems.forEach((event) => map.set(event.id, event));
+    // Also include RSVP'd events if they aren't already there
+    rsvpEventItems.forEach((event) => map.set(event.id, event));
+    
     return Array.from(map.values());
-  }, [hostingItems, discoverItems]);
+  }, [hostingItems, discoverItems, rsvpEventItems]);
 
   const discoverEvents = useMemo(
     () =>
       applyFilters(
-        mergedEvents,
+        mergedEvents, // Showing all known events in discover might be okay, or strictly discoverItems.
+                      // For now, let's use discoverItems + new ones to avoid "popping" in if desired,
+                      // but user asked for "Discover" tab to show events. Usually discover shows *all* public.
+                      // So mergedEvents is fine.
         discoverQuery,
         discoverStatus,
         discoverType,
@@ -243,8 +279,8 @@ export function useEvents(): UseEventsResult {
 
   const yourEvents = useMemo(() => {
     const selected = mergedEvents.filter((event) => {
-      const status = (rsvpMap[event.id] ?? hostingRsvpMap[event.id]) ?? "none";
-      return status !== "none";
+      const status = rsvpMap[event.id] ?? "none";
+      return status !== "none" && status !== "notGoing";
     });
     return applyFilters(
       selected,
@@ -253,18 +289,25 @@ export function useEvents(): UseEventsResult {
       yourType,
       yourDateSort
     );
-  }, [mergedEvents, rsvpMap, hostingRsvpMap, yourQuery, yourStatus, yourType, yourDateSort]);
+  }, [mergedEvents, rsvpMap, yourQuery, yourStatus, yourType, yourDateSort]);
 
   const getRsvpStatus = useCallback(
     (id: string): RsvpStatus =>
-      (rsvpMap[id] ?? hostingRsvpMap[id]) ?? "none",
-    [rsvpMap, hostingRsvpMap]
+      rsvpMap[id] ?? "none",
+    [rsvpMap]
   );
 
   const setRsvpStatus = useCallback((id: string, status: RsvpStatus) => {
+    // Optimistic Update
     setRsvpMap((prev) => ({ ...prev, [id]: status }));
-    setHostingRsvpMap((prev) => ({ ...prev, [id]: status }));
-  }, []);
+    
+    if (currentUser?.uid) {
+        toggleEventRsvp(currentUser.uid, id, status).catch(err => {
+            console.error("Failed to sync RSVP", err);
+            // Revert on failure? For now silent fail or toast.
+        });
+    }
+  }, [currentUser?.uid]);
 
   return {
     hostingEvents,
@@ -286,7 +329,6 @@ export function useEvents(): UseEventsResult {
     getRsvpStatus,
     setRsvpStatus,
     isMoreEventsLoading,
-    hasMoreEvents,
     hostingSortOptions: HOSTING_SORT_OPTIONS,
     hostingSort,
     setHostingSort,
