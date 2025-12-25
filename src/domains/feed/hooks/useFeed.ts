@@ -25,7 +25,7 @@ type UseFeedResult = {
   loadMorePosts: () => void;
   hasMorePosts: boolean;
   isMorePostsLoading: boolean;
-  toggleLike: (id: string) => Promise<void>;
+  toggleLike: (id: string, currentLikedStatus: boolean) => Promise<void>;
   createReshare: (targetPost: FeedPost, note: string) => void;
   commentsByPost: Record<string, FeedComment[]>;
   addComment: (postId: string, content: string) => void;
@@ -128,14 +128,17 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
     return posts.filter(p => p.author?.id === currentUser.uid);
   }, [posts, currentUser]);
 
-  const toggleLike = useCallback(async (id: string) => {
+  const toggleLike = useCallback(async (id: string, currentLikedStatus: boolean) => {
     if (!currentUser) return;
     
     // Optimistic update
     setPosts(prevPosts => prevPosts.map(p => {
       if (p.id === id) {
-        const newLikedState = !p.liked;
-        const newLikesCount = newLikedState ? p.metrics.likes + 1 : p.metrics.likes - 1;
+        const newLikedState = !currentLikedStatus;
+        const newLikesCount = currentLikedStatus 
+          ? Math.max(0, p.metrics.likes - 1) // Unliking
+          : p.metrics.likes + 1;             // Liking
+
         return {
           ...p,
           liked: newLikedState,
@@ -149,20 +152,16 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
       await togglePostLike(id, currentUser.uid);
     } catch (error) {
       console.error("Failed to toggle like:", error);
-      // Revert optimistic update happens automatically via snapshot listener eventually, 
-      // but strictly we should revert manually here to be responsive if offline.
-      // However, since we have the listener, the listener will provide the "source of truth" 
-      // shortly after the write confirms (or fails). 
-      // If write fails, the snapshot won't fire for the update, so our optimistic state might be stuck "wrong" 
-      // until next fetch? No, revert manually is safer.
+      // Revert optimistic update
       setPosts(prevPosts => prevPosts.map(p => {
         if (p.id === id) {
-          const originalLikedState = !p.liked;
-          const originalLikesCount = originalLikedState ? p.metrics.likes + 1 : p.metrics.likes - 1;
           return {
             ...p,
-            liked: originalLikedState,
-            metrics: { ...p.metrics, likes: originalLikesCount }
+            liked: currentLikedStatus,
+            metrics: { 
+              ...p.metrics, 
+              likes: currentLikedStatus ? p.metrics.likes + 1 : Math.max(0, p.metrics.likes - 1)
+            }
           }
         }
         return p;

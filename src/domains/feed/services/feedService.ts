@@ -77,6 +77,22 @@ export const getFeedPosts = async (
 };
 
 /**
+ * Subscribes to the like status of a specific post for a specific user.
+ */
+export const subscribeToPostLike = (
+  postId: string,
+  userId: string,
+  onUpdate: (isLiked: boolean) => void
+) => {
+  const likeRef = doc(firestore, POSTS_COLLECTION, postId, "likes", userId);
+  return onSnapshot(likeRef, (docSnapshot) => {
+    onUpdate(docSnapshot.exists());
+  }, (error) => {
+    console.error(`Error subscribing to like for post ${postId}:`, error);
+  });
+};
+
+/**
  * Subscribes to the feed posts in real-time.
  */
 export const subscribeToFeedPosts = (
@@ -87,31 +103,18 @@ export const subscribeToFeedPosts = (
   const q = query(collection(firestore, POSTS_COLLECTION), orderBy("createdAt", "desc"), limit(pageSize));
 
   return onSnapshot(q, async (snapshot) => {
-    const posts = await Promise.all(snapshot.docs.map(async (docSnapshot) => {
+    const posts = snapshot.docs.map(docSnapshot => {
       const data = docSnapshot.data();
-      let liked = false;
-
-      if (userId) {
-        try {
-          const likeRef = doc(firestore, POSTS_COLLECTION, docSnapshot.id, "likes", userId);
-          // Optimization: Ideally we cache this or only fetch if changed, 
-          // but for now, to ensure correctness across devices, we fetch.
-          // Since Firestore SDK caches reads, repeated gets for unchanged docs are cheap/fast.
-          const likeSnap = await getDoc(likeRef);
-          liked = likeSnap.exists();
-        } catch (err) {
-          console.warn(`Failed to check like status for post ${docSnapshot.id}`, err);
-        }
-      }
-
+      // Liked status is now handled by individual components/subscriptions
+      // We default to false here or undefined, the UI component will fetch the real status.
       return {
         id: docSnapshot.id,
         ...data,
         author: data.authorSnapshot,
         createdAt: (data.createdAt as Timestamp)?.toMillis() || Date.now(),
-        liked,
+        liked: false, 
       } as FeedPost;
-    }));
+    });
 
     onUpdate(posts, snapshot.docs[snapshot.docs.length - 1] || null);
   }, (error) => {

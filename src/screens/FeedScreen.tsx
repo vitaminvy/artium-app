@@ -171,7 +171,7 @@ export default function FeedScreen() {
         <View style={{ flex: 1, display: tab === "explore" ? "flex" : "none" }}>
           <FeedExploreTab
             data={explorePosts}
-            onToggleLike={(id: string) => toggleLike(id)}
+            onToggleLike={(id: string, isLiked: boolean) => toggleLike(id, isLiked)}
             onToggleReshare={openReshare}
             onPressComment={openComments}
             onPressCard={openDetail}
@@ -187,7 +187,7 @@ export default function FeedScreen() {
         <View style={{ flex: 1, display: tab === "following" ? "flex" : "none" }}>
           <FeedFollowingTab
             data={followingPosts}
-            onToggleLike={(id: string) => toggleLike(id)}
+            onToggleLike={(id: string, isLiked: boolean) => toggleLike(id, isLiked)}
             onToggleReshare={openReshare}
             onPressComment={openComments}
             onPressCard={openDetail}
@@ -201,7 +201,7 @@ export default function FeedScreen() {
         <View style={{ flex: 1, display: tab === "myFeed" ? "flex" : "none" }}>
           <FeedExploreTab
             data={myPosts}
-            onToggleLike={(id: string) => toggleLike(id)}
+            onToggleLike={(id: string, isLiked: boolean) => toggleLike(id, isLiked)}
             onToggleReshare={openReshare}
             onPressComment={openComments}
             onPressCard={openDetail}
