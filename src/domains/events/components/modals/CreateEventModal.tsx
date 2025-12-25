@@ -9,6 +9,7 @@ import type { EventFilterOption, TimeZoneOption } from "../../types";
 import { DEFAULT_TIME_ZONE_ID, TIME_ZONE_OPTIONS } from "../../constants.optimized";
 import SelectSheet from "../ui/SelectSheet.optimized";
 import MultiSelectSheet from "../ui/MultiSelectSheet";
+import Loader from "../../../../shared/components/Loader";
 
 const MAX_TITLE = 255;
 const MAX_VENUE = 255;
@@ -55,6 +56,7 @@ export default function CreateEventModal({
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [description, setDescription] = useState("");
   const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
 
   // Validation errors
   const [errors, setErrors] = useState({
@@ -195,8 +197,13 @@ export default function CreateEventModal({
     return Object.values(newErrors).every((error) => !error);
   }, [title, selectedTypes, locationMode, address, websiteUrl, description, coverImage]);
 
-  const handleCreate = useCallback(() => {
+  const handleCreate = useCallback(async () => {
     if (!canCreate || !validateForm()) return;
+
+    setIsCreating(true);
+
+    // Simulate API call delay
+    await new Promise((resolve) => setTimeout(resolve, 800));
 
     const now = new Date().toISOString();
     const typeLabels = selectedTypes.map((item) => item.label);
@@ -236,6 +243,7 @@ export default function CreateEventModal({
     };
 
     onCreate(newEvent);
+    setIsCreating(false);
     onClose();
   }, [
     canCreate,
@@ -270,6 +278,17 @@ export default function CreateEventModal({
           className="rounded-3xl bg-white p-5 shadow-2xl"
           style={{ maxHeight: "90%" }}
         >
+          {isCreating && (
+            <View
+              className="absolute inset-0 bg-white/90 z-50 rounded-3xl"
+              style={{
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Loader color="#0F172A" backgroundColor="transparent" />
+            </View>
+          )}
           <View className="flex-row items-center justify-between mb-2">
             <View className="w-10" />
             <Text className="text-lg font-semibold text-slate-900">

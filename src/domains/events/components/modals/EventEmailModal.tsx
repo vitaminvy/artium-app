@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as MailComposer from "expo-mail-composer";
 import type { EventItem } from "../../../discover/types";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import Loader from "../../../../shared/components/Loader";
 
 type Props = {
   visible: boolean;
@@ -122,6 +123,17 @@ export default function EventEmailModal({ visible, onClose, event, organizerName
           keyboardVerticalOffset={Platform.OS === "ios" ? 32 : 0}
           style={{ maxHeight: "92%", paddingBottom: insets.bottom || 12 }}
         >
+          {isSending && (
+            <View
+              className="absolute inset-0 bg-white/80 z-50 rounded-t-3xl"
+              style={{
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Loader color="#0F172A" backgroundColor="transparent" />
+            </View>
+          )}
           <View
             className="flex-row items-center justify-between px-4 py-3 border-b border-slate-200"
             style={{ paddingTop: Math.max(insets.top / 2, 8) }}
