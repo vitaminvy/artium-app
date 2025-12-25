@@ -29,11 +29,11 @@ export const EDIT_PROFILE_LABELS = {
 
 export const EDIT_PROFILE_DEFAULTS: EditProfileFormValues = {
   countryCode: "VN",
-  username: "huutr372390",
-  firstName: "Hữu",
-  lastName: "Phan",
-  phoneNumber: "0912 345 678",
-  address: "123 Đường ABC, Quận 1, TP.HCM",
+  username: "",
+  firstName: "",
+  lastName: "",
+  phoneNumber: "",
+  address: "",
 };
 
 export const EDIT_PROFILE_COUNTRY_FALLBACKS: CountryOption[] = [

@@ -2,7 +2,7 @@
 
 export * from "./types/video";
 
-export type FeedTab = "explore" | "following";
+export type FeedTab = "explore" | "following" | "myFeed";
 
 export type FeedAuthor = {
   id: string;

@@ -14,10 +14,12 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ngovanthinh.artium.dev",
+      "bundleIdentifier": "com.ngovanthinh.artium.dev", 
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera to take photos and videos for your posts.",
+        "NSPhotoLibraryUsageDescription": "The app accesses your photos to let you share them with your friends and upload artwork."
       }
     },
     "android": {
@@ -27,7 +29,10 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.artium"
+      "package": "com.anonymous.artium",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -37,7 +42,13 @@
       "expo-web-browser",
       "expo-secure-store",
       "expo-video",
-      "expo-image-picker",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow this app to access your camera",
+          "photosPermission": "Allow this app to access your photos"
+        }
+      ],
       [
         "@react-native-google-signin/google-signin",
         {
@@ -47,8 +58,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "6481e52d-f627-4420-bce1-04fac3d9c7e7"
+        "projectId": "3ae1cd62-cd3f-4d9a-a952-c4810039109b"
       }
-    }
+    },
+    "owner": "huxtriss-organization"
   }
 }

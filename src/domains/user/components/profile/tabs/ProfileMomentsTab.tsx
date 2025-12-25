@@ -6,9 +6,10 @@ import { ProfileViewModel } from "../../../types";
 
 type Props = {
   profile: ProfileViewModel;
+  onPressUpload?: () => void;
 };
 
-export default function ProfileMomentsTab({ profile }: Props) {
+export default function ProfileMomentsTab({ profile, onPressUpload }: Props) {
   const hasMoments = false; // Skeleton state
 
   return (
@@ -16,7 +17,10 @@ export default function ProfileMomentsTab({ profile }: Props) {
       {hasMoments ? (
         <View />
       ) : (
-        <ProfileEmptyState message={PROFILE_STRINGS.momentsEmpty} />
+        <ProfileEmptyState
+          message={PROFILE_STRINGS.momentsEmpty}
+          onPress={onPressUpload}
+        />
       )}
     </View>
   );

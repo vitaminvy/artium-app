@@ -38,7 +38,7 @@ export type EventItem = {
   id: string;
   title: string;
   location: string;
-  datetime: string; // ISO string
+  startDate: string; // ISO string
   createdAt?: string; // ISO string
   endDatetime?: string; // ISO string
   timeZone?: string;
