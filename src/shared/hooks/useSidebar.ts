@@ -45,8 +45,7 @@ const ITEMS: SidebarItem[] = [
     key: "events",
     label: "Events",
     icon: "calendar-outline",
-    subtitle: "Leaving the app and redirecting to the web version",
-    trailing: "external",
+    subtitle: "Manage your events",
   },
   {
     key: "messages",

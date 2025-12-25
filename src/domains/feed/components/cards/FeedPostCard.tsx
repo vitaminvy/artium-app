@@ -10,6 +10,7 @@ import { shareArtwork } from "../../../../shared/utils/shareArtwork";
 import { formatDuration } from "../../utils";
 import { ANIMATION_CONFIG, MEDIA_CONFIG } from "../../constants/media";
 import { FEED_MESSAGES } from "../../constants/messages";
+import { usePostLike } from "../../hooks/usePostLike";
 
 type Props = {
   post: FeedPost;
@@ -30,6 +31,8 @@ function FeedPostCard({
   onPressImage,
   isVisible = true,
 }: Props) {
+  const { isLiked, toggleOptimistic } = usePostLike(post.id, post.liked);
+
   const initials =
     post.author.name
       .split(" ")
@@ -259,13 +262,16 @@ function FeedPostCard({
       <View className="flex-row items-center gap-6 pt-1">
         <Pressable
           className="flex-row items-center gap-2"
-          onPress={() => onPressLike(post.id, post.liked ?? false)}
+          onPress={() => {
+            toggleOptimistic();
+            onPressLike(post.id, isLiked);
+          }}
           hitSlop={6}
         >
           <Ionicons
-            name={post.liked ? "heart" : "heart-outline"}
+            name={isLiked ? "heart" : "heart-outline"}
             size={22}
-            color={post.liked ? FEED_COLORS.LIKE_ACTIVE : FEED_COLORS.ICON}
+            color={isLiked ? FEED_COLORS.LIKE_ACTIVE : FEED_COLORS.ICON}
           />
           <Text className="text-[13px] text-slate-600">
             {post.metrics.likes}

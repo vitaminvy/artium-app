@@ -6,7 +6,7 @@ import FeedPostCard from "../cards/FeedPostCard";
 
 type Props = {
   data: FeedPost[];
-  onToggleLike: (id: string) => void | Promise<void>;
+  onToggleLike: (id: string, isLiked: boolean) => void | Promise<void>;
   onToggleReshare: (post: FeedPost) => void;
   onPressComment: (post: FeedPost) => void;
   onPressCard?: (post: FeedPost) => void;

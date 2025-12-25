@@ -101,6 +101,11 @@ export default function HomeScreen() {
       return;
     }
 
+    if (key === "events") {
+      navigation.navigate("Events");
+      return;
+    }
+
     console.log("Sidebar selected:", key);
   };
 

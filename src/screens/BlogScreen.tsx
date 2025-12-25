@@ -18,6 +18,7 @@ import BlogHeroCarousel from "../domains/blog/components/BlogHeroCarousel";
 import BlogHorizontalCard from "../domains/blog/components/BlogHorizontalCard";
 import BlogArticleCard from "../domains/blog/components/BlogArticleCard";
 import Loader from "../shared/components/Loader";
+import UnderlineHome from "../../assets/headers/underline-home.svg";
 import type { BlogArticle } from "../domains/blog/types";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
 
@@ -109,6 +110,7 @@ export default function BlogScreen() {
         onPressAction={() => setSidebarOpen((prev) => !prev)}
         showBadge={false}
         onHeightChange={(h) => setHeaderHeight(h)}
+        underlineSource={UnderlineHome}
       />
 
       {isInitialLoading ? (

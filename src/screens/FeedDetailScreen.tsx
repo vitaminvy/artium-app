@@ -21,6 +21,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import ReshareSheet from "../domains/feed/components/sheets/ReshareSheet";
 import ImageViewing from "react-native-image-viewing";
+import { usePostComments } from "../domains/feed/hooks/usePostComments";
+import { addCommentToPost } from "../domains/feed/services/feedService";
+import { useAuth } from "../domains/auth/contexts/AuthContext";
 
 type RouteProps = { key: string; name: "FeedDetail"; params: { post: FeedPost } };
 
@@ -30,14 +33,13 @@ export default function FeedDetailScreen() {
     useNavigation<NativeStackNavigationProp<FeedStackParamList>>();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
+  const { currentUser } = useAuth();
   const originalPost = route.params?.post;
 
   const [post, setPost] = useState<FeedPost>(originalPost);
   const [input, setInput] = useState("");
-  const [comments, setComments] = useState<
-    { id: string; author: { name: string; handle: string }; content: string }[]
-  >([]);
   const [showReshare, setShowReshare] = useState(false);
+  const { comments, loading } = usePostComments(post?.id);
 
   // Image viewer state
   const viewerKeyRef = useRef(0);
@@ -80,20 +82,35 @@ export default function FeedDetailScreen() {
     setShowReshare(false);
   };
 
-  const addComment = () => {
-    if (!input.trim()) return;
-    const newComment = {
-      id: `detail-cmt-${Date.now()}`,
-      author: { name: CURRENT_USER.name, handle: CURRENT_USER.handle },
-      content: input.trim(),
+  const addComment = async () => {
+    const trimmed = input.trim();
+    if (!trimmed || !post?.id) return;
+    if (!currentUser) {
+      console.warn("User not logged in; cannot add comment.");
+      return;
+    }
+
+    const authorSnapshot = {
+      id: currentUser.uid,
+      name: currentUser.displayName || "User",
+      handle: (currentUser.email || "user").split("@")[0],
+      avatar: currentUser.photoURL || undefined,
     };
-    setComments((prev) => [newComment, ...prev]);
-    setPost((prev) => ({
-      ...prev,
-      metrics: { ...prev.metrics, comments: prev.metrics.comments + 1 },
-    }));
-    setInput("");
-    Keyboard.dismiss();
+
+    try {
+      await addCommentToPost(post.id, {
+        authorSnapshot,
+        content: trimmed,
+      });
+      setPost((prev) => ({
+        ...prev,
+        metrics: { ...prev.metrics, comments: prev.metrics.comments + 1 },
+      }));
+      setInput("");
+      Keyboard.dismiss();
+    } catch (error) {
+      console.error("Failed to add comment from detail:", error);
+    }
   };
 
   const handleOpenViewer = (images: { uri: string }[], index: number) => {
@@ -150,7 +167,11 @@ export default function FeedDetailScreen() {
         />
 
         <View className="mt-6 px-2">
-          {comments.length === 0 ? (
+          {loading ? (
+            <Text className="text-center text-slate-500">
+              Loading comments...
+            </Text>
+          ) : comments.length === 0 ? (
             <Text className="text-center text-slate-500">
               {FEED_STRINGS.COMMENTS_EMPTY}
             </Text>
@@ -159,6 +180,9 @@ export default function FeedDetailScreen() {
               <View key={c.id} className="py-3 border-b border-slate-100">
                 <Text className="text-sm font-semibold text-slate-900">
                   {c.author.name} @{c.author.handle}
+                </Text>
+                <Text className="text-[11px] text-slate-400">
+                  {c.relativeTime ?? ""}
                 </Text>
                 <Text className="text-sm text-slate-800 mt-1 leading-5">
                   {c.content}

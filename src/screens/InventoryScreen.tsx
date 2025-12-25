@@ -386,6 +386,10 @@ export default function InventoryScreen() {
             navigation.navigate("Profile");
             return;
           }
+          if (key === "events") {
+            navigation.navigate("Events");
+            return;
+          }
           console.log("Selected sidebar item:", key);
         }}
         topOffset={headerHeight}
