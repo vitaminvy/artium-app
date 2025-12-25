@@ -1,6 +1,8 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
   ScrollView,
   Text,
@@ -23,6 +25,17 @@ type Props<T extends OptionBase> = {
   placeholder?: string;
   searchable?: boolean;
   searchPlaceholder?: string;
+  onSearch?: (query: string) => void;
+  searchMode?: "local" | "remote";
+  onEndReached?: () => void;
+  endReachedThreshold?: number;
+  isLoading?: boolean;
+  emptyLabel?: string;
+  loadingLabel?: string;
+  displayMode?: "text" | "badges";
+  badgeColor?: string;
+  badgeTextColor?: string;
+  maxBadges?: number;
   offset?: number;
 };
 
@@ -33,6 +46,17 @@ export default function MultiSelectSheet<T extends OptionBase>({
   placeholder = "Select",
   searchable = true,
   searchPlaceholder = "Search...",
+  onSearch,
+  searchMode = "local",
+  onEndReached,
+  endReachedThreshold = 24,
+  isLoading = false,
+  emptyLabel = "No results found",
+  loadingLabel = "Loading...",
+  displayMode = "text",
+  badgeColor = "#0B73FF",
+  badgeTextColor = "#FFFFFF",
+  maxBadges = 2,
   offset,
 }: Props<T>) {
   const insets = useSafeAreaInsets();
@@ -53,6 +77,9 @@ export default function MultiSelectSheet<T extends OptionBase>({
     const firstTwo = value.slice(0, 2).map((v) => v.label).join(", ");
     return `${firstTwo} +${value.length - 2}`;
   }, [value, placeholder]);
+  const showBadges = displayMode === "badges" && value.length > 0;
+  const visibleBadges = showBadges ? value.slice(0, maxBadges) : [];
+  const overflowCount = showBadges ? Math.max(value.length - maxBadges, 0) : 0;
 
   const bottomInset = Math.max(insets.bottom, 16);
   const dropdownOffset = offset ?? 12;
@@ -60,15 +87,21 @@ export default function MultiSelectSheet<T extends OptionBase>({
   const availableBelow = height - topCandidate - bottomInset;
   const dropdownTop = topCandidate;
   const maxHeight = Math.max(Math.min(availableBelow, 260), 120);
+  const didReachEndRef = useRef(false);
 
   const filteredOptions = useMemo(() => {
     if (!searchable) return options;
+    if (searchMode === "remote") return options;
     const keyword = query.trim().toLowerCase();
     if (!keyword) return options;
     return options.filter((option) =>
       option.label.toLowerCase().includes(keyword)
     );
-  }, [options, query, searchable]);
+  }, [options, query, searchable, searchMode]);
+
+  useEffect(() => {
+    didReachEndRef.current = false;
+  }, [filteredOptions.length, isLoading]);
 
   const toggleOption = (option: T) => {
     const exists = value.some((item) => item.id === option.id);
@@ -95,9 +128,32 @@ export default function MultiSelectSheet<T extends OptionBase>({
         }}
         className="flex-row items-center justify-between rounded-full border border-slate-200 bg-white px-4 py-3"
       >
-        <Text className="text-[13px] font-semibold text-slate-800">
-          {displayLabel}
-        </Text>
+        {showBadges ? (
+          <View className="flex-1 flex-row flex-wrap items-center gap-2">
+            {visibleBadges.map((item) => (
+              <View
+                key={item.id}
+                className="rounded-full px-2 py-1"
+                style={{ backgroundColor: badgeColor }}
+              >
+                <Text className="text-[11px] font-semibold" style={{ color: badgeTextColor }}>
+                  {item.label}
+                </Text>
+              </View>
+            ))}
+            {overflowCount > 0 ? (
+              <View className="rounded-full bg-slate-200 px-2 py-1">
+                <Text className="text-[11px] font-semibold text-slate-600">
+                  +{overflowCount}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        ) : (
+          <Text className="text-[13px] font-semibold text-slate-800">
+            {displayLabel}
+          </Text>
+        )}
         <Ionicons
           name={open ? "chevron-up-outline" : "chevron-down-outline"}
           size={16}
@@ -112,6 +168,7 @@ export default function MultiSelectSheet<T extends OptionBase>({
         onRequestClose={() => {
           setOpen(false);
           setQuery("");
+          onSearch?.("");
         }}
       >
         <View className="flex-1">
@@ -120,6 +177,7 @@ export default function MultiSelectSheet<T extends OptionBase>({
             onPress={() => {
               setOpen(false);
               setQuery("");
+              onSearch?.("");
             }}
           />
           <View
@@ -137,7 +195,10 @@ export default function MultiSelectSheet<T extends OptionBase>({
                   <Ionicons name="search" size={16} color="#94A3B8" />
                   <TextInput
                     value={query}
-                    onChangeText={setQuery}
+                    onChangeText={(next) => {
+                      setQuery(next);
+                      onSearch?.(next);
+                    }}
                     placeholder={searchPlaceholder}
                     placeholderTextColor="#94A3B8"
                     autoCorrect={false}
@@ -153,7 +214,29 @@ export default function MultiSelectSheet<T extends OptionBase>({
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingVertical: 4 }}
+              onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+                if (!onEndReached || isLoading || didReachEndRef.current) return;
+                const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+                const isCloseToBottom =
+                  layoutMeasurement.height + contentOffset.y >=
+                  contentSize.height - endReachedThreshold;
+                if (isCloseToBottom) {
+                  didReachEndRef.current = true;
+                  onEndReached();
+                }
+              }}
+              scrollEventThrottle={16}
             >
+              {isLoading && filteredOptions.length === 0 ? (
+                <Text className="px-4 py-3 text-[12px] text-slate-500">
+                  {loadingLabel}
+                </Text>
+              ) : null}
+              {!isLoading && filteredOptions.length === 0 ? (
+                <Text className="px-4 py-3 text-[12px] text-slate-500">
+                  {emptyLabel}
+                </Text>
+              ) : null}
               {filteredOptions.map((option, index) => {
                 const isActive = value.some((item) => item.id === option.id);
                 return (
@@ -182,6 +265,11 @@ export default function MultiSelectSheet<T extends OptionBase>({
                   </Pressable>
                 );
               })}
+              {isLoading && filteredOptions.length > 0 ? (
+                <Text className="px-4 py-2 text-[11px] text-slate-500">
+                  {loadingLabel}
+                </Text>
+              ) : null}
             </ScrollView>
           </View>
         </View>

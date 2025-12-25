@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -12,9 +12,23 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as MailComposer from "expo-mail-composer";
+import {
+  collection,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  startAfter,
+  startAt,
+  endAt,
+  type QueryDocumentSnapshot,
+  type DocumentData,
+} from "firebase/firestore";
 import type { EventItem } from "../../../discover/types";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import Loader from "../../../../shared/components/Loader";
+import MultiSelectSheet from "../ui/MultiSelectSheet";
+import { firestore } from "@/configs/firebase";
 
 type Props = {
   visible: boolean;
@@ -23,17 +37,30 @@ type Props = {
   organizerName?: string;
 };
 
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 const pillBg = "#0B73FF";
 const pillText = "#FFFFFF";
 
+type UserOption = {
+  id: string;
+  label: string;
+  email: string;
+};
+
+const USERS_PAGE_SIZE = 10;
+
 export default function EventEmailModal({ visible, onClose, event, organizerName }: Props) {
-  const [recipients, setRecipients] = useState<string[]>([]);
-  const [input, setInput] = useState("");
+  const [recipients, setRecipients] = useState<UserOption[]>([]);
+  const [userOptions, setUserOptions] = useState<UserOption[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [loadUsersError, setLoadUsersError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [hasMoreUsers, setHasMoreUsers] = useState(true);
   const [note, setNote] = useState("");
   const [isSending, setIsSending] = useState(false);
   const insets = useSafeAreaInsets();
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fetchIdRef = useRef(0);
+  const lastUserDocRef = useRef<QueryDocumentSnapshot<DocumentData> | null>(null);
 
   const dateLabel = useMemo(() => {
     const date = new Date(event.datetime ?? event.startDate ?? 0);
@@ -47,19 +74,110 @@ export default function EventEmailModal({ visible, onClose, event, organizerName
     });
   }, [event.datetime, event.startDate]);
 
-  const canAdd = useMemo(() => emailRegex.test(input.trim()), [input]);
   const canSend = recipients.length > 0 && !isSending;
 
-  const addRecipient = () => {
-    const email = input.trim();
-    if (!emailRegex.test(email)) return;
-    setRecipients((prev) => (prev.includes(email) ? prev : [...prev, email]));
-    setInput("");
-  };
+  const fetchUsers = useCallback(
+    async ({ reset }: { reset: boolean }) => {
+      const fetchId = fetchIdRef.current + 1;
+      fetchIdRef.current = fetchId;
+      setIsLoadingUsers(true);
+      setLoadUsersError(null);
+      if (reset) {
+        setUserOptions([]);
+        lastUserDocRef.current = null;
+        setHasMoreUsers(true);
+      }
 
-  const removeRecipient = (email: string) => {
-    setRecipients((prev) => prev.filter((item) => item !== email));
-  };
+      try {
+        const keyword = searchQuery.trim();
+        const baseQuery = keyword
+          ? query(
+              collection(firestore, "users"),
+              orderBy("displayName"),
+              startAt(keyword),
+              endAt(`${keyword}\uf8ff`)
+            )
+          : query(collection(firestore, "users"), orderBy("displayName"));
+        const pagedQuery =
+          !reset && lastUserDocRef.current
+            ? query(baseQuery, startAfter(lastUserDocRef.current), limit(USERS_PAGE_SIZE))
+            : query(baseQuery, limit(USERS_PAGE_SIZE));
+
+        const snapshot = await getDocs(pagedQuery);
+        const nextOptions = snapshot.docs
+          .map((doc) => {
+            const data = doc.data();
+            const email = String(data.email || "").trim();
+            if (!email) return null;
+            const name = String(data.displayName || "").trim();
+            return {
+              id: email,
+              label: name || email,
+              email,
+            } as UserOption;
+          })
+          .filter(Boolean) as UserOption[];
+
+        if (fetchId !== fetchIdRef.current) return;
+
+        setUserOptions((prev) => {
+          const base = reset ? [] : prev;
+          const seen = new Set(base.map((item) => item.email));
+          const merged = [...base];
+          nextOptions.forEach((option) => {
+            if (!seen.has(option.email)) {
+              merged.push(option);
+              seen.add(option.email);
+            }
+          });
+          return merged;
+        });
+
+        lastUserDocRef.current = snapshot.docs[snapshot.docs.length - 1] ?? null;
+        setHasMoreUsers(snapshot.size === USERS_PAGE_SIZE);
+      } catch (error) {
+        console.error("Error loading users for email invite:", error);
+        if (fetchId === fetchIdRef.current) {
+          setLoadUsersError("Không thể tải danh sách người dùng.");
+        }
+      } finally {
+        if (fetchId === fetchIdRef.current) {
+          setIsLoadingUsers(false);
+        }
+      }
+    },
+    [searchQuery]
+  );
+
+  useEffect(() => {
+    if (!visible) {
+      fetchIdRef.current += 1;
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+        searchTimeoutRef.current = null;
+      }
+      setSearchQuery("");
+      setUserOptions([]);
+      lastUserDocRef.current = null;
+      setHasMoreUsers(true);
+      setLoadUsersError(null);
+      setIsLoadingUsers(false);
+      return;
+    }
+
+    const delay = searchQuery.trim() ? 300 : 0;
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => {
+      fetchUsers({ reset: true });
+    }, delay);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+        searchTimeoutRef.current = null;
+      }
+    };
+  }, [visible, searchQuery, fetchUsers]);
 
   const buildBody = () => {
     return [
@@ -91,7 +209,7 @@ export default function EventEmailModal({ visible, onClose, event, organizerName
         return;
       }
       await MailComposer.composeAsync({
-        recipients,
+        recipients: recipients.map((recipient) => recipient.email),
         subject: `[Artium] ${event.title}`,
         body: buildBody(),
         isHtml: false,
@@ -161,58 +279,39 @@ export default function EventEmailModal({ visible, onClose, event, organizerName
           >
             <View className="gap-2">
               <Text className="text-[12px] font-semibold text-slate-600">Người nhận</Text>
-              <View className="rounded-2xl border border-slate-200 bg-white px-3 py-2">
-                <View className="flex-row flex-wrap gap-2">
-                  {recipients.map((email) => (
-                    <View
-                      key={email}
-                      className="flex-row items-center rounded-full px-2 py-1"
-                      style={{ backgroundColor: pillBg }}
-                    >
-                      <Text className="text-[12px] font-semibold" style={{ color: pillText }}>
-                        {email}
-                      </Text>
-                      <Pressable
-                        className="ml-2 h-5 w-5 items-center justify-center rounded-full bg-white/20 active:opacity-80"
-                        onPress={() => removeRecipient(email)}
-                      >
-                        <Ionicons name="close" size={12} color="#FFFFFF" />
-                      </Pressable>
-                    </View>
-                  ))}
-                </View>
-                <View className="flex-row items-center gap-2">
-                  <TextInput
-                    value={input}
-                    onChangeText={setInput}
-                    placeholder="Nhập email và nhấn Thêm"
-                    placeholderTextColor="#94A3B8"
-                    className="text-slate-900"
-                    style={{
-                      flex: 1,
-                      fontSize: 14,
-                      paddingVertical: 12,
-                      paddingHorizontal: 0,
-                      minHeight: 44,
-                      textAlignVertical: "center",
-                    }}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                  <Pressable
-                    className={`px-3 py-2 rounded-full ${canAdd ? "bg-slate-900" : "bg-slate-200"}`}
-                    disabled={!canAdd}
-                    onPress={addRecipient}
-                  >
-                    <Text
-                      className="text-[12px] font-semibold"
-                      style={{ color: canAdd ? "#FFFFFF" : "#94A3B8" }}
-                    >
-                      Thêm
-                    </Text>
-                  </Pressable>
-                </View>
+              <View className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
+                <MultiSelectSheet
+                  value={recipients}
+                  options={userOptions}
+                  onChange={setRecipients}
+                  placeholder="Chọn người nhận"
+                  searchable
+                  searchPlaceholder="Tìm theo tên"
+                  onSearch={setSearchQuery}
+                  searchMode="remote"
+                  onEndReached={() => {
+                    if (isLoadingUsers || !hasMoreUsers) return;
+                    fetchUsers({ reset: false });
+                  }}
+                  isLoading={isLoadingUsers}
+                  emptyLabel="Không có người dùng phù hợp."
+                  loadingLabel="Đang tải danh sách..."
+                  displayMode="badges"
+                  badgeColor={pillBg}
+                  badgeTextColor={pillText}
+                  maxBadges={3}
+                />
+                {loadUsersError ? (
+                  <Text className="mt-2 text-[11px] text-red-500">{loadUsersError}</Text>
+                ) : null}
+                {!isLoadingUsers &&
+                !loadUsersError &&
+                userOptions.length === 0 &&
+                !searchQuery.trim() ? (
+                  <Text className="mt-2 text-[11px] text-slate-400">
+                    Chưa có người dùng nào để chọn.
+                  </Text>
+                ) : null}
               </View>
             </View>
 
