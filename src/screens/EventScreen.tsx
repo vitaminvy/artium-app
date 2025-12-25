@@ -15,6 +15,7 @@ import YourEventsSection from "../domains/events/components/sections/YourEventsS
 import DiscoverEventsSection from "../domains/events/components/sections/DiscoverEventsSection";
 import EventHeader from "../domains/events/components/ui/EventHeader";
 import CreateEventModal from "../domains/events/components/modals/CreateEventModal";
+import { createEvent } from "../domains/discover/services/eventService";
 
 type NavigationProp = NativeStackNavigationProp<HomeStackParamList, "Events">;
 
@@ -28,6 +29,7 @@ export default function EventScreen() {
   const [activeKey, setActiveKey] = useState<SidebarKey>("events");
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
   const lastOffset = useRef(0);
   const yourLayoutRef = useRef<{ y: number; height: number }>({
     y: 0,
@@ -39,6 +41,12 @@ export default function EventScreen() {
     hostingEvents,
     yourEvents,
     discoverEvents,
+    isInitialLoading,
+    isHostingLoading,
+    isMoreEventsLoading,
+    hasMoreEvents,
+    loadMoreEvents,
+    error,
     addHostedEvent,
     getRsvpStatus,
     setRsvpStatus,
@@ -72,6 +80,7 @@ export default function EventScreen() {
         id: event.id,
         initialRsvp,
         onRsvpChange: (status) => handleRsvpChange(event.id, status),
+        event,
       });
     },
     [navigation, getRsvpStatus, handleRsvpChange]
@@ -212,6 +221,7 @@ export default function EventScreen() {
           getRsvpStatus={getRsvpStatus}
           onChangeRsvp={handleRsvpChange}
           onPressEvent={handleOpenEvent}
+          isLoading={isHostingLoading}
         />
 
         <YourEventsSection
@@ -248,6 +258,9 @@ export default function EventScreen() {
           getRsvpStatus={getRsvpStatus}
           onChangeRsvp={handleRsvpChange}
           onPressEvent={handleOpenEvent}
+          isLoading={isInitialLoading}
+          isFetchingNextPage={isMoreEventsLoading}
+          onEndReached={loadMoreEvents}
         />
       </KeyboardAwareScrollView>
 
@@ -260,17 +273,28 @@ export default function EventScreen() {
         items={items}
       />
 
-      <CreateEventModal
-        visible={showCreateEvent}
-        typeOptions={typeOptions}
-        onClose={() => setShowCreateEvent(false)}
-        onCreate={(event) => {
-          addHostedEvent(event);
-          setShowCreateEvent(false);
-        }}
-      />
+        <CreateEventModal
+          visible={showCreateEvent}
+          typeOptions={typeOptions}
+          onClose={() => setShowCreateEvent(false)}
+          onCreate={async (event) => {
+            try {
+              setIsCreating(true);
+              const saved = await createEvent(event);
+              addHostedEvent(saved);
+              setShowCreateEvent(false);
+              setToastMessage("Event created");
+              toastTimer.current = setTimeout(() => setToastMessage(null), 1200);
+            } catch (e) {
+              setToastMessage("Failed to create event");
+              toastTimer.current = setTimeout(() => setToastMessage(null), 1500);
+            } finally {
+              setIsCreating(false);
+            }
+          }}
+        />
 
-      {toastMessage ? (
+        {toastMessage ? (
         <View
           pointerEvents="none"
           className="absolute left-0 right-0 items-center"

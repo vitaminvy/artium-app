@@ -24,6 +24,9 @@ type Props = {
   getRsvpStatus: (id: string) => "none" | "going" | "maybe" | "notGoing";
   onChangeRsvp: (id: string, status: "none" | "going" | "maybe" | "notGoing") => void;
   onPressEvent?: (event: EventItem) => void;
+  isLoading?: boolean;
+  isFetchingNextPage?: boolean;
+  onEndReached?: () => void;
 };
 
 const PAGE_SIZE = 8;
@@ -44,6 +47,9 @@ function DiscoverEventsSection({
   getRsvpStatus,
   onChangeRsvp,
   onPressEvent,
+  isLoading = false,
+  isFetchingNextPage = false,
+  onEndReached,
 }: Props) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const total = events.length;
@@ -107,7 +113,11 @@ function DiscoverEventsSection({
       </ScrollView>
 
       <View className="mt-2">
-        {events.length ? (
+        {isLoading ? (
+          <View className="py-6 items-center">
+            <Text className="text-[12px] text-slate-500">Loading events...</Text>
+          </View>
+        ) : events.length ? (
           <View className="gap-4">
             {visibleEvents.map((event) => (
               <EventCard
@@ -133,13 +143,17 @@ function DiscoverEventsSection({
             Showing {visibleCount} of {total} events
           </Text>
 
-          {hasMore && (
+          {(hasMore || isFetchingNextPage) && (
             <Pressable
-              onPress={handleLoadMore}
+              onPress={() => {
+                handleLoadMore();
+                onEndReached?.();
+              }}
               className="flex-row items-center gap-2 rounded-full bg-slate-900 px-6 py-3"
+              disabled={isFetchingNextPage}
             >
               <Text className="text-[14px] font-semibold text-white">
-                Show More
+                {isFetchingNextPage ? "Loading..." : "Show More"}
               </Text>
               <Ionicons name="chevron-down" size={16} color="#fff" />
             </Pressable>

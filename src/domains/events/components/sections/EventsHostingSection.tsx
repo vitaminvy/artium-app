@@ -16,6 +16,7 @@ type Props = {
   getRsvpStatus: (id: string) => "none" | "going" | "maybe" | "notGoing";
   onChangeRsvp: (id: string, status: "none" | "going" | "maybe" | "notGoing") => void;
   onPressEvent?: (event: EventItem) => void;
+  isLoading?: boolean;
 };
 
 export default function EventsHostingSection({
@@ -27,6 +28,7 @@ export default function EventsHostingSection({
   getRsvpStatus,
   onChangeRsvp,
   onPressEvent,
+  isLoading = false,
 }: Props) {
   const hasEvents = events.length > 0;
 
@@ -45,7 +47,11 @@ export default function EventsHostingSection({
       </View>
 
       <View className="mt-4">
-        {hasEvents ? (
+        {isLoading ? (
+          <View className="py-4 items-center">
+            <Text className="text-[12px] text-slate-500">Loading your events...</Text>
+          </View>
+        ) : hasEvents ? (
           <View className="gap-3">
             {events.map((event) => (
               <EventCard

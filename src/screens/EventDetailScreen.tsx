@@ -19,10 +19,10 @@ import OverviewCard from "../domains/events/components/eventDetail/OverviewCard"
 import SummaryCard from "../domains/events/components/eventDetail/SummaryCard";
 import GuestList from "../domains/events/components/eventDetail/GuestList";
 import ExhibitorList from "../domains/events/components/eventDetail/ExhibitorList";
-import { eventDetails } from "../domains/events/mockDetails";
-import { eventsMockData } from "../domains/events/mockData";
 import type { EventItem } from "../domains/discover/types";
 import type { EventDetail } from "../domains/events/types";
+import { getEventById } from "../domains/discover/services/eventService";
+import Loader from "../shared/components/Loader";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
 
 type NavigationProp = NativeStackNavigationProp<HomeStackParamList, "EventDetail">;
@@ -33,25 +33,112 @@ export default function EventDetailScreen() {
   const route = useRoute();
   const insets = useSafeAreaInsets();
   const params = route.params as
-    | { id?: string; initialRsvp?: RsvpStatus; onRsvpChange?: (status: RsvpStatus) => void }
+    | { id?: string; initialRsvp?: RsvpStatus; onRsvpChange?: (status: RsvpStatus) => void; event?: EventItem }
     | undefined;
 
-  const detail: EventDetail | undefined = useMemo(() => {
-    if (params?.id) {
-      return eventDetails.find((item) => item.id === params.id) ?? eventDetails[0];
-    }
-    return eventDetails[0];
-  }, [params]);
+  const [eventItem, setEventItem] = useState<EventItem | undefined>(undefined);
+  const [detail, setDetail] = useState<EventDetail | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const eventItem: EventItem | undefined = useMemo(() => {
-    if (!detail) return undefined;
-    const all = [
-      ...eventsMockData.discoverEvents,
-      ...eventsMockData.hostingEvents,
-      ...eventsMockData.yourEvents,
-    ];
-    return all.find((item) => item.id === detail.id) ?? all[0];
-  }, [detail]);
+  useEffect(() => {
+    const fetchDetail = async () => {
+      if (!params?.id) {
+        setIsLoading(false);
+        if (params?.event) {
+          setEventItem(params.event);
+        } else {
+          setLoadError("Missing event id");
+        }
+        return;
+      }
+      if (params?.event) {
+        setEventItem(params.event);
+      }
+      try {
+        setIsLoading(true);
+        setLoadError(null);
+        const result = await getEventById(params.id);
+        const { event: data, raw } = result || {};
+        if (!data) {
+          // fallback to passed param event if available
+          if (params?.event) {
+            setLoadError(null);
+            setIsLoading(false);
+            return;
+          }
+          setLoadError("Event not found");
+          setIsLoading(false);
+          return;
+        }
+        const start = data.datetime ? new Date(data.datetime) : data.startDate ? new Date(data.startDate) : new Date();
+        const end = data.endDatetime ? new Date(data.endDatetime) : undefined;
+        const timeLabel = start.toLocaleString("en-US", {
+          weekday: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+      });
+        setEventItem({
+          ...data,
+          datetime: start.toISOString(),
+          startDate: start.toISOString(),
+          endDatetime: end?.toISOString(),
+        timeLabel,
+      });
+      setDetail({
+          id: data.id,
+          overview: {
+          location: data.location ?? "Unknown",
+          start: start.toISOString(),
+          end: (end ?? start).toISOString(),
+          timeZone: data.timeZone ?? raw?.timeZone ?? "UTC",
+          visibility: data.visibility ?? raw?.visibility ?? (data.isOnline ? "online" : "public"),
+          description: raw?.description ?? data.description ?? "No description.",
+          organizer: {
+            name: raw?.organizerSnapshot?.name ?? "Organizer",
+            handle: raw?.organizerSnapshot?.handle,
+            avatar: raw?.organizerSnapshot?.avatar ?? "",
+            verified: raw?.organizerSnapshot?.verified ?? false,
+          },
+          },
+          guests: [],
+          exhibitors: [],
+      });
+      } catch (e: any) {
+        setLoadError("Failed to load event");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchDetail();
+  }, [params?.id]);
+
+  useEffect(() => {
+    if (!isLoading && eventItem && !detail) {
+      const start = eventItem.datetime ? new Date(eventItem.datetime) : eventItem.startDate ? new Date(eventItem.startDate) : new Date();
+      const end = eventItem.endDatetime ? new Date(eventItem.endDatetime) : undefined;
+      setDetail({
+        id: eventItem.id,
+        overview: {
+          location: eventItem.location ?? "Unknown",
+          start: start.toISOString(),
+          end: (end ?? start).toISOString(),
+          timeZone: eventItem.timeZone ?? "UTC",
+          visibility: eventItem.visibility ?? (eventItem.isOnline ? "online" : "public"),
+          description: (eventItem as any).description ?? "No description.",
+          organizer: {
+            name: (eventItem as any).organizerSnapshot?.name ?? "Organizer",
+            handle: (eventItem as any).organizerSnapshot?.handle,
+            avatar: (eventItem as any).organizerSnapshot?.avatar ?? "",
+            verified: (eventItem as any).organizerSnapshot?.verified ?? false,
+          },
+        },
+        guests: [],
+        exhibitors: [],
+      });
+    }
+  }, [isLoading, eventItem, detail]);
 
   const [showGuests, setShowGuests] = useState(false);
   const [showExhibitors, setShowExhibitors] = useState(false);
@@ -98,10 +185,20 @@ export default function EventDetailScreen() {
     ];
   }, [detail]);
 
-  if (!detail || !eventItem) {
+  if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-white pt-12">
-        <Text className="text-[14px] text-slate-600">Event not found</Text>
+        <Loader />
+      </View>
+    );
+  }
+
+  if (!eventItem || loadError) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white pt-12 px-6">
+        <Text className="text-[14px] text-slate-600 text-center">
+          {loadError ?? "Event not found"}
+        </Text>
       </View>
     );
   }
@@ -130,7 +227,7 @@ export default function EventDetailScreen() {
           onChangeRsvp={handleRsvpChange}
         />
 
-        <OverviewCard detail={detail} />
+        {detail ? <OverviewCard detail={detail} /> : null}
 
         <SummaryCard title="Guests" stats={guestStats} onSeeAll={() => setShowGuests(true)} />
 
@@ -171,7 +268,7 @@ export default function EventDetailScreen() {
             contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
             showsVerticalScrollIndicator={false}
           >
-            <GuestList guests={detail.guests} />
+            <GuestList guests={detail?.guests ?? []} />
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
@@ -206,7 +303,7 @@ export default function EventDetailScreen() {
             contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
             showsVerticalScrollIndicator={false}
           >
-            <ExhibitorList exhibitors={detail.exhibitors} />
+            <ExhibitorList exhibitors={detail?.exhibitors ?? []} />
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>

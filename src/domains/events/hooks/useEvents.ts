@@ -1,14 +1,11 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 
 import type { EventItem } from "../../discover/types";
 import type { EventFilterOption, EventSortOption } from "../types";
-
-import {
-  eventsMockData,
-  HOSTING_SORT_OPTIONS,
-  EVENT_STATUS_OPTIONS,
-  EVENT_TYPE_OPTIONS,
-} from "../mockData";
+import { HOSTING_SORT_OPTIONS, EVENT_STATUS_OPTIONS, EVENT_TYPE_OPTIONS } from "../mockData";
+import { getEvents } from "../../discover/services/eventService";
+import { useAuth } from "@/domains/auth/contexts/AuthContext";
+import type { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 
 type RsvpStatus = "none" | "going" | "maybe" | "notGoing";
 
@@ -17,18 +14,24 @@ const filterByQuery = (events: EventItem[], query: string) => {
   if (!trimmed) return events;
   return events.filter((event) => {
     return (
-      event.title.toLowerCase().includes(trimmed) ||
-      event.location.toLowerCase().includes(trimmed)
+      (event.title ?? "").toLowerCase().includes(trimmed) ||
+      (event.location ?? "").toLowerCase().includes(trimmed)
     );
   });
 };
 
 const resolveStatus = (event: EventItem) => {
   const now = new Date();
-  const eventDate = new Date(event.datetime ?? event.startDate ?? 0);
-  if (eventDate < now) return "past";
-  if (event.status === "ongoing") return "ongoing";
-  return "upcoming";
+  const start = new Date(event.datetime ?? event.startDate ?? 0);
+  const end = event.endDatetime ? new Date(event.endDatetime) : null;
+
+  if (end) {
+    if (now >= start && now <= end) return "ongoing";
+    if (now < start) return "upcoming";
+    return "past";
+  }
+  if (now < start) return "upcoming";
+  return "past";
 };
 
 const sortEvents = (events: EventItem[], sortBy: EventSortOption) => {
@@ -76,7 +79,14 @@ type UseEventsResult = {
   hostingEvents: EventItem[];
   yourEvents: EventItem[];
   discoverEvents: EventItem[];
+  isInitialLoading: boolean;
+  isHostingLoading: boolean;
+  isMoreEventsLoading: boolean;
+  hasMoreEvents: boolean;
+  loadMoreEvents: () => void;
+  error: Error | null;
   addHostedEvent: (event: EventItem) => void;
+  setHostingEvents: (events: EventItem[]) => void;
   getRsvpStatus: (id: string) => RsvpStatus;
   setRsvpStatus: (id: string, status: RsvpStatus) => void;
   hostingSortOptions: EventSortOption[];
@@ -104,12 +114,11 @@ type UseEventsResult = {
 };
 
 export function useEvents(): UseEventsResult {
+  const { currentUser } = useAuth();
   const [hostingSort, setHostingSort] = useState<EventSortOption>(
     HOSTING_SORT_OPTIONS[0]
   );
-  const [hostingItems, setHostingItems] = useState<EventItem[]>(
-    eventsMockData.hostingEvents
-  );
+  const [hostingItems, setHostingItems] = useState<EventItem[]>([]);
   const [hostingRsvpMap, setHostingRsvpMap] = useState<Record<string, RsvpStatus>>(
     {}
   );
@@ -123,9 +132,7 @@ export function useEvents(): UseEventsResult {
     HOSTING_SORT_OPTIONS[0]
   );
   const [rsvpMap, setRsvpMap] = useState<Record<string, RsvpStatus>>({});
-  const [discoverItems, setDiscoverItems] = useState<EventItem[]>(
-    eventsMockData.discoverEvents
-  );
+  const [discoverItems, setDiscoverItems] = useState<EventItem[]>([]);
   const [discoverStatus, setDiscoverStatus] = useState<EventFilterOption>(
     EVENT_STATUS_OPTIONS[0]
   );
@@ -137,6 +144,78 @@ export function useEvents(): UseEventsResult {
   );
   const [yourQuery, setYourQuery] = useState("");
   const [discoverQuery, setDiscoverQuery] = useState("");
+  const [isMoreEventsLoading, setIsMoreEventsLoading] = useState(false);
+  const [hasMoreEvents, setHasMoreEvents] = useState(true);
+  const [lastEventDoc, setLastEventDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [isInitialLoading, setIsInitialLoading] = useState(false);
+  const [typeOptionsState, setTypeOptionsState] = useState<EventFilterOption[]>(EVENT_TYPE_OPTIONS);
+  const [isHostingLoading, setIsHostingLoading] = useState(false);
+
+  const recomputeTypes = useCallback((events: EventItem[]) => {
+    const set = new Set<string>();
+    events.forEach((e) => {
+      if (e.eventType) set.add(e.eventType);
+      if (e.category) {
+        e.category.split(",").map((s) => s.trim()).filter(Boolean).forEach((c) => set.add(c));
+      }
+      if (Array.isArray((e as any).tags)) {
+        (e as any).tags.forEach((t: string) => set.add(t));
+      }
+    });
+    const options: EventFilterOption[] = [
+      { id: "all", label: "All types" },
+      ...Array.from(set).map((label) => ({ id: label, label })),
+    ];
+    setTypeOptionsState(options);
+  }, []);
+
+  const fetchEventsPage = useCallback(
+    async (cursor: QueryDocumentSnapshot<DocumentData> | null = null) => {
+      try {
+        const { events, lastVisible } = await getEvents(12, cursor);
+        setLastEventDoc(lastVisible);
+        setHasMoreEvents(events.length === 12);
+        return events;
+      } catch (e: any) {
+        setError(e instanceof Error ? e : new Error("Failed to load events"));
+        return [];
+      }
+    },
+    []
+  );
+
+  const loadInitial = useCallback(async () => {
+    setIsInitialLoading(true);
+    // Discover
+    const events = await fetchEventsPage(null);
+    setDiscoverItems(events);
+    recomputeTypes(events);
+    // Hosting: tạm thời không query organizerId (tránh yêu cầu index), giữ rỗng hoặc các event tạo trong phiên
+    setHostingItems((prev) => prev);
+    setIsInitialLoading(false);
+  }, [fetchEventsPage, recomputeTypes, currentUser?.uid]);
+
+  const loadMoreEvents = useCallback(async () => {
+    if (isMoreEventsLoading || !hasMoreEvents) return;
+    setIsMoreEventsLoading(true);
+    const more = await fetchEventsPage(lastEventDoc);
+    if (more.length) {
+      // Deduplicate by id for discover list
+      setDiscoverItems((prev) => {
+        const map = new Map<string, EventItem>();
+        [...prev, ...more].forEach((e) => map.set(e.id, e));
+        const merged = Array.from(map.values());
+        recomputeTypes(merged);
+        return merged;
+      });
+    }
+    setIsMoreEventsLoading(false);
+  }, [fetchEventsPage, lastEventDoc, isMoreEventsLoading, hasMoreEvents, recomputeTypes]);
+
+  useEffect(() => {
+    loadInitial();
+  }, [loadInitial]);
 
   const hostingEvents = useMemo(
     () => sortEvents(hostingItems, hostingSort),
@@ -191,17 +270,28 @@ export function useEvents(): UseEventsResult {
     hostingEvents,
     yourEvents,
     discoverEvents,
+    isInitialLoading,
+    isHostingLoading,
+    isMoreEventsLoading,
+    hasMoreEvents,
+    loadMoreEvents,
+    error,
     addHostedEvent: (event: EventItem) => {
       setHostingItems((prev) => [event, ...prev]);
       setDiscoverItems((prev) => [event, ...prev]);
     },
+    setHostingEvents: (events: EventItem[]) => {
+      setHostingItems(events);
+    },
     getRsvpStatus,
     setRsvpStatus,
+    isMoreEventsLoading,
+    hasMoreEvents,
     hostingSortOptions: HOSTING_SORT_OPTIONS,
     hostingSort,
     setHostingSort,
     statusOptions: EVENT_STATUS_OPTIONS,
-    typeOptions: EVENT_TYPE_OPTIONS,
+    typeOptions: typeOptionsState,
     dateOptions: HOSTING_SORT_OPTIONS,
     yourStatus,
     setYourStatus,

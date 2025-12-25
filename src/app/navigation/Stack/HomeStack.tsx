@@ -28,6 +28,7 @@ export type HomeStackParamList = {
     id?: string;
     initialRsvp?: "none" | "going" | "maybe" | "notGoing";
     onRsvpChange?: (status: "none" | "going" | "maybe" | "notGoing") => void;
+    event?: import("../../domains/discover/types").EventItem;
   };
 };
 
