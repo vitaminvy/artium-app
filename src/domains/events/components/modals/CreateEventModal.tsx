@@ -11,6 +11,7 @@ import SelectSheet from "../ui/SelectSheet.optimized";
 import MultiSelectSheet from "../ui/MultiSelectSheet";
 import Loader from "../../../../shared/components/Loader";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
+import { useProfileContext } from "@/domains/user/contexts/ProfileContext";
 
 const MAX_TITLE = 255;
 const MAX_VENUE = 255;
@@ -37,6 +38,7 @@ export default function CreateEventModal({
   onCreate,
 }: Props) {
   const { currentUser } = useAuth();
+  const { editProfile } = useProfileContext();
   // Refs for keyboard navigation
   const titleRef = useRef<TextInput>(null);
   const addressRef = useRef<TextInput>(null);
@@ -245,9 +247,9 @@ export default function CreateEventModal({
       organizerId: currentUser?.uid,
       organizerSnapshot: {
         name: currentUser?.displayName || "Unknown Organizer",
-        handle: currentUser?.username || "user",
+        handle: editProfile?.username || "user",
         avatar: currentUser?.photoURL || "",
-        verified: currentUser?.roles?.isArtist || false,
+        verified: false,
       },
     };
 
@@ -650,7 +652,6 @@ function DateTimeField({ value, onChange }: DateTimeFieldProps) {
           setPickerVisible(false);
         }}
         onCancel={() => setPickerVisible(false)}
-        headerTextIOS="Select date & time"
         confirmTextIOS="Done"
         cancelTextIOS="Cancel"
       />

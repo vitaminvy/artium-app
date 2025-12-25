@@ -73,18 +73,6 @@ export default function EventScreen() {
     discoverQuery,
     setDiscoverQuery,
   } = useEvents();
-  const handleOpenEvent = useCallback(
-    (event: any) => {
-      const initialRsvp = getRsvpStatus(event.id);
-      navigation.navigate("EventDetail", {
-        id: event.id,
-        initialRsvp,
-        onRsvpChange: (status) => handleRsvpChange(event.id, status),
-        event,
-      });
-    },
-    [navigation, getRsvpStatus, handleRsvpChange]
-  );
 
   useFocusEffect(
     useCallback(() => {
@@ -159,6 +147,19 @@ export default function EventScreen() {
     [setRsvpStatus]
   );
 
+  const handleOpenEvent = useCallback(
+    (event: any) => {
+      const initialRsvp = getRsvpStatus(event.id);
+      navigation.navigate("EventDetail", {
+        id: event.id,
+        initialRsvp,
+        onRsvpChange: (status) => handleRsvpChange(event.id, status),
+        event,
+      });
+    },
+    [navigation, getRsvpStatus, handleRsvpChange]
+  );
+
   const handleYourLayout = useCallback(
     (layout: { x: number; y: number; width: number; height: number }) => {
       const prev = yourLayoutRef.current;
@@ -190,7 +191,6 @@ export default function EventScreen() {
             navigation.navigate("HomeMain");
           }
         }}
-        onPressMenu={() => setSidebarOpen((prev) => !prev)}
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
       />
 

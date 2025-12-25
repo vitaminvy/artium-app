@@ -37,7 +37,7 @@ export default function EventDetailScreen() {
 
   const [eventItem, setEventItem] = useState<EventItem | undefined>(undefined);
   const [detail, setDetail] = useState<EventDetail | null>(null);
-  const [guestCounts, setGuestCounts] = useState<{ going: number; maybe: number }>({ going: 0, maybe: 0 });
+  const [guestCounts, setGuestCounts] = useState<{ going: number; maybe: number; invited: number }>({ going: 0, maybe: 0, invited: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -85,6 +85,7 @@ export default function EventDetailScreen() {
 
         const start = finalEvent.datetime ? new Date(finalEvent.datetime) : finalEvent.startDate ? new Date(finalEvent.startDate) : new Date();
         const end = finalEvent.endDatetime ? new Date(finalEvent.endDatetime) : undefined;
+        const organizerSnapshot = finalEvent.organizerSnapshot ?? rawData?.organizerSnapshot;
         
         setDetail({
           id: finalEvent.id,
@@ -93,13 +94,13 @@ export default function EventDetailScreen() {
             start: start.toISOString(),
             end: (end ?? start).toISOString(),
             timeZone: finalEvent.timeZone ?? rawData?.timeZone ?? "UTC",
-            visibility: finalEvent.visibility ?? rawData?.visibility ?? (finalEvent.isOnline ? "online" : "public"),
+            visibility: finalEvent.visibility ?? rawData?.visibility ?? (finalEvent.locationType === "online" ? "online" : "public"),
             description: rawData?.description ?? (finalEvent as any).description ?? "No description.",
             organizer: {
-              name: rawData?.organizerSnapshot?.name ?? (finalEvent as any).organizerSnapshot?.name ?? "Organizer",
-              handle: rawData?.organizerSnapshot?.handle ?? (finalEvent as any).organizerSnapshot?.handle,
-              avatar: rawData?.organizerSnapshot?.avatar ?? (finalEvent as any).organizerSnapshot?.avatar ?? "",
-              verified: rawData?.organizerSnapshot?.verified ?? (finalEvent as any).organizerSnapshot?.verified ?? false,
+              name: organizerSnapshot?.name ?? "Organizer",
+              handle: organizerSnapshot?.handle,
+              avatar: organizerSnapshot?.avatar ?? "",
+              verified: organizerSnapshot?.verified ?? false,
             },
           },
           guests: guests,
@@ -130,15 +131,7 @@ export default function EventDetailScreen() {
       params?.onRsvpChange?.(status);
       
       // Update local counts optimistically
-      setGuestCounts(prev => {
-         let newCounts = { ...prev };
-         // We don't know the previous status unless we tracked it, but for now this is tricky without keeping prev status.
-         // If we really want accurate counts, we should re-fetch. 
-         // But let's just re-fetch counts quietly? Or ignore for now.
-         // Given the complexity of "moving" from going to maybe or none, re-fetching is safest.
-         fetchEventGuestCounts(eventItem?.id!).then(c => setGuestCounts(c));
-         return newCounts;
-      });
+      fetchEventGuestCounts(eventItem?.id!).then(c => setGuestCounts(c));
     },
     [params?.onRsvpChange, eventItem?.id]
   );
@@ -147,7 +140,7 @@ export default function EventDetailScreen() {
     return [
       { label: "Going", value: guestCounts.going },
       { label: "Maybe", value: guestCounts.maybe },
-      { label: "Invited", value: 0 }, // We don't track invited yet
+      { label: "Invited", value: guestCounts.invited },
     ];
   }, [guestCounts]);
 

@@ -15,9 +15,8 @@ import {
   DocumentSnapshot,
   serverTimestamp,
   collectionGroup,
-  setDoc,
   getCountFromServer,
-  writeBatch
+  runTransaction
 } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 import { EventItem } from "../types";
@@ -34,6 +33,7 @@ const mapEventDoc = (doc: QueryDocumentSnapshot<DocumentData> | DocumentSnapshot
   const data = doc.data() || {};
   const start = (data.startDate as Timestamp | undefined)?.toDate?.() ?? new Date();
   const end = (data.endDate as Timestamp | undefined)?.toDate?.();
+  const isOnline = data.locationType === "online" || data.isOnline === true;
   const now = new Date();
   const status =
     end && now > start && now <= end
@@ -56,22 +56,60 @@ const mapEventDoc = (doc: QueryDocumentSnapshot<DocumentData> | DocumentSnapshot
       data.location?.city ??
       data.location?.name ??
       data.location?.address ??
-      (data.isOnline ? "Online" : "Unknown"),
+      (isOnline ? "Online" : "Unknown"),
     startDate: start.toISOString(),
     datetime: start.toISOString(),
     endDatetime: end?.toISOString(),
-    attendees: data.attendeeCount ?? 0,
-    isOnline: data.isOnline ?? false,
+    locationType: isOnline ? "online" : "inPerson",
     eventType: data.tags?.[0] ?? data.category ?? "Other",
     category: Array.isArray(data.tags) ? data.tags.join(", ") : data.category,
     status,
     timeLabel,
     rsvpLabel: "RSVP",
+    organizerSnapshot: data.organizerSnapshot,
     description: data.description,
     websiteUrl: data.websiteUrl,
     timeZone: data.timeZone,
     visibility: data.visibility,
   } as EventItem;
+};
+
+const countRsvpByStatus = async (
+  eventId: string,
+  status: "going" | "maybe" | "invited"
+) => {
+  const rsvpsRef = collectionGroup(firestore, "event_rsvps");
+  const rsvpQuery = query(
+    rsvpsRef,
+    where("eventId", "==", eventId),
+    where("status", "==", status)
+  );
+  const snapshot = await getCountFromServer(rsvpQuery);
+  return snapshot.data().count;
+};
+
+const fetchEventAttendeeCount = async (eventId: string) => {
+  try {
+    const [going, invited] = await Promise.all([
+      countRsvpByStatus(eventId, "going"),
+      countRsvpByStatus(eventId, "invited"),
+    ]);
+    return going + invited;
+  } catch (error) {
+    console.error(`Error counting attendees for event ${eventId}:`, error);
+    return 0;
+  }
+};
+
+const attachAttendeeCounts = async (events: EventItem[]) => {
+  if (!events.length) return events;
+  const enriched = await Promise.all(
+    events.map(async (event) => ({
+      ...event,
+      attendees: await fetchEventAttendeeCount(event.id),
+    }))
+  );
+  return enriched;
 };
 
 /**
@@ -82,15 +120,23 @@ export const getEvents = async (
   lastVisible: QueryDocumentSnapshot<DocumentData> | null = null
 ): Promise<PaginatedEventsResult> => {
   try {
-    const base = [collection(firestore, EVENTS_COLLECTION), orderBy("startDate", "desc"), limit(pageSize)];
     const eventsQuery = lastVisible
-      ? query(base[0], base[1], startAfter(lastVisible), base[2])
-      : query(base[0], base[1], base[2]);
+      ? query(
+          collection(firestore, EVENTS_COLLECTION),
+          orderBy("startDate", "desc"),
+          startAfter(lastVisible),
+          limit(pageSize)
+        )
+      : query(
+          collection(firestore, EVENTS_COLLECTION),
+          orderBy("startDate", "desc"),
+          limit(pageSize)
+        );
 
     const snapshot = await getDocs(eventsQuery);
-    const events = snapshot.docs.map((doc) => {
-      return mapEventDoc(doc);
-    });
+    const events = await attachAttendeeCounts(
+      snapshot.docs.map((doc) => mapEventDoc(doc))
+    );
 
     return {
       events,
@@ -109,7 +155,9 @@ export const getEventById = async (id: string): Promise<EventWithRaw | null> => 
     const ref = doc(firestore, EVENTS_COLLECTION, id);
     const snap = await getDoc(ref);
     if (!snap.exists()) return null;
-    const event = mapEventDoc(snap as QueryDocumentSnapshot<DocumentData>);
+    const baseEvent = mapEventDoc(snap as QueryDocumentSnapshot<DocumentData>);
+    const attendees = await fetchEventAttendeeCount(baseEvent.id);
+    const event = { ...baseEvent, attendees };
     return { event, raw: snap.data() };
   } catch (error) {
     console.error("Error getting event by id:", error);
@@ -120,6 +168,8 @@ export const getEventById = async (id: string): Promise<EventWithRaw | null> => 
 export const createEvent = async (event: EventItem): Promise<EventItem> => {
   const start = event.datetime || event.startDate ? new Date(event.datetime ?? event.startDate!) : new Date();
   const end = event.endDatetime ? new Date(event.endDatetime) : null;
+  const isOnline =
+    event.locationType === "online" || (!event.locationType && !!event.websiteUrl);
   const tags = event.category
     ? event.category.split(",").map((t) => t.trim()).filter(Boolean)
     : event.eventType
@@ -140,8 +190,7 @@ export const createEvent = async (event: EventItem): Promise<EventItem> => {
     image: event.image,
     startDate: start,
     endDate: end,
-    attendeeCount: event.attendees ?? 0,
-    isOnline: event.isOnline ?? false,
+    isOnline,
     location: {
       city: event.location,
       address: event.location,
@@ -151,7 +200,7 @@ export const createEvent = async (event: EventItem): Promise<EventItem> => {
     category: event.eventType ?? event.category,
     description: (event as any).description ?? "",
     timeZone: (event as any).timeZone ?? "UTC",
-    visibility: (event as any).visibility ?? (event.isOnline ? "online" : "public"),
+    visibility: event.visibility ?? "public",
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     organizerId: organizerId,
@@ -173,18 +222,25 @@ export const getEventsByOrganizer = async (
   lastVisible: QueryDocumentSnapshot<DocumentData> | null = null
 ): Promise<PaginatedEventsResult> => {
   try {
-    const base = [
-      collection(firestore, EVENTS_COLLECTION),
-      where("organizerId", "==", organizerId),
-      orderBy("startDate", "desc"),
-      limit(pageSize),
-    ];
     const eventsQuery = lastVisible
-      ? query(base[0], base[1], base[2], startAfter(lastVisible), base[3])
-      : query(base[0], base[1], base[2], base[3]);
+      ? query(
+          collection(firestore, EVENTS_COLLECTION),
+          where("organizerId", "==", organizerId),
+          orderBy("startDate", "desc"),
+          startAfter(lastVisible),
+          limit(pageSize)
+        )
+      : query(
+          collection(firestore, EVENTS_COLLECTION),
+          where("organizerId", "==", organizerId),
+          orderBy("startDate", "desc"),
+          limit(pageSize)
+        );
 
     const snapshot = await getDocs(eventsQuery);
-    const events = snapshot.docs.map((doc) => mapEventDoc(doc));
+    const events = await attachAttendeeCounts(
+      snapshot.docs.map((doc) => mapEventDoc(doc))
+    );
     return {
       events,
       lastVisible: snapshot.docs[snapshot.docs.length - 1] || null,
@@ -244,12 +300,20 @@ export const toggleEventRsvp = async (
   status: "going" | "maybe" | "notGoing"
 ) => {
   try {
-    const ref = doc(firestore, "users", userId, "event_rsvps", eventId);
-    await setDoc(ref, {
-      eventId,
-      status,
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
+    await runTransaction(firestore, async (transaction) => {
+      const rsvpRef = doc(firestore, "users", userId, "event_rsvps", eventId);
+
+      const rsvpDoc = await transaction.get(rsvpRef);
+      const currentStatus = rsvpDoc.exists() ? rsvpDoc.data().status : "none";
+
+      if (currentStatus === status) return;
+
+      transaction.set(rsvpRef, {
+        eventId,
+        status,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    });
   } catch (error) {
     console.error("Error toggling RSVP:", error);
     throw error;
@@ -258,23 +322,19 @@ export const toggleEventRsvp = async (
 
 export const fetchEventGuestCounts = async (eventId: string) => {
   try {
-    const rsvpsRef = collectionGroup(firestore, "event_rsvps");
-    
-    const goingQuery = query(rsvpsRef, where("eventId", "==", eventId), where("status", "==", "going"));
-    const maybeQuery = query(rsvpsRef, where("eventId", "==", eventId), where("status", "==", "maybe"));
-
-    const [goingSnap, maybeSnap] = await Promise.all([
-      getCountFromServer(goingQuery),
-      getCountFromServer(maybeQuery)
+    const [going, maybe, invited] = await Promise.all([
+      countRsvpByStatus(eventId, "going"),
+      countRsvpByStatus(eventId, "maybe"),
+      countRsvpByStatus(eventId, "invited"),
     ]);
-
     return {
-      going: goingSnap.data().count,
-      maybe: maybeSnap.data().count
+      going,
+      maybe,
+      invited,
     };
   } catch (error) {
     console.error("Error counting guests:", error);
-    return { going: 0, maybe: 0 };
+    return { going: 0, maybe: 0, invited: 0 };
   }
 };
 
@@ -286,8 +346,6 @@ export const fetchEventGuests = async (eventId: string): Promise<EventGuest[]> =
     // Limit to 50 guests for performance in this demo
     // In a real app, we would paginate this
     const snapshot = await getDocs(query(q, limit(50)));
-    
-    const guests: EventGuest[] = [];
     
     // We need to fetch user details for each RSVP
     // Using promise.all with map might trigger too many reads at once if 50+
@@ -325,4 +383,3 @@ export const fetchEventGuests = async (eventId: string): Promise<EventGuest[]> =
     return [];
   }
 };
-

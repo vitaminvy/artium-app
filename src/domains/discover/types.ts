@@ -53,6 +53,13 @@ export type EventItem = {
   eventType?: string;
   timeLabel?: string;
   attendees?: number;
+  organizerSnapshot?: {
+    id?: string;
+    name?: string;
+    handle?: string;
+    avatar?: string;
+    verified?: boolean;
+  };
   status?: "ongoing" | "upcoming";
   rsvpLabel?: string;
 };
