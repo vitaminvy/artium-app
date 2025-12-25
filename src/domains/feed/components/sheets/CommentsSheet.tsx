@@ -25,11 +25,13 @@ import type {
 import { FeedComment, FeedPost } from "../../types";
 import { CURRENT_USER, FEED_STRINGS } from "../../constants";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { usePostComments } from "../../hooks/usePostComments";
 
 type Props = {
   visible: boolean;
   target?: FeedPost;
-  comments: FeedComment[];
+  comments?: FeedComment[];
+  loading?: boolean;
   onSubmit: (text: string) => void;
   onClose: () => void;
 };
@@ -118,10 +120,14 @@ function CommentsFooter({
 export default function CommentsSheet({
   visible,
   target,
-  comments,
+  comments: commentsProp,
+  loading: loadingProp,
   onClose,
   onSubmit,
 }: Props) {
+  const { comments: liveComments, loading: loadingLive } = usePostComments(target?.id);
+  const comments = commentsProp ?? liveComments;
+  const loading = loadingProp ?? loadingLive;
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const sheetRef = useRef<BottomSheetModal>(null);
