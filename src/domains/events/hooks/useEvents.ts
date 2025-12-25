@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState, useEffect } from "react";
 import type { EventItem } from "../../discover/types";
 import type { EventFilterOption, EventSortOption } from "../types";
 import { HOSTING_SORT_OPTIONS, EVENT_STATUS_OPTIONS, EVENT_TYPE_OPTIONS } from "../mockData";
-import { getEvents, fetchUserRsvps, toggleEventRsvp, fetchEventsByIds } from "../../discover/services/eventService";
+import { getEvents, fetchUserRsvps, toggleEventRsvp, fetchEventsByIds, getEventsByOrganizer } from "../../discover/services/eventService";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
 import type { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 
@@ -188,13 +188,28 @@ export function useEvents(): UseEventsResult {
 
   const loadInitial = useCallback(async () => {
     setIsInitialLoading(true);
-    // Discover
-    const events = await fetchEventsPage(null);
-    setDiscoverItems(events);
-    recomputeTypes(events);
-    setHostingItems((prev) => prev);
-    setIsInitialLoading(false);
-  }, [fetchEventsPage, recomputeTypes]);
+    setIsHostingLoading(true);
+    try {
+        // Discover
+        const events = await fetchEventsPage(null);
+        setDiscoverItems(events);
+        recomputeTypes(events);
+
+        // Hosting
+        if (currentUser?.uid) {
+            const hostingRes = await getEventsByOrganizer(currentUser.uid, 50);
+            setHostingItems(hostingRes.events);
+        } else {
+            setHostingItems([]);
+        }
+    } catch (err) {
+        console.error("Failed to load initial events", err);
+        setError(err instanceof Error ? err : new Error("Failed to load"));
+    } finally {
+        setIsInitialLoading(false);
+        setIsHostingLoading(false);
+    }
+  }, [fetchEventsPage, recomputeTypes, currentUser?.uid]);
 
   // Load RSVPs for current user
   useEffect(() => {
@@ -265,10 +280,7 @@ export function useEvents(): UseEventsResult {
   const discoverEvents = useMemo(
     () =>
       applyFilters(
-        mergedEvents, // Showing all known events in discover might be okay, or strictly discoverItems.
-                      // For now, let's use discoverItems + new ones to avoid "popping" in if desired,
-                      // but user asked for "Discover" tab to show events. Usually discover shows *all* public.
-                      // So mergedEvents is fine.
+        mergedEvents,
         discoverQuery,
         discoverStatus,
         discoverType,

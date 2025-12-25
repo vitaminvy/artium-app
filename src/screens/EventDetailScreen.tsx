@@ -18,7 +18,6 @@ import EventHeroCard from "../domains/events/components/eventDetail/EventHeroCar
 import OverviewCard from "../domains/events/components/eventDetail/OverviewCard";
 import SummaryCard from "../domains/events/components/eventDetail/SummaryCard";
 import GuestList from "../domains/events/components/eventDetail/GuestList";
-import ExhibitorList from "../domains/events/components/eventDetail/ExhibitorList";
 import type { EventItem } from "../domains/discover/types";
 import type { EventDetail } from "../domains/events/types";
 import { getEventById, fetchEventGuestCounts, fetchEventGuests } from "../domains/discover/services/eventService";
@@ -117,7 +116,6 @@ export default function EventDetailScreen() {
   }, [params?.id, params?.event]);
 
   const [showGuests, setShowGuests] = useState(false);
-  const [showExhibitors, setShowExhibitors] = useState(false);
   const [rsvpStatus, setRsvpStatus] = useState<RsvpStatus>(params?.initialRsvp ?? "none");
 
   useEffect(() => {
@@ -152,24 +150,6 @@ export default function EventDetailScreen() {
       { label: "Invited", value: 0 }, // We don't track invited yet
     ];
   }, [guestCounts]);
-
-  const exhibitorStats = useMemo(() => {
-    if (!detail) return [];
-    return [
-      {
-        label: "Accepted",
-        value: detail.exhibitors.filter((e) => e.status === "accepted").length,
-      },
-      {
-        label: "Pending",
-        value: detail.exhibitors.filter((e) => e.status === "pending").length,
-      },
-      {
-        label: "Declined",
-        value: detail.exhibitors.filter((e) => e.status === "declined").length,
-      },
-    ];
-  }, [detail]);
 
   if (isLoading) {
     return (
@@ -216,12 +196,6 @@ export default function EventDetailScreen() {
         {detail ? <OverviewCard detail={detail} /> : null}
 
         <SummaryCard title="Guests" stats={guestStats} onSeeAll={() => setShowGuests(true)} />
-
-        <SummaryCard
-          title="Exhibitors"
-          stats={exhibitorStats}
-          onSeeAll={() => setShowExhibitors(true)}
-        />
       </ScrollView>
 
       <Modal
@@ -255,41 +229,6 @@ export default function EventDetailScreen() {
             showsVerticalScrollIndicator={false}
           >
             <GuestList guests={detail?.guests ?? []} />
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      <Modal
-        visible={showExhibitors}
-        animationType="slide"
-        onRequestClose={() => setShowExhibitors(false)}
-      >
-        <KeyboardAvoidingView
-          className="flex-1 bg-white"
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={60}
-        >
-          <View
-            className="flex-row items-center justify-between px-4 py-3 border-b border-slate-200"
-            style={{ paddingTop: insets.top + 4 }}
-          >
-            <Pressable
-              className="h-10 w-10 items-center justify-center rounded-full active:opacity-80"
-              onPress={() => setShowExhibitors(false)}
-            >
-              <Ionicons name="chevron-back" size={20} color="#0F172A" />
-            </Pressable>
-            <Text className="text-[16px] font-semibold text-slate-900">Exhibitors</Text>
-            <View className="h-10 w-10" />
-          </View>
-          <ScrollView
-            className="flex-1"
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="interactive"
-            contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
-            showsVerticalScrollIndicator={false}
-          >
-            <ExhibitorList exhibitors={detail?.exhibitors ?? []} />
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
