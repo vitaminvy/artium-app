@@ -29,7 +29,10 @@ export default function EventCard({
   rsvpStatus,
   onRsvpChange,
 }: Props) {
-  const date = useMemo(() => new Date(item.datetime), [item.datetime]);
+  const date = useMemo(
+    () => new Date(item.datetime ?? item.startDate ?? 0),
+    [item.datetime, item.startDate]
+  );
   const month = date.toLocaleString("en-US", { month: "short" });
   const day = date.getDate();
   const timeLabel =

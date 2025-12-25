@@ -25,7 +25,7 @@ const filterByQuery = (events: EventItem[], query: string) => {
 
 const resolveStatus = (event: EventItem) => {
   const now = new Date();
-  const eventDate = new Date(event.datetime);
+  const eventDate = new Date(event.datetime ?? event.startDate ?? 0);
   if (eventDate < now) return "past";
   if (event.status === "ongoing") return "ongoing";
   return "upcoming";
@@ -35,7 +35,9 @@ const sortEvents = (events: EventItem[], sortBy: EventSortOption) => {
   const sorted = [...events];
   if (sortBy.id === "oldest") {
     sorted.sort(
-      (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
+      (a, b) =>
+        new Date(a.datetime ?? a.startDate ?? 0).getTime() -
+        new Date(b.datetime ?? b.startDate ?? 0).getTime()
     );
     return sorted;
   }
@@ -44,7 +46,9 @@ const sortEvents = (events: EventItem[], sortBy: EventSortOption) => {
     return sorted;
   }
   sorted.sort(
-    (a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime()
+    (a, b) =>
+      new Date(b.datetime ?? b.startDate ?? 0).getTime() -
+      new Date(a.datetime ?? a.startDate ?? 0).getTime()
   );
   return sorted;
 };

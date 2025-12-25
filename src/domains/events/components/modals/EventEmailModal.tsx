@@ -35,7 +35,7 @@ export default function EventEmailModal({ visible, onClose, event, organizerName
   const insets = useSafeAreaInsets();
 
   const dateLabel = useMemo(() => {
-    const date = new Date(event.datetime);
+    const date = new Date(event.datetime ?? event.startDate ?? 0);
     return date.toLocaleString("vi-VN", {
       weekday: "short",
       day: "2-digit",
@@ -44,7 +44,7 @@ export default function EventEmailModal({ visible, onClose, event, organizerName
       hour: "2-digit",
       minute: "2-digit",
     });
-  }, [event.datetime]);
+  }, [event.datetime, event.startDate]);
 
   const canAdd = useMemo(() => emailRegex.test(input.trim()), [input]);
   const canSend = recipients.length > 0 && !isSending;

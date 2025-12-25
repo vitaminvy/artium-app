@@ -47,12 +47,15 @@ export default function EventHeroCard({
   const displayedRsvp = rsvp ?? localRsvp;
 
   const month = useMemo(
-    () => new Date(event.datetime).toLocaleString("en-US", { month: "short" }),
-    [event.datetime]
+    () =>
+      new Date(event.datetime ?? event.startDate ?? 0).toLocaleString("en-US", {
+        month: "short",
+      }),
+    [event.datetime, event.startDate]
   );
   const day = useMemo(
-    () => new Date(event.datetime).getDate(),
-    [event.datetime]
+    () => new Date(event.datetime ?? event.startDate ?? 0).getDate(),
+    [event.datetime, event.startDate]
   );
 
   const handleSelect = (status: RsvpStatus) => {
