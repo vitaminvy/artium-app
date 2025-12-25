@@ -8,8 +8,8 @@ import { firestore } from "@/configs/firebase";
 
 type ToggleFollowResult = {
   isFollowing: boolean;
-  followerCount: number;
-  followingCount: number;
+  statsFollowers: number;
+  statsFollowing: number;
 };
 
 /**
@@ -18,7 +18,7 @@ type ToggleFollowResult = {
  * - Uses subcollections:
  *   - users/{targetId}/followers/{currentUserId}
  *   - users/{currentUserId}/following/{targetId}
- * - Updates followerCount and followingCount on both user docs.
+ * - Updates stats.followers and stats.following on both user docs.
  */
 export const toggleFollow = async (
   currentUserId: string,
@@ -59,13 +59,13 @@ export const toggleFollow = async (
     const followerDelta = alreadyFollowing ? -1 : 1;
     const followingDelta = alreadyFollowing ? -1 : 1;
 
-    const nextFollowerCount = Math.max(
+    const nextStatsFollowers = Math.max(
       0,
-      Number(targetData.followerCount || 0) + followerDelta
+      Number((targetData.stats?.followers as number) || 0) + followerDelta
     );
-    const nextFollowingCount = Math.max(
+    const nextStatsFollowing = Math.max(
       0,
-      Number(currentData.followingCount || 0) + followingDelta
+      Number((currentData.stats?.following as number) || 0) + followingDelta
     );
 
     if (alreadyFollowing) {
@@ -82,13 +82,17 @@ export const toggleFollow = async (
       });
     }
 
-    tx.update(targetRef, { followerCount: nextFollowerCount });
-    tx.update(currentRef, { followingCount: nextFollowingCount });
+    tx.update(targetRef, {
+      "stats.followers": nextStatsFollowers,
+    });
+    tx.update(currentRef, {
+      "stats.following": nextStatsFollowing,
+    });
 
     return {
       isFollowing: !alreadyFollowing,
-      followerCount: nextFollowerCount,
-      followingCount: nextFollowingCount,
+      statsFollowers: nextStatsFollowers,
+      statsFollowing: nextStatsFollowing,
     };
   });
 

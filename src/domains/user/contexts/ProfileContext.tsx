@@ -39,8 +39,6 @@ type UserDoc = {
   phoneNumber?: string;
   address?: string;
   countryCode?: string;
-  followerCount?: number;
-  followingCount?: number;
   profileCompleted?: boolean;
 };
 
@@ -129,8 +127,8 @@ const buildProfileFromUserDoc = (
       avatarColor: prev.user.avatarColor ?? PROFILE_ACCENT,
     },
     stats: {
-      followers: data.followerCount ?? prev.stats.followers,
-      following: data.followingCount ?? prev.stats.following,
+      followers: data.stats?.followers ?? prev.stats.followers,
+      following: data.stats?.following ?? prev.stats.following,
     },
   };
 };

@@ -9,14 +9,11 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // Chỉ cho phép update các field liên quan follow counters
     function onlyFollowCountersChanged() {
+      // Allow updates when only the stats map changes (followers/following)
       let diffKeys = request.resource.data.diff(resource.data).changedKeys();
-      let validFollower = !(request.resource.data.keys().hasAny(["followerCount"])) ||
-        (request.resource.data.followerCount is number && request.resource.data.followerCount >= 0);
-      let validFollowing = !(request.resource.data.keys().hasAny(["followingCount"])) ||
-        (request.resource.data.followingCount is number && request.resource.data.followingCount >= 0);
-      return diffKeys.hasOnly(["followerCount", "followingCount"]) &&
-        validFollower && validFollowing;
+      return diffKeys.hasOnly(["stats"]);
     }
 
     // Allow public read on artworks, artists, events, and posts

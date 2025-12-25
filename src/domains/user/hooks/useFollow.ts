@@ -51,16 +51,18 @@ export const useFollow = (
     setIsFollowing((prev) => !prev);
 
     const prevFollowing = isFollowing;
-    try {
-      const res = await toggleFollow(currentUserId, targetUserId);
-      setIsFollowing(res.isFollowing); // Sync với kết quả server
-    } catch (err) {
-      console.error("Failed to toggle follow:", err);
-      // 4. Revert nếu lỗi
-      setIsFollowing(prevFollowing);
-    } finally {
-      setInFlight(false); // 5. Cleanup
-    }
+    toggleFollow(currentUserId, targetUserId)
+      .then((res) => {
+        setIsFollowing(res.isFollowing); // Sync với kết quả server
+      })
+      .catch((err) => {
+        console.error("Failed to toggle follow:", err);
+        // 4. Revert nếu lỗi
+        setIsFollowing(prevFollowing);
+      })
+      .finally(() => {
+        setInFlight(false); // 5. Cleanup
+      });
   }, [currentUserId, targetUserId, inFlight]);
 
   return { isFollowing, toggleFollow: toggle, loading: inFlight };
