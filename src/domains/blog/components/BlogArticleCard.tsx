@@ -23,11 +23,12 @@ export default function BlogArticleCard({ item, onPress }: Props) {
       }}
       onPress={() => onPress?.(item)}
     >
-      <View className="h-[210px] w-full bg-slate-100">
+      <View className="h-[230px] w-full bg-slate-100 overflow-hidden">
         <Image
           source={{ uri: item.coverImage }}
-          style={{ width: "100%", height: "100%" }}
+          style={{ width: "100%", height: "100%", transform: [{ scale: 1.35 }] }}
           contentFit="cover"
+          contentPosition="center"
         />
         <View
           className="absolute inset-0"

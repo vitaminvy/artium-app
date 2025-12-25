@@ -1,5 +1,7 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Pressable,
   RefreshControl,
   ScrollView,
   Text,
@@ -26,22 +28,43 @@ export default function BlogScreen() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(92);
   const [activeKey, setActiveKey] = useState<SidebarKey>("home");
+  const [visibleAllCount, setVisibleAllCount] = useState(5);
+  const [pendingShowMore, setPendingShowMore] = useState(false);
   const sidebarItems = useSidebarItems();
-  const { data, isLoading, error, refresh } = useBlogData();
-  const isInitialLoading = isLoading && !data;
-  const isRefreshing = isLoading && !!data;
+  const {
+    featured,
+    latest,
+    popular,
+    all,
+    hasMore,
+    isLoading,
+    isRefreshing,
+    isLoadingMore,
+    error,
+    refresh,
+    loadMore,
+  } = useBlogData();
+  const isInitialLoading = isLoading && !all.length;
   const sectionSpacing = 22;
 
-  const latest = useMemo(() => data?.latest ?? [], [data]);
-  const popular = useMemo(() => data?.popular ?? [], [data]);
-  const featured = useMemo(() => data?.featured ?? [], [data]);
-  const allArticles = useMemo(() => data?.all ?? [], [data]);
+  const allArticles = all;
+  const displayedAll = allArticles.slice(0, visibleAllCount);
 
   useFocusEffect(
     useCallback(() => {
       setActiveKey("home");
     }, [])
   );
+
+  useEffect(() => {
+    setVisibleAllCount((prev) => Math.max(6, Math.min(allArticles.length, prev)));
+  }, [allArticles]);
+
+  useEffect(() => {
+    if (!pendingShowMore || isLoadingMore) return;
+    setVisibleAllCount((prev) => Math.min(prev + 5, allArticles.length));
+    setPendingShowMore(false);
+  }, [pendingShowMore, isLoadingMore, allArticles.length]);
 
   const handleSidebarSelect = (key: SidebarKey | "more") => {
     setSidebarOpen(false);
@@ -56,6 +79,20 @@ export default function BlogScreen() {
       return;
     }
   };
+
+  const handleShowMore = useCallback(async () => {
+    const nextCount = visibleAllCount + 5;
+
+    if (nextCount <= allArticles.length) {
+      setVisibleAllCount(nextCount);
+      return;
+    }
+
+    if (hasMore && !isLoadingMore) {
+      setPendingShowMore(true);
+      await loadMore();
+    }
+  }, [visibleAllCount, allArticles.length, hasMore, isLoadingMore, loadMore]);
 
   const handleOpenArticle = (article: BlogArticle) => {
     navigation.navigate("BlogDetail", { blogId: article.id });
@@ -92,7 +129,7 @@ export default function BlogScreen() {
           refreshControl={
             <RefreshControl refreshing={isRefreshing} onRefresh={refresh} />
           }
-          contentContainerStyle={{ paddingBottom: 48 }}
+          contentContainerStyle={{ paddingBottom: 96 }}
         >
           <View className="px-4 pt-4">
             <BlogHeroCarousel data={featured} onPressItem={handleOpenArticle} />
@@ -124,13 +161,33 @@ export default function BlogScreen() {
 
           <SectionHeader title="All Articles" subtitle="Everything in one place" topSpacing={sectionSpacing} />
           <View className="px-4 pt-4">
-            {allArticles.map((article) => (
+            {displayedAll.map((article) => (
               <BlogArticleCard
                 key={article.id}
                 item={article}
                 onPress={handleOpenArticle}
               />
             ))}
+            {(displayedAll.length < allArticles.length || hasMore) ? (
+              <Pressable
+                onPress={handleShowMore}
+                className="mt-2 mb-4 h-12 rounded-full items-center justify-center border border-slate-200 bg-white active:opacity-90"
+                disabled={isLoadingMore}
+              >
+                {isLoadingMore ? (
+                  <View className="flex-row items-center gap-2">
+                    <ActivityIndicator size="small" color="#0F172A" />
+                    <Text className="text-[14px] font-semibold text-slate-800">
+                      Loading...
+                    </Text>
+                  </View>
+                ) : (
+                  <Text className="text-[14px] font-semibold text-slate-800">
+                    Show more articles
+                  </Text>
+                )}
+              </Pressable>
+            ) : null}
           </View>
         </ScrollView>
       )}

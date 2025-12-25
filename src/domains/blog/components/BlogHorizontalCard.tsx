@@ -10,8 +10,8 @@ type Props = {
 };
 
 export default function BlogHorizontalCard({ item, onPress, width }: Props) {
-  const cardWidth = width ?? 270;
-  const cardHeight = 220;
+  const cardWidth = width ?? 280;
+  const cardHeight = 230;
   const Container = onPress ? Pressable : View;
 
   return (
@@ -23,7 +23,7 @@ export default function BlogHorizontalCard({ item, onPress, width }: Props) {
       <View className="mx-3 mt-3 h-[136px] overflow-hidden rounded-2xl bg-slate-100">
         <Image
           source={{ uri: item.coverImage }}
-          style={{ width: "100%", height: "100%" }}
+          style={{ width: "100%", height: "100%", transform: [{ scale: 1.25 }] }}
           contentFit="cover"
           cachePolicy="memory-disk"
         />
@@ -39,7 +39,7 @@ export default function BlogHorizontalCard({ item, onPress, width }: Props) {
         </View>
       </View>
 
-      <View className="flex-1 px-4 py-4 justify-center" style={{ rowGap: 10 }}>
+      <View className="flex-1 px-4 pt-4 pb-5 justify-center" style={{ rowGap: 12 }}>
         <Text className="text-[15px] font-semibold text-slate-900 leading-5" numberOfLines={2}>
           {item.title}
         </Text>
