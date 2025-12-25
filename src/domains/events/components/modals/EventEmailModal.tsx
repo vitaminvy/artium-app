@@ -86,6 +86,7 @@ export default function EventEmailModal({ visible, onClose, event, organizerName
       const available = await MailComposer.isAvailableAsync();
       if (!available) {
         Alert.alert("Không thể mở ứng dụng Mail", "Vui lòng kiểm tra cài đặt Mail trên thiết bị.");
+        setIsSending(false);
         return;
       }
       await MailComposer.composeAsync({
@@ -94,12 +95,15 @@ export default function EventEmailModal({ visible, onClose, event, organizerName
         body: buildBody(),
         isHtml: false,
       });
+
+      // Đóng modal ngay sau khi mở mail app
       onClose();
-      Alert.alert("Đã mở ứng dụng Mail", "Bạn có thể chỉnh sửa và gửi email.");
+
+      // Chỉ reset state sau khi đóng modal
+      setIsSending(false);
     } catch (error) {
       console.error("Send mail failed", error);
-      Alert.alert("Gửi mail thất bại", "Vui lòng thử lại hoặc kiểm tra kết nối.");
-    } finally {
+      Alert.alert("Không thể mở Mail", "Vui lòng thử lại hoặc kiểm tra cài đặt ứng dụng Mail.");
       setIsSending(false);
     }
   };
