@@ -61,6 +61,7 @@ export default function CreateEventModal({
   const [description, setDescription] = useState("");
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   // Validation errors
   const [errors, setErrors] = useState({
@@ -86,6 +87,7 @@ export default function CreateEventModal({
       setVisibility("public");
       setDescription("");
       setCoverImage(null);
+      setShowExitConfirm(false);
       setErrors({
         title: "",
         type: "",
@@ -136,6 +138,29 @@ export default function CreateEventModal({
       setCoverImage(result.assets[0].uri);
     }
   }, []);
+
+  const handleCloseAttempt = useCallback(() => {
+    // Check directly if form has changes
+    const formHasChanges =
+      title.trim() !== "" ||
+      selectedTypes.length > 0 ||
+      address.trim() !== "" ||
+      venueDetails.trim() !== "" ||
+      websiteUrl.trim() !== "" ||
+      description.trim() !== "" ||
+      coverImage !== null;
+
+    if (formHasChanges && !isCreating) {
+      setShowExitConfirm(true);
+    } else {
+      onClose();
+    }
+  }, [title, selectedTypes, address, venueDetails, websiteUrl, description, coverImage, isCreating, onClose]);
+
+  const handleConfirmExit = useCallback(() => {
+    setShowExitConfirm(false);
+    onClose();
+  }, [onClose]);
 
   // Memoize validation để tránh tính toán lại mỗi render
   const canCreate = useMemo(() => {
@@ -281,10 +306,10 @@ export default function CreateEventModal({
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={onClose}
+      onRequestClose={handleCloseAttempt}
     >
       <View className="flex-1 bg-black/30 justify-center px-4">
-        <Pressable className="absolute inset-0" onPress={onClose} />
+        <Pressable className="absolute inset-0" onPress={handleCloseAttempt} />
 
         <View
           className="rounded-3xl bg-white p-5 shadow-2xl"
@@ -306,7 +331,7 @@ export default function CreateEventModal({
             <Text className="text-lg font-semibold text-slate-900">
               Create Event
             </Text>
-            <Pressable onPress={onClose} hitSlop={8}>
+            <Pressable onPress={handleCloseAttempt} hitSlop={8}>
               <Ionicons name="close" size={20} color="#0F172A" />
             </Pressable>
           </View>
@@ -563,7 +588,7 @@ export default function CreateEventModal({
 
           <View className="mt-4 flex-row items-center gap-3">
             <Pressable
-              onPress={onClose}
+              onPress={handleCloseAttempt}
               className="flex-1 rounded-full border border-slate-200 py-3 items-center"
             >
               <Text className="text-[14px] font-semibold text-slate-700">
@@ -586,6 +611,56 @@ export default function CreateEventModal({
           </View>
         </View>
       </View>
+
+      {/* Exit Confirmation Modal */}
+      <Modal
+        visible={showExitConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowExitConfirm(false)}
+      >
+        <View className="flex-1 bg-black/40 items-center justify-center px-6">
+          <View className="w-full rounded-[28px] bg-white p-6">
+            <View className="flex-row justify-end">
+              <Pressable
+                onPress={() => setShowExitConfirm(false)}
+                hitSlop={12}
+                className="h-10 w-10 items-center justify-center rounded-full"
+              >
+                <Ionicons name="close" size={22} color="#0F172A" />
+              </Pressable>
+            </View>
+
+            <View className="mt-2 mb-5">
+              <Text className="text-2xl font-bold text-slate-900 text-center">
+                Discard changes?
+              </Text>
+              <Text className="mt-3 text-base text-slate-500 text-center">
+                You have unsaved changes. Are you sure you want to discard them?
+              </Text>
+            </View>
+
+            <View className="gap-3">
+              <Pressable
+                onPress={handleConfirmExit}
+                className="rounded-full border border-rose-500 py-3 items-center active:opacity-80"
+              >
+                <Text className="text-base font-semibold text-rose-500">
+                  Discard changes
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setShowExitConfirm(false)}
+                className="rounded-full border border-slate-200 py-3 items-center active:opacity-80"
+              >
+                <Text className="text-base font-semibold text-slate-700">
+                  Keep editing
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Modal>
   );
 }
