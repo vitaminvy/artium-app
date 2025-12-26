@@ -27,6 +27,7 @@ import EventHeader from "../domains/events/components/ui/EventHeader";
 import CreateEventModal from "../domains/events/components/modals/CreateEventModal";
 import { createEvent } from "../domains/discover/services/eventService";
 import { useLogout } from "../domains/auth/hooks/useLogout";
+import { LogoutConfirmModal } from "../domains/auth/components/LogoutConfirmModal";
 
 type NavigationProp = NativeStackNavigationProp<HomeStackParamList, "Events">;
 
@@ -117,13 +118,19 @@ export default function EventScreen() {
     [setHidden]
   );
 
-  const { logout } = useLogout();
+  const {
+    logout,
+    loading: logoutLoading,
+    showConfirmModal,
+    onConfirmLogout,
+    onCancelLogout,
+  } = useLogout();
 
-  const handleSidebarSelect = async (key: SidebarActionKey) => {
+  const handleSidebarSelect = (key: SidebarActionKey) => {
     setSidebarOpen(false);
 
     if (key === "logout") {
-      await logout();
+      logout();
       return;
     }
 
@@ -341,6 +348,13 @@ export default function EventScreen() {
           </View>
         </View>
       ) : null}
+
+      <LogoutConfirmModal
+        visible={showConfirmModal}
+        onConfirm={onConfirmLogout}
+        onCancel={onCancelLogout}
+        loading={logoutLoading}
+      />
     </View>
   );
 }

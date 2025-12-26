@@ -13,6 +13,7 @@ export function useLogout() {
   const { resetProfile } = useProfileContext();
   const { resetCompletion } = useProfileCompletion();
   const [loading, setLoading] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const performLogout = useCallback(async () => {
     setLoading(true);
@@ -40,10 +41,13 @@ export function useLogout() {
       // when AuthContext.status changes from "authenticated" to "unauthenticated"
       // No need to manually reset navigation here
 
+      // Close modal after successful logout
+      setShowConfirmModal(false);
       return true;
     } catch (err) {
       console.error("Failed to log out", err);
       Alert.alert("Log out failed", "Please try again.");
+      setShowConfirmModal(false);
       return false;
     } finally {
       setLoading(false);
@@ -52,24 +56,18 @@ export function useLogout() {
 
   const logout = useCallback(() => {
     if (loading) return;
+    setShowConfirmModal(true);
+  }, [loading]);
 
-    Alert.alert(
-      "Log out",
-      "Are you sure you want to log out?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Log out",
-          style: "destructive",
-          onPress: performLogout,
-        },
-      ],
-      { cancelable: true }
-    );
-  }, [loading, performLogout]);
+  const handleCancelLogout = useCallback(() => {
+    setShowConfirmModal(false);
+  }, []);
 
-  return { logout, loading };
+  return {
+    logout,
+    loading,
+    showConfirmModal,
+    onConfirmLogout: performLogout,
+    onCancelLogout: handleCancelLogout,
+  };
 }

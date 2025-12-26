@@ -23,6 +23,7 @@ import { shareProfile } from "../shared/utils/shareProfile";
 import { navigate as rootNavigate } from "../app/navigation/navigationRef";
 import { useProfileCompletion } from "../domains/user/contexts/ProfileCompletionContext";
 import { useLogout } from "../domains/auth/hooks/useLogout";
+import { LogoutConfirmModal } from "../domains/auth/components/LogoutConfirmModal";
 
 type NavigationProp = NativeStackNavigationProp<
   HomeStackParamList,
@@ -93,7 +94,13 @@ export default function ProfileScreen() {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [headerHeight, setHeaderHeight] = React.useState(96);
   const [activeKey, setActiveKey] = React.useState<SidebarKey>("profile");
-  const { logout } = useLogout();
+  const {
+    logout,
+    loading: logoutLoading,
+    showConfirmModal,
+    onConfirmLogout,
+    onCancelLogout,
+  } = useLogout();
 
   const handleBack = () => {
     if (navigation.canGoBack()) {
@@ -117,11 +124,11 @@ export default function ProfileScreen() {
     rootNavigate("Upload");
   };
 
-  const handleSidebarSelect = async (key: SidebarActionKey) => {
+  const handleSidebarSelect = (key: SidebarActionKey) => {
     setSidebarOpen(false);
 
     if (key === "logout") {
-      await logout();
+      logout();
       return;
     }
 
@@ -215,6 +222,13 @@ export default function ProfileScreen() {
         topOffset={headerHeight}
         activeKey={activeKey}
         items={sidebarItems}
+      />
+
+      <LogoutConfirmModal
+        visible={showConfirmModal}
+        onConfirm={onConfirmLogout}
+        onCancel={onCancelLogout}
+        loading={logoutLoading}
       />
     </View>
   );

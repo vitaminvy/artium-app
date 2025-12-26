@@ -29,11 +29,18 @@ import { InventoryEmptyState } from "../domains/inventory/components/list/Invent
 import { FolderPickerModal } from "../domains/inventory/components/list/FolderPickerModal";
 import { Artwork } from "../domains/inventory/types";
 import { useLogout } from "../domains/auth/hooks/useLogout";
+import { LogoutConfirmModal } from "../domains/auth/components/LogoutConfirmModal";
 
 export default function InventoryScreen() {
   const { height: tabBarHeight, setHidden } = useTabBarVisibility();
   const items = useSidebarItems();
-  const { logout } = useLogout();
+  const {
+    logout,
+    loading: logoutLoading,
+    showConfirmModal,
+    onConfirmLogout,
+    onCancelLogout,
+  } = useLogout();
   const [headerHeight, setHeaderHeight] = useState(96);
   const route = useRoute<any>();
   const lastOffset = useRef(0);
@@ -376,11 +383,11 @@ export default function InventoryScreen() {
       <Sidebar
         visible={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        onSelect={async (key: SidebarActionKey) => {
+        onSelect={(key: SidebarActionKey) => {
           setSidebarOpen(false);
 
           if (key === "logout") {
-            await logout();
+            logout();
             return;
           }
 
@@ -451,6 +458,13 @@ export default function InventoryScreen() {
           }
         }}
         mode={pickerMode}
+      />
+
+      <LogoutConfirmModal
+        visible={showConfirmModal}
+        onConfirm={onConfirmLogout}
+        onCancel={onCancelLogout}
+        loading={logoutLoading}
       />
     </View>
   );

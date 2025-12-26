@@ -37,6 +37,7 @@ import ArtworkCard from "../domains/discover/components/cards/ArtworkCard";
 import type { Artwork } from "../domains/discover/types";
 import Loader from "../shared/components/Loader";
 import { useLogout } from "../domains/auth/hooks/useLogout";
+import { LogoutConfirmModal } from "../domains/auth/components/LogoutConfirmModal";
 
 type HomeScreenNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<HomeStackParamList, "HomeMain">,
@@ -55,7 +56,13 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const { news, blogs, events, sellItemsPreview, following, popularArtists, isLoading, error } = useHome();
   const { isFollowing, toggleFollow } = useProfileContext();
-  const { logout } = useLogout();
+  const {
+    logout,
+    loading: logoutLoading,
+    showConfirmModal,
+    onConfirmLogout,
+    onCancelLogout,
+  } = useLogout();
   const highlightCardWidth = Math.min(320, Math.round(width * 0.72));
   const highlightCardHeight = Math.round(highlightCardWidth * 0.55);
   const sellCardWidth = Math.round((width - 16 * 2 - 12) / 2);
@@ -89,11 +96,11 @@ export default function HomeScreen() {
     [sellCardMeasuredHeight]
   );
 
-  const handleSidebarSelect = async (key: SidebarActionKey) => {
+  const handleSidebarSelect = (key: SidebarActionKey) => {
     setSidebarOpen(false);
 
     if (key === "logout") {
-      await logout();
+      logout();
       return;
     }
 
@@ -252,6 +259,13 @@ export default function HomeScreen() {
         topOffset={headerHeight}
         activeKey={activeKey}
         items={items}
+      />
+
+      <LogoutConfirmModal
+        visible={showConfirmModal}
+        onConfirm={onConfirmLogout}
+        onCancel={onCancelLogout}
+        loading={logoutLoading}
       />
     </View>
   );
