@@ -14,7 +14,11 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { CompositeNavigationProp } from "@react-navigation/native";
 import ScreenHeader from "../shared/components/ScreenHeader";
 import Sidebar from "../shared/components/Sidebar";
-import { SidebarKey, useSidebarItems } from "../shared/hooks/useSidebar";
+import {
+  SidebarActionKey,
+  SidebarKey,
+  useSidebarItems,
+} from "../shared/hooks/useSidebar";
 import UnderlineHome from "../../assets/headers/underline-home.svg";
 import { TabParamList } from "../app/navigation/tabTypes";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
@@ -32,6 +36,7 @@ import {
 import ArtworkCard from "../domains/discover/components/cards/ArtworkCard";
 import type { Artwork } from "../domains/discover/types";
 import Loader from "../shared/components/Loader";
+import { useLogout } from "../domains/auth/hooks/useLogout";
 
 type HomeScreenNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<HomeStackParamList, "HomeMain">,
@@ -50,6 +55,7 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const { news, blogs, events, sellItemsPreview, following, popularArtists, isLoading, error } = useHome();
   const { isFollowing, toggleFollow } = useProfileContext();
+  const { logout } = useLogout();
   const highlightCardWidth = Math.min(320, Math.round(width * 0.72));
   const highlightCardHeight = Math.round(highlightCardWidth * 0.55);
   const sellCardWidth = Math.round((width - 16 * 2 - 12) / 2);
@@ -83,11 +89,11 @@ export default function HomeScreen() {
     [sellCardMeasuredHeight]
   );
 
-  const handleSidebarSelect = (key: SidebarKey | "more") => {
+  const handleSidebarSelect = async (key: SidebarActionKey) => {
     setSidebarOpen(false);
 
-    if (key === "more") {
-      console.log("Sidebar selected:", key);
+    if (key === "logout") {
+      await logout();
       return;
     }
 
@@ -98,6 +104,11 @@ export default function HomeScreen() {
 
     if (key === "profile") {
       navigation.navigate("Profile");
+      return;
+    }
+
+    if (key === "events") {
+      navigation.navigate("Events");
       return;
     }
 
@@ -115,6 +126,7 @@ export default function HomeScreen() {
       <ScreenHeader
         title="Home"
         badgeLabel="Blog"
+        onPressBadge={() => navigation.navigate("Blog")}
         actionType="menu"
         isMenuOpen={sidebarOpen}
         onPressAction={() => setSidebarOpen((prev) => !prev)}

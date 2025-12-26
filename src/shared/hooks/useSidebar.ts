@@ -13,8 +13,7 @@ export type SidebarKey =
   | "salesRecord"
   | "testimonials"
   | "contact"
-  | "marketing"
-  | "more";
+  | "marketing";
 
 export type SidebarItem = {
   key: SidebarKey;
@@ -45,8 +44,7 @@ const ITEMS: SidebarItem[] = [
     key: "events",
     label: "Events",
     icon: "calendar-outline",
-    subtitle: "Leaving the app and redirecting to the web version",
-    trailing: "external",
+    subtitle: "Manage your events",
   },
   {
     key: "messages",
@@ -105,6 +103,8 @@ const ITEMS: SidebarItem[] = [
   //   trailing: "external",
   // },
 ];
+
+export type SidebarActionKey = SidebarKey | "logout";
 
 export function useSidebarItems() {
   return ITEMS;

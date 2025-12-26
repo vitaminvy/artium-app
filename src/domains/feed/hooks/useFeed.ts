@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { User as AuthUser } from "firebase/auth";
 import { FeedComment, FeedPost, FeedTab } from "../types";
 import { 
   addCommentToPost, 
   createPost, 
   getFeedPosts, 
-  togglePostLike 
+  togglePostLike,
+  subscribeToFeedPosts
 } from "../services/feedService";
 import { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 
@@ -24,9 +25,8 @@ type UseFeedResult = {
   loadMorePosts: () => void;
   hasMorePosts: boolean;
   isMorePostsLoading: boolean;
-  toggleLike: (id: string) => Promise<void>;
+  toggleLike: (id: string, currentLikedStatus: boolean) => Promise<void>;
   createReshare: (targetPost: FeedPost, note: string) => void;
-  commentsByPost: Record<string, FeedComment[]>;
   addComment: (postId: string, content: string) => void;
   addMomentPost: (post: Omit<FeedPost, 'id' | 'author' | 'createdAt' | 'metrics' | 'relativeTime'>) => Promise<void>;
 };
@@ -61,50 +61,58 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [lastPostDoc, setLastPostDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [pageSize, setPageSize] = useState(POST_PAGE_SIZE);
   const [hasMorePosts, setHasMorePosts] = useState(true);
   const [isMorePostsLoading, setIsMorePostsLoading] = useState(false);
-
-  const [commentsByPost, setCommentsByPost] = useState<Record<string, FeedComment[]>>({});
-
-  const fetchInitialPosts = useCallback(async () => {
-    try {
-      setLoading(true);
-      const { posts: newPosts, lastVisible } = await getFeedPosts(POST_PAGE_SIZE);
-      setPosts(attachRelativeTime(newPosts));
-      setLastPostDoc(lastVisible);
-      setHasMorePosts(newPosts.length === POST_PAGE_SIZE);
-    } catch (e: any) {
-      setError(e);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const likeInFlight = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    fetchInitialPosts();
-  }, [fetchInitialPosts]);
+    let unsubscribe: () => void;
+
+    const setupSubscription = async () => {
+      // If we are refreshing, we might want to reset pageSize, but let's handle that in onRefresh
+      try {
+        setLoading(true);
+        unsubscribe = subscribeToFeedPosts(
+          pageSize,
+          (newPosts, lastVisible) => {
+            setPosts(attachRelativeTime(newPosts));
+            // Check if we reached the end (fewer posts returned than requested, or just heuristic)
+            // Note: This heuristic might be slightly off if total posts is exact multiple of pageSize
+            // But good enough for now.
+            setHasMorePosts(newPosts.length >= pageSize); 
+            setLoading(false);
+            setIsMorePostsLoading(false);
+          },
+          currentUser?.uid
+        );
+      } catch (e: any) {
+        setError(e);
+        setLoading(false);
+      }
+    };
+
+    setupSubscription();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [pageSize, currentUser]); // Re-subscribe if pageSize increases or user changes
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    await fetchInitialPosts();
-    setIsRefreshing(false);
-  }, [fetchInitialPosts]);
+    setPageSize(POST_PAGE_SIZE); // This will trigger the effect above
+    // We wait a bit to simulate refresh or let the subscription update
+    setTimeout(() => {
+        setIsRefreshing(false);
+    }, 1000);
+  }, []);
 
-  const loadMorePosts = useCallback(async () => {
+  const loadMorePosts = useCallback(() => {
     if (isMorePostsLoading || !hasMorePosts) return;
     setIsMorePostsLoading(true);
-    try {
-      const { posts: newPosts, lastVisible } = await getFeedPosts(POST_PAGE_SIZE, lastPostDoc);
-      setPosts(prev => attachRelativeTime([...prev, ...newPosts]));
-      setLastPostDoc(lastVisible);
-      setHasMorePosts(newPosts.length === POST_PAGE_SIZE);
-    } catch (e: any) {
-      setError(e);
-    } finally {
-      setIsMorePostsLoading(false);
-    }
-  }, [isMorePostsLoading, hasMorePosts, lastPostDoc]);
+    setPageSize(prev => prev + POST_PAGE_SIZE);
+  }, [isMorePostsLoading, hasMorePosts]);
 
   const explorePosts = useMemo(() => posts, [posts]);
 
@@ -118,13 +126,19 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
     return posts.filter(p => p.author?.id === currentUser.uid);
   }, [posts, currentUser]);
 
-  const toggleLike = useCallback(async (id: string) => {
+  const toggleLike = useCallback(async (id: string, currentLikedStatus: boolean) => {
     if (!currentUser) return;
+    if (likeInFlight.current.has(id)) return;
+    likeInFlight.current.add(id);
     
+    // Optimistic update
     setPosts(prevPosts => prevPosts.map(p => {
       if (p.id === id) {
-        const newLikedState = !p.liked;
-        const newLikesCount = newLikedState ? p.metrics.likes + 1 : p.metrics.likes - 1;
+        const newLikedState = !currentLikedStatus;
+        const newLikesCount = currentLikedStatus 
+          ? Math.max(0, p.metrics.likes - 1) // Unliking
+          : p.metrics.likes + 1;             // Liking
+
         return {
           ...p,
           liked: newLikedState,
@@ -135,21 +149,25 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
     }));
 
     try {
-      await togglePostLike(id, currentUser.uid);
+      await togglePostLike(id, currentUser.uid, currentLikedStatus);
     } catch (error) {
       console.error("Failed to toggle like:", error);
+      // Revert optimistic update
       setPosts(prevPosts => prevPosts.map(p => {
         if (p.id === id) {
-          const originalLikedState = !p.liked;
-          const originalLikesCount = originalLikedState ? p.metrics.likes + 1 : p.metrics.likes - 1;
           return {
             ...p,
-            liked: originalLikedState,
-            metrics: { ...p.metrics, likes: originalLikesCount }
+            liked: currentLikedStatus,
+            metrics: { 
+              ...p.metrics, 
+              likes: currentLikedStatus ? p.metrics.likes + 1 : Math.max(0, p.metrics.likes - 1)
+            }
           }
         }
         return p;
       }));
+    } finally {
+      likeInFlight.current.delete(id);
     }
   }, [currentUser]);
   
@@ -238,7 +256,6 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
     isMorePostsLoading,
     toggleLike,
     createReshare,
-    commentsByPost,
     addComment,
     addMomentPost,
   };

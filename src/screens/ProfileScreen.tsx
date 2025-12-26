@@ -13,11 +13,16 @@ import ProfileMoodboardsTab from "../domains/user/components/profile/tabs/Profil
 import { useProfile } from "../domains/user/hooks/useProfile";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
 import Sidebar from "../shared/components/Sidebar";
-import { useSidebarItems, SidebarKey } from "../shared/hooks/useSidebar";
+import {
+  SidebarActionKey,
+  useSidebarItems,
+  SidebarKey,
+} from "../shared/hooks/useSidebar";
 import { requestPostMomentSheet } from "../shared/utils/postMomentBridge";
 import { shareProfile } from "../shared/utils/shareProfile";
 import { navigate as rootNavigate } from "../app/navigation/navigationRef";
 import { useProfileCompletion } from "../domains/user/contexts/ProfileCompletionContext";
+import { useLogout } from "../domains/auth/hooks/useLogout";
 
 type NavigationProp = NativeStackNavigationProp<
   HomeStackParamList,
@@ -88,6 +93,7 @@ export default function ProfileScreen() {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [headerHeight, setHeaderHeight] = React.useState(96);
   const [activeKey, setActiveKey] = React.useState<SidebarKey>("profile");
+  const { logout } = useLogout();
 
   const handleBack = () => {
     if (navigation.canGoBack()) {
@@ -111,8 +117,13 @@ export default function ProfileScreen() {
     rootNavigate("Upload");
   };
 
-  const handleSidebarSelect = (key: SidebarKey | "more") => {
+  const handleSidebarSelect = async (key: SidebarActionKey) => {
     setSidebarOpen(false);
+
+    if (key === "logout") {
+      await logout();
+      return;
+    }
 
     if (key === "home") {
       if (navigation.popToTop) {
@@ -125,6 +136,11 @@ export default function ProfileScreen() {
 
     if (key === "inventory") {
       navigation.navigate("Inventory");
+      return;
+    }
+
+    if (key === "events") {
+      navigation.navigate("Events");
       return;
     }
 

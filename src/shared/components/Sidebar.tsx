@@ -21,6 +21,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import {
+  SidebarActionKey,
   SidebarChild,
   SidebarItem,
   useSidebarItems,
@@ -29,7 +30,7 @@ import {
 type SidebarProps = {
   visible: boolean;
   onClose: () => void;
-  onSelect?: (item: SidebarItem["key"] | "more") => void;
+  onSelect?: (item: SidebarActionKey) => void;
   topOffset?: number;
   activeKey?: SidebarItem["key"];
   items?: SidebarItem[];
@@ -54,6 +55,7 @@ export default function Sidebar({
 }: SidebarProps) {
   // slide controls horizontal translation; overlay controls backdrop opacity
   const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 0);
   const panelTop = useMemo(
     () =>
       typeof topOffset === "number" ? topOffset : Math.max(insets.top + 64, 80),
@@ -137,7 +139,10 @@ export default function Sidebar({
         style={[
           BASE_PANEL_STYLE,
           animatedPanelStyle,
-          { width: PANEL_WIDTH, paddingBottom: insets.bottom + FOOTER_HEIGHT },
+          {
+            width: PANEL_WIDTH,
+            paddingBottom: bottomInset + FOOTER_HEIGHT + 8,
+          },
           panelShadow,
         ]}
         className="absolute right-0 top-0 bottom-0 bg-white px-4 py-6"
@@ -146,10 +151,12 @@ export default function Sidebar({
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
-              paddingBottom: FOOTER_HEIGHT + 20,
+              paddingBottom: FOOTER_HEIGHT + 28 + bottomInset,
               gap: 8,
             }}
-            style={{ marginBottom: FOOTER_HEIGHT }}
+            style={{
+              marginBottom: FOOTER_HEIGHT + bottomInset + 8,
+            }}
           >
             {data.map((item) => {
               const expanded = expandedKeys[item.key];
@@ -223,30 +230,33 @@ export default function Sidebar({
           </ScrollView>
 
           <View
-            className="absolute left-0 right-0 border-t border-slate-200 border-b bg-white"
+            className="absolute left-0 right-0 bg-white"
             style={{
               bottom: 0,
-              paddingBottom: Math.max(insets.bottom - 4, 0),
-              paddingTop: 6,
+              paddingBottom: bottomInset + 8,
+              paddingTop: 8,
+              borderTopWidth: 1.25,
+              borderBottomWidth: 1.25,
+              borderColor: "#cbd5e1",
             }}
           >
             <Pressable
-              onPress={() => onSelect?.("more")}
-              className="rounded-2xl px-3 py-3 bg-white"
-              accessibilityLabel="More"
+              onPress={() => onSelect?.("logout")}
+              className="rounded-2xl px-4 py-4 bg-white"
+              accessibilityLabel="Log out"
             >
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-3 flex-1">
                   <View className="h-10 w-10 rounded-full items-center justify-center bg-slate-50">
                     <Ionicons
-                      name="ellipsis-vertical"
+                      name="log-out-outline"
                       size={22}
                       color="#0f172a"
                     />
                   </View>
                   <View className="flex-1">
                     <Text className="text-[17px] font-semibold text-slate-900">
-                      More
+                      Log out
                     </Text>
                   </View>
                 </View>
