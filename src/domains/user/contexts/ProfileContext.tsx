@@ -7,9 +7,9 @@ import React, {
   useState,
 } from "react";
 import { doc, getDoc, serverTimestamp, setDoc, collection, getDocs, onSnapshot } from "firebase/firestore";
-import type { User } from "firebase/auth";
+import { updateProfile as updateAuthProfile, type User } from "firebase/auth";
 
-import { firestore } from "@/configs/firebase";
+import { auth, firestore } from "@/configs/firebase";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
 import { upsertUserProfile } from "@/domains/auth/services/userProfile";
 import { toggleFollow as toggleFollowService } from "../services/followService";
@@ -216,7 +216,7 @@ const ProfileContext = createContext<ProfileContextValue>({
 });
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
-  const { currentUser, status } = useAuth();
+  const { currentUser, status, setCurrentUser } = useAuth();
   const [profile, setProfile] = useState<ProfileViewModel>(baseProfile);
   const [editProfile, setEditProfile] = useState<EditProfileFormValues>(
     defaultEditProfile
@@ -324,10 +324,29 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       }
 
       await setDoc(userRef, payload, { merge: true });
+
+      const authUser = auth.currentUser;
+      const authUpdates: { displayName?: string | null; photoURL?: string | null } = {};
+      if (displayName) {
+        authUpdates.displayName = displayName;
+      }
+      if (values.avatar !== undefined) {
+        authUpdates.photoURL = values.avatar ?? null;
+      }
+      if (authUser && Object.keys(authUpdates).length > 0) {
+        try {
+          await updateAuthProfile(authUser, authUpdates);
+          await authUser.reload();
+          setCurrentUser({ ...authUser });
+        } catch (error) {
+          console.warn("Failed to sync auth profile:", error);
+        }
+      }
+
       setEditProfile(values);
       setProfile((prev) => buildProfileFromForm(prev, values));
     },
-    [currentUser]
+    [currentUser, setCurrentUser]
   );
 
   const isFollowing = useCallback((userId: string) => {
