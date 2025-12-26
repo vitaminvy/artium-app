@@ -7,10 +7,11 @@ import { PROFILE_ACCENT, PROFILE_STRINGS } from "../../constants/profile";
 type Props = {
   onPressBack?: () => void;
   onPressMenu?: () => void;
+  isMenuOpen?: boolean;
   onLayout?: (e: any) => void;
 };
 
-export default function ProfileHeader({ onPressBack, onPressMenu, onLayout }: Props) {
+export default function ProfileHeader({ onPressBack, onPressMenu, isMenuOpen = false, onLayout }: Props) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -43,7 +44,11 @@ export default function ProfileHeader({ onPressBack, onPressMenu, onLayout }: Pr
           hitSlop={10}
           className="h-10 w-10 items-center justify-center"
         >
-          <Ionicons name="menu-outline" size={24} color="#0F172A" />
+          <Ionicons
+            name={isMenuOpen ? "close" : "menu"}
+            size={22}
+            color="#0F172A"
+          />
         </Pressable>
       </View>
     </View>

@@ -168,6 +168,7 @@ export default function ProfileScreen() {
       <ProfileHeader
         onPressBack={handleBack}
         onPressMenu={() => setSidebarOpen((prev) => !prev)}
+        isMenuOpen={sidebarOpen}
         onLayout={(e: any) => setHeaderHeight(e.nativeEvent.layout.height)}
       />
 

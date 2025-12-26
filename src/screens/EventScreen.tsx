@@ -219,6 +219,8 @@ export default function EventScreen() {
             navigation.navigate("HomeMain");
           }
         }}
+        onPressSidebar={() => setSidebarOpen((prev) => !prev)}
+        isSidebarOpen={sidebarOpen}
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
       />
 
