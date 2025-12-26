@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Image, Pressable } from "react-native";
+import { View, Text, Image, Pressable, GestureResponderEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ArtistProfile } from "../../types";
 import { HOME_COLORS } from "../../../home/constants";
@@ -15,11 +15,41 @@ const cardShadow = {
 type Props = {
   item: ArtistProfile;
   onPress?: () => void;
+  isFollowing?: boolean;
+  onToggleFollow?: (id: string) => void;
 };
 
-export default function ProfileCard({ item, onPress }: Props) {
+export default function ProfileCard({ item, onPress, isFollowing = false, onToggleFollow }: Props) {
+  const handleFollowPress = (e: GestureResponderEvent) => {
+    e.stopPropagation?.();
+    onToggleFollow?.(item.id);
+  };
+
+  const FollowIcon = isFollowing ? (
+    <View style={{ width: 16, height: 16 }}>
+      <Ionicons name="person-outline" size={16} color={HOME_COLORS.TEXT_PRIMARY} />
+      <View
+        style={{
+          position: "absolute",
+          right: -2,
+          bottom: -2,
+          width: 10,
+          height: 10,
+          borderRadius: 999,
+          backgroundColor: HOME_COLORS.VERIFIED_BADGE,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Ionicons name="checkmark" size={7} color={HOME_COLORS.WHITE} />
+      </View>
+    </View>
+  ) : (
+    <Ionicons name="person-add-outline" size={16} color={HOME_COLORS.TEXT_PRIMARY} />
+  );
+
   const content = (
-    <View pointerEvents={onPress ? "none" : "auto"} className="items-center">
+    <View className="items-center">
       <View className="h-20 w-20 rounded-full overflow-hidden bg-slate-200">
         <Image source={{ uri: item.avatar }} className="h-full w-full" />
       </View>
@@ -38,12 +68,15 @@ export default function ProfileCard({ item, onPress }: Props) {
       <Pressable
         className="mt-4 flex-row items-center gap-2 rounded-full border px-4 py-2 active:opacity-90"
         style={{
-          borderColor: HOME_COLORS.FOLLOW_BORDER,
-          backgroundColor: HOME_COLORS.FOLLOW_BG,
+          borderColor: isFollowing ? HOME_COLORS.FOLLOWING_BORDER : HOME_COLORS.FOLLOW_BORDER,
+          backgroundColor: isFollowing ? HOME_COLORS.FOLLOWING_BG : HOME_COLORS.FOLLOW_BG,
         }}
+        onPress={handleFollowPress}
       >
-        <Ionicons name="person-add-outline" size={16} color={HOME_COLORS.TEXT_PRIMARY} />
-        <Text className="text-[12px] font-semibold text-slate-900">Follow</Text>
+        {FollowIcon}
+        <Text className="text-[12px] font-semibold text-slate-900">
+          {isFollowing ? "Following" : "Follow"}
+        </Text>
       </Pressable>
     </View>
   );
