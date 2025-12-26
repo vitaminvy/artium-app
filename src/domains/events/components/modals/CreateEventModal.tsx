@@ -46,6 +46,11 @@ export default function CreateEventModal({
   const websiteRef = useRef<TextInput>(null);
   const descriptionRef = useRef<TextInput>(null);
 
+  // Store initial values to compare changes
+  const initialStartDateRef = useRef<Date>(new Date());
+  const initialEndDateRef = useRef<Date>(new Date(Date.now() + 60 * 60 * 1000));
+  const initialTimeZoneRef = useRef<TimeZoneOption>(getDefaultTimeZone());
+
   const [title, setTitle] = useState("");
   const [selectedTypes, setSelectedTypes] = useState<EventFilterOption[]>([]);
   const [startDate, setStartDate] = useState(() => new Date());
@@ -73,7 +78,21 @@ export default function CreateEventModal({
   });
 
   useEffect(() => {
-    if (!visible) {
+    if (visible) {
+      // When modal opens, store initial values
+      const now = new Date();
+      const endDateTime = new Date(now.getTime() + 60 * 60 * 1000);
+      const defaultTz = getDefaultTimeZone();
+
+      initialStartDateRef.current = now;
+      initialEndDateRef.current = endDateTime;
+      initialTimeZoneRef.current = defaultTz;
+
+      setStartDate(now);
+      setEndDate(endDateTime);
+      setTimeZone(defaultTz);
+    } else {
+      // When modal closes, reset everything
       setTitle("");
       setSelectedTypes([]);
       const now = new Date();
@@ -141,7 +160,7 @@ export default function CreateEventModal({
 
   const handleCloseAttempt = useCallback(() => {
     // Check directly if form has changes
-    const formHasChanges =
+    const hasTextChanges =
       title.trim() !== "" ||
       selectedTypes.length > 0 ||
       address.trim() !== "" ||
@@ -150,12 +169,20 @@ export default function CreateEventModal({
       description.trim() !== "" ||
       coverImage !== null;
 
+    // Check if date/timezone has changed from initial values
+    const hasDateChanges =
+      startDate.getTime() !== initialStartDateRef.current.getTime() ||
+      endDate.getTime() !== initialEndDateRef.current.getTime() ||
+      timeZone.id !== initialTimeZoneRef.current.id;
+
+    const formHasChanges = hasTextChanges || hasDateChanges;
+
     if (formHasChanges && !isCreating) {
       setShowExitConfirm(true);
     } else {
       onClose();
     }
-  }, [title, selectedTypes, address, venueDetails, websiteUrl, description, coverImage, isCreating, onClose]);
+  }, [title, selectedTypes, address, venueDetails, websiteUrl, description, coverImage, startDate, endDate, timeZone, isCreating, onClose]);
 
   const handleConfirmExit = useCallback(() => {
     setShowExitConfirm(false);
