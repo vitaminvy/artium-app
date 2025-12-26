@@ -76,7 +76,9 @@ export default function OverviewCard({ detail }: Props) {
             </View>
             {overview.organizer.handle ? (
               <Text className="text-[12px] text-slate-500">
-                {overview.organizer.handle}
+                {overview.organizer.handle.startsWith("@")
+                  ? overview.organizer.handle
+                  : `@${overview.organizer.handle}`}
               </Text>
             ) : null}
           </View>
