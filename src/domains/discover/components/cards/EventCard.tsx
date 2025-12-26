@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, Image, Pressable, Modal, GestureResponderEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
@@ -46,6 +46,12 @@ export default function EventCard({
   const attendeeLabel = item.attendees
     ? `${item.attendees} attendee${item.attendees === 1 ? "" : "s"}`
     : undefined;
+  const hasImage = typeof item.image === "string" && item.image.trim().length > 0;
+  const [imageLoaded, setImageLoaded] = useState(!hasImage);
+
+  useEffect(() => {
+    setImageLoaded(!hasImage);
+  }, [hasImage, item.image]);
   const [rsvp, setRsvp] = useState<RsvpStatus>(rsvpStatus ?? "none");
   React.useEffect(() => {
     if (rsvpStatus !== undefined && rsvpStatus !== rsvp) {
@@ -102,17 +108,23 @@ export default function EventCard({
 
   return (
     <Container
-      className="rounded-3xl bg-white border border-slate-200 overflow-hidden"
+      className="rounded-3xl bg-white border border-slate-200 overflow-hidden relative"
       style={cardShadow}
       onPress={onPress}
     >
-      <View>
+      <View style={{ opacity: imageLoaded ? 1 : 0 }}>
         <View className="relative">
-          <Image
-            source={{ uri: item.image }}
-            className="h-48 w-full"
-            resizeMode="cover"
-          />
+          {hasImage ? (
+            <Image
+              source={{ uri: item.image }}
+              className="h-48 w-full"
+              resizeMode="cover"
+              onLoadEnd={() => setImageLoaded(true)}
+              onError={() => setImageLoaded(true)}
+            />
+          ) : (
+            <View className="h-48 w-full bg-slate-200" />
+          )}
           <View className="absolute top-3 right-3 bg-white rounded-2xl px-2 py-2 items-center shadow-sm">
             <View className="rounded-full bg-[#0B73FF] px-2 py-0.5">
               <Text className="text-[11px] font-semibold text-white">
@@ -285,6 +297,18 @@ export default function EventCard({
           ) : null}
         </View>
       </View>
+
+      {!imageLoaded ? (
+        <View className="absolute inset-0 bg-white animate-pulse">
+          <View className="h-48 w-full bg-slate-200" />
+          <View className="px-4 py-4 gap-3">
+            <View className="h-3 w-28 rounded bg-slate-200" />
+            <View className="h-5 w-44 rounded bg-slate-200" />
+            <View className="h-3 w-36 rounded bg-slate-200" />
+            <View className="h-10 rounded-full bg-slate-200" />
+          </View>
+        </View>
+      ) : null}
 
       <EventEmailModal visible={showEmail} onClose={() => setShowEmail(false)} event={item} />
     </Container>
