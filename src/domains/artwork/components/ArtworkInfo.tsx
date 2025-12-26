@@ -8,6 +8,11 @@ type ArtworkInfoProps = {
 };
 
 export default function ArtworkInfo({ detail }: ArtworkInfoProps) {
+  const hasAvatar =
+    typeof detail.artist.avatar === "string" &&
+    detail.artist.avatar.trim().length > 0;
+  const fallbackLogo = require("../../../../assets/logos/logo-light-mode.png");
+
   return (
     <>
       <View className="px-4 pt-6">
@@ -15,10 +20,21 @@ export default function ArtworkInfo({ detail }: ArtworkInfoProps) {
 
         <View className="flex-row items-center gap-3 mt-3">
           <View className="h-12 w-12 rounded-full overflow-hidden bg-slate-200">
-            <Image
-              source={{ uri: detail.artist.avatar }}
-              className="h-full w-full"
-            />
+            {hasAvatar ? (
+              <Image
+                source={{ uri: detail.artist.avatar }}
+                style={{ width: "100%", height: "100%" }}
+                resizeMode="cover"
+              />
+            ) : (
+              <View className="h-full w-full items-center justify-center bg-white">
+                <Image
+                  source={fallbackLogo}
+                  style={{ width: "60%", height: "60%" }}
+                  resizeMode="contain"
+                />
+              </View>
+            )}
           </View>
           <View className="flex-row items-center gap-2">
             <Text className="text-base font-semibold text-slate-900">

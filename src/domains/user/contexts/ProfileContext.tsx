@@ -6,12 +6,14 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-import type { User } from "firebase/auth";
+import { doc, getDoc, serverTimestamp, setDoc, collection, getDocs, onSnapshot } from "firebase/firestore";
+import { updateProfile as updateAuthProfile, type User } from "firebase/auth";
 
-import { firestore } from "@/configs/firebase";
+import { auth, firestore } from "@/configs/firebase";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
 import { upsertUserProfile } from "@/domains/auth/services/userProfile";
+import { toggleFollow as toggleFollowService } from "../services/followService";
+import { isLocalUri, uploadIfLocal } from "@/shared/services/uploadService";
 import { EDIT_PROFILE_DEFAULTS } from "../constants/editProfile";
 import { PROFILE_ACCENT } from "../constants/profile";
 import { profileMockData } from "../mockData";
@@ -38,8 +40,6 @@ type UserDoc = {
   phoneNumber?: string;
   address?: string;
   countryCode?: string;
-  followerCount?: number;
-  followingCount?: number;
   profileCompleted?: boolean;
 };
 
@@ -128,8 +128,8 @@ const buildProfileFromUserDoc = (
       avatarColor: prev.user.avatarColor ?? PROFILE_ACCENT,
     },
     stats: {
-      followers: data.followerCount ?? prev.stats.followers,
-      following: data.followingCount ?? prev.stats.following,
+      followers: data.stats?.followers ?? prev.stats.followers,
+      following: data.stats?.following ?? prev.stats.following,
     },
   };
 };
@@ -217,7 +217,7 @@ const ProfileContext = createContext<ProfileContextValue>({
 });
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
-  const { currentUser, status } = useAuth();
+  const { currentUser, status, setCurrentUser } = useAuth();
   const [profile, setProfile] = useState<ProfileViewModel>(baseProfile);
   const [editProfile, setEditProfile] = useState<EditProfileFormValues>(
     defaultEditProfile
@@ -247,6 +247,13 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       );
       setProfile(nextProfile);
       setEditProfile(buildEditProfileFromDoc(data, nextProfile));
+
+      // Load following list
+      const followingRef = collection(firestore, "users", currentUser.uid, "following");
+      const followingSnap = await getDocs(followingRef);
+      const ids = new Set(followingSnap.docs.map(d => d.id));
+      setFollowingIds(ids);
+
     } catch (error) {
       console.warn("Failed to load profile:", error);
       setProfile(baseProfile);
@@ -259,6 +266,28 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void refreshProfile();
   }, [refreshProfile]);
+
+  // Realtime sync for current user's profile doc to keep stats (followers/following) up to date
+  useEffect(() => {
+    if (!currentUser) return;
+    const userRef = doc(firestore, "users", currentUser.uid);
+    const unsubscribe = onSnapshot(
+      userRef,
+      (snap) => {
+        const data = (snap.data() ?? {}) as UserDoc;
+        const nextProfile = buildProfileFromUserDoc(
+          data,
+          currentUser,
+          baseProfile
+        );
+        setProfile(nextProfile);
+      },
+      (err) => {
+        console.warn("Profile snapshot error:", err);
+      }
+    );
+    return () => unsubscribe();
+  }, [currentUser]);
 
   const updateProfile = useCallback(
     async (values: EditProfileFormValues) => {
@@ -276,6 +305,13 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       const firstName = values.firstName?.trim() ?? "";
       const lastName = values.lastName?.trim() ?? "";
       const displayName = [firstName, lastName].filter(Boolean).join(" ").trim();
+      let avatarUri = values.avatar;
+
+      if (typeof avatarUri === "string" && isLocalUri(avatarUri)) {
+        avatarUri = await uploadIfLocal(avatarUri, "avatars");
+      }
+
+      const nextValues = { ...values, avatar: avatarUri };
 
       const payload: Record<string, any> = {
         username,
@@ -288,7 +324,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       };
 
       if (values.avatar !== undefined) {
-        payload.avatarUri = values.avatar;
+        payload.avatarUri = avatarUri;
       }
 
       if (displayName) {
@@ -296,17 +332,39 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       }
 
       await setDoc(userRef, payload, { merge: true });
-      setEditProfile(values);
-      setProfile((prev) => buildProfileFromForm(prev, values));
+
+      const authUser = auth.currentUser;
+      const authUpdates: { displayName?: string | null; photoURL?: string | null } = {};
+      if (displayName) {
+        authUpdates.displayName = displayName;
+      }
+      if (values.avatar !== undefined) {
+        authUpdates.photoURL = avatarUri ?? null;
+      }
+      if (authUser && Object.keys(authUpdates).length > 0) {
+        try {
+          await updateAuthProfile(authUser, authUpdates);
+          await authUser.reload();
+          setCurrentUser({ ...authUser });
+        } catch (error) {
+          console.warn("Failed to sync auth profile:", error);
+        }
+      }
+
+      setEditProfile(nextValues);
+      setProfile((prev) => buildProfileFromForm(prev, nextValues));
     },
-    [currentUser]
+    [currentUser, setCurrentUser]
   );
 
   const isFollowing = useCallback((userId: string) => {
     return followingIds.has(userId);
   }, [followingIds]);
 
-  const toggleFollow = useCallback((userId: string) => {
+  const toggleFollow = useCallback(async (userId: string) => {
+    if (!currentUser) return;
+
+    // Optimistic update
     setFollowingIds((prev) => {
       const next = new Set(prev);
       if (next.has(userId)) {
@@ -316,7 +374,23 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       }
       return next;
     });
-  }, []);
+
+    try {
+      await toggleFollowService(currentUser.uid, userId);
+    } catch (error) {
+      console.error("Failed to toggle follow in context:", error);
+      // Revert if failed
+      setFollowingIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(userId)) {
+          next.delete(userId);
+        } else {
+          next.add(userId);
+        }
+        return next;
+      });
+    }
+  }, [currentUser]);
 
   const value = useMemo(
     () => ({

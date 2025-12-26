@@ -35,7 +35,6 @@ import SaveSheet from "../domains/artwork/components/SaveSheet";
 import ReportSheet from "../domains/artwork/components/ReportSheet";
 import ArtworkCarousel from "../domains/artwork/components/ArtworkCarousel";
 import { shareArtwork } from "../shared/utils/shareArtwork";
-import Loader from "../shared/components/Loader";
 
 // New Components
 import ArtworkHeader from "../domains/artwork/components/ArtworkHeader";
@@ -49,6 +48,7 @@ export default function ArtworkDetailScreen() {
   const insets = useSafeAreaInsets();
   const { hidden, setHidden, height: tabHeight } = useTabBarVisibility();
   const scrollY = useRef(0);
+  const initialHeaderHeight = Math.max(insets.top + 56, 56);
 
   // States
   const [artwork, setArtwork] = useState<ArtworkDetail | null>(null);
@@ -62,6 +62,8 @@ export default function ArtworkDetailScreen() {
   const [showReshareSheet, setShowReshareSheet] = useState(false);
   const [showSaveSheet, setShowSaveSheet] = useState(false);
   const [showReportSheet, setShowReportSheet] = useState(false);
+  const [heroImageLoaded, setHeroImageLoaded] = useState(false);
+  const [headerHeight, setHeaderHeight] = useState(initialHeaderHeight);
 
   // Bottom Sheet Refs
   const optionsSheetRef = useRef<BottomSheetModal>(null);
@@ -78,8 +80,12 @@ export default function ArtworkDetailScreen() {
     const fetchArtwork = async () => {
       try {
         setLoading(true);
+        setHeroImageLoaded(false);
         const artworkData: any = await getArtworkById(artworkId);
         setArtwork(artworkData);
+        if (!artworkData?.images?.length) {
+          setHeroImageLoaded(true);
+        }
         // Increment view count after successfully fetching artwork
         if (artworkData) {
           await incrementArtworkView(artworkId);
@@ -229,8 +235,23 @@ export default function ArtworkDetailScreen() {
   // Conditional Rendering
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center bg-white">
-        <Loader />
+      <View className="flex-1 bg-white">
+        <View
+          style={{ zIndex: 3 }}
+          onLayout={(event) => {
+            const nextHeight = event?.nativeEvent?.layout?.height;
+            if (nextHeight && nextHeight !== headerHeight) {
+              setHeaderHeight(nextHeight);
+            }
+          }}
+        >
+          <ArtworkHeader
+            onBack={() => navigation.goBack()}
+            onShare={handleShare}
+            onOptions={handleOpenOptionsSheet}
+          />
+        </View>
+        <ArtworkDetailSkeleton />
       </View>
     );
   }
@@ -262,11 +283,21 @@ export default function ArtworkDetailScreen() {
     <BottomSheetModalProvider>
       <View className="flex-1 bg-white">
         {/* Custom Header */}
-        <ArtworkHeader
-          onBack={() => navigation.goBack()}
-          onShare={handleShare}
-          onOptions={handleOpenOptionsSheet}
-        />
+        <View
+          style={{ zIndex: 3 }}
+          onLayout={(event) => {
+            const nextHeight = event?.nativeEvent?.layout?.height;
+            if (nextHeight && nextHeight !== headerHeight) {
+              setHeaderHeight(nextHeight);
+            }
+          }}
+        >
+          <ArtworkHeader
+            onBack={() => navigation.goBack()}
+            onShare={handleShare}
+            onOptions={handleOpenOptionsSheet}
+          />
+        </View>
 
         {/* Content */}
         <ScrollView
@@ -278,7 +309,10 @@ export default function ArtworkDetailScreen() {
           }}
         >
           <View className="px-4 pt-4">
-            <ArtworkCarousel images={artwork.images} />
+            <ArtworkCarousel
+              images={artwork.images}
+              onImageLoad={() => setHeroImageLoaded(true)}
+            />
           </View>
 
           <ArtworkInfo detail={artwork} />
@@ -369,7 +403,41 @@ export default function ArtworkDetailScreen() {
             handleCloseSheet();
           }}
         />
+
+        {!heroImageLoaded ? (
+          <View
+            className="absolute left-0 right-0 bottom-0 bg-white"
+            style={{ top: headerHeight, zIndex: 2 }}
+            pointerEvents="auto"
+          >
+            <ArtworkDetailSkeleton />
+          </View>
+        ) : null}
       </View>
     </BottomSheetModalProvider>
+  );
+}
+
+function ArtworkDetailSkeleton() {
+  return (
+    <View className="flex-1 bg-white animate-pulse">
+      <View className="px-4 pt-4 gap-4">
+        <View className="rounded-3xl bg-slate-200" style={{ height: 320 }} />
+        <View className="rounded-3xl border border-slate-200 bg-white p-5 gap-3">
+          <View className="h-4 w-24 rounded bg-slate-200" />
+          <View className="h-6 w-48 rounded bg-slate-200" />
+          <View className="h-4 w-32 rounded bg-slate-200" />
+          <View className="h-4 w-28 rounded bg-slate-200" />
+          <View className="mt-2 h-3 w-full rounded bg-slate-200" />
+          <View className="h-3 w-5/6 rounded bg-slate-200" />
+        </View>
+        <View className="rounded-3xl border border-slate-200 bg-white p-5 gap-3">
+          <View className="h-4 w-28 rounded bg-slate-200" />
+          <View className="h-3 w-full rounded bg-slate-200" />
+          <View className="h-3 w-11/12 rounded bg-slate-200" />
+          <View className="h-3 w-4/5 rounded bg-slate-200" />
+        </View>
+      </View>
+    </View>
   );
 }

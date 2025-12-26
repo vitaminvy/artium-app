@@ -2,6 +2,8 @@ import React from "react";
 import { View, Text, Image, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ArtistProfile } from "../../types";
+import { useAuth } from "@/domains/auth/contexts/AuthContext";
+import { useFollow } from "@/domains/user/hooks/useFollow";
 
 const cardShadow = {
   shadowColor: "#000",
@@ -17,6 +19,11 @@ type Props = {
 };
 
 export default function ProfileCard({ item, onPress }: Props) {
+  const { currentUser } = useAuth();
+  const { isFollowing, toggleFollow, loading } = useFollow(
+    currentUser?.uid,
+    item.id
+  );
   const content = (
     <View pointerEvents={onPress ? "none" : "auto"} className="items-center">
       <View className="h-20 w-20 rounded-full overflow-hidden bg-slate-200">
@@ -34,8 +41,20 @@ export default function ProfileCard({ item, onPress }: Props) {
         ) : null}
       </View>
 
-      <Pressable className="mt-4 px-4 py-2 rounded-full bg-slate-900 active:opacity-90">
-        <Text className="text-xs font-semibold text-white">Follow</Text>
+      <Pressable
+        className="mt-4 px-4 py-2 rounded-full active:opacity-90"
+        style={{
+          backgroundColor: isFollowing ? "#E2E8F0" : "#0F172A",
+        }}
+        disabled={!currentUser || loading}
+        onPress={() => toggleFollow()}
+      >
+        <Text
+          className="text-xs font-semibold"
+          style={{ color: isFollowing ? "#0F172A" : "#fff" }}
+        >
+          {isFollowing ? "Following" : "Follow"}
+        </Text>
       </Pressable>
     </View>
   );

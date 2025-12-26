@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigation } from "@react-navigation/native";
-import { collection, onSnapshot, query, where, orderBy } from "firebase/firestore";
+import { collection, getDocs, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
 import { SidebarKey } from "../../../shared/hooks/useSidebar";
@@ -43,6 +43,63 @@ export function useInventoryList() {
   const nextFolderIndex = useRef(1);
   const DEFAULT_UPLOAD_FOLDER = "Unsorted";
 
+  const mapArtworkDoc = (doc: any): Artwork => {
+    const data = doc.data();
+
+    // Map Firestore data to Inventory Artwork type
+    // Assuming data structure matches what's saved in uploadService
+    const dim = data.dimension || {};
+    const dimensionStr = `${dim.h || 0} × ${dim.w || 0} × ${dim.d || 0} ${dim.unit || "in"}`;
+
+    let status: InventoryStatus = "Available";
+    if (data.status === "sold") status = "Sold";
+    if (data.status === "inquire") status = "On Hold";
+
+    const rawPrice = data.price;
+    const priceLabel = rawPrice
+      ? typeof rawPrice === "number"
+        ? `$${rawPrice}`
+        : rawPrice.includes("$")
+          ? rawPrice
+          : `$${rawPrice}`
+      : "Price on Request";
+
+    return {
+      id: doc.id,
+      title: data.title || "Untitled",
+      artist: data.artist?.name || data.authorName || "Unknown Artist",
+      year: parseInt(data.year) || new Date().getFullYear(),
+      price: priceLabel,
+      status: status,
+      folder: data.folder || "Unsorted",
+      thumbnail: data.images?.[0] || "",
+      dimensions: dimensionStr,
+      images: data.images || [],
+      tags: data.tags || [],
+      details: {
+        title: data.title,
+        description: data.description,
+        year: data.year,
+        edition: data.edition,
+        materials: data.medium || data.materials,
+        price: data.price,
+        quantity: "1",
+        dimensions: {
+          unit: dim.unit || "in",
+          height: dim.h,
+          width: dim.w,
+          depth: dim.d,
+        },
+        weight: {
+          unit: "lbs",
+          value: data.weight || "0",
+        },
+        status: data.status,
+        hasFrame: false,
+      },
+    };
+  };
+
   // --- Real-time Data Fetching ---
   useEffect(() => {
     if (!currentUser) {
@@ -51,6 +108,7 @@ export function useInventoryList() {
       return;
     }
 
+    setLoading(true);
     const q = query(
       collection(firestore, "artworks"),
       where("authorId", "==", currentUser.uid),
@@ -58,62 +116,7 @@ export function useInventoryList() {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedArtworks: Artwork[] = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        
-        // Map Firestore data to Inventory Artwork type
-        // Assuming data structure matches what's saved in uploadService
-        const dim = data.dimension || {};
-        const dimensionStr = `${dim.h || 0} × ${dim.w || 0} × ${dim.d || 0} ${dim.unit || 'in'}`;
-        
-        let status: InventoryStatus = "Available";
-        if (data.status === "sold") status = "Sold";
-        if (data.status === "inquire") status = "On Hold";
-
-        const rawPrice = data.price;
-        const priceLabel = rawPrice
-          ? typeof rawPrice === "number"
-            ? `$${rawPrice}`
-            : rawPrice.includes("$")
-              ? rawPrice
-              : `$${rawPrice}`
-          : "Price on Request";
-
-        return {
-          id: doc.id,
-          title: data.title || "Untitled",
-          artist: data.artist?.name || data.authorName || "Unknown Artist",
-          year: parseInt(data.year) || new Date().getFullYear(),
-          price: priceLabel,
-          status: status,
-          folder: data.folder || "Unsorted",
-          thumbnail: data.images?.[0] || "",
-          dimensions: dimensionStr,
-          images: data.images || [],
-          tags: data.tags || [],
-          details: {
-            title: data.title,
-            description: data.description,
-            year: data.year,
-            edition: data.edition,
-            materials: data.medium || data.materials,
-            price: data.price,
-            quantity: "1",
-            dimensions: {
-              unit: dim.unit || "in",
-              height: dim.h,
-              width: dim.w,
-              depth: dim.d
-            },
-            weight: {
-              unit: "lbs",
-              value: data.weight || "0"
-            },
-            status: data.status,
-            hasFrame: false
-          }
-        };
-      });
+      const fetchedArtworks: Artwork[] = snapshot.docs.map(mapArtworkDoc);
       
       setArtworks(fetchedArtworks);
       setLoading(false);
@@ -124,6 +127,22 @@ export function useInventoryList() {
 
     return () => unsubscribe();
   }, [currentUser]);
+
+  const refreshInventory = async () => {
+    if (!currentUser) return;
+    try {
+      const q = query(
+        collection(firestore, "artworks"),
+        where("authorId", "==", currentUser.uid),
+        orderBy("createdAt", "desc")
+      );
+      const snapshot = await getDocs(q);
+      const fetchedArtworks: Artwork[] = snapshot.docs.map(mapArtworkDoc);
+      setArtworks(fetchedArtworks);
+    } catch (error) {
+      console.error("Error refreshing inventory:", error);
+    }
+  };
 
   const selectedCount = selectedIds.length;
   const hasSelection = selectedCount > 0;
@@ -304,5 +323,6 @@ export function useInventoryList() {
     setNewFolderName,
     handleConfirmCreateFolder,
     getFolderCount,
+    refreshInventory,
   };
 }

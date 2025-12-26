@@ -1,8 +1,9 @@
-import React, { useCallback, useMemo, useState } from "react";
-import { ListRenderItemInfo, View, ViewToken, ActivityIndicator } from "react-native";
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, ListRenderItemInfo, View, ViewToken } from "react-native";
 import Animated from "react-native-reanimated";
 import { FeedPost } from "../../types";
 import FeedPostCard from "../cards/FeedPostCard";
+import FeedListSkeleton from "../ui/FeedListSkeleton";
 
 type Props = {
   data: FeedPost[];
@@ -15,6 +16,7 @@ type Props = {
   isTabActive?: boolean;
   isRefreshing?: boolean;
   onRefresh?: () => void;
+  isLoading?: boolean;
   onEndReached: () => void;
   isFetchingNextPage: boolean;
 };
@@ -30,17 +32,44 @@ export default function FeedExploreTab({
   isTabActive = true,
   isRefreshing,
   onRefresh,
+  isLoading,
   onEndReached,
   isFetchingNextPage,
 }: Props) {
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
+  const [avatarExpected, setAvatarExpected] = useState(0);
+  const [avatarLoaded, setAvatarLoaded] = useState(0);
+  const loadedAvatarIds = useRef<Set<string>>(new Set());
+  const wasActive = useRef(false);
+  const avatarsReady = avatarExpected === 0 || avatarLoaded >= avatarExpected;
 
   // Clear active video when tab becomes inactive
   React.useEffect(() => {
     if (!isTabActive) {
       setActiveVideoId(null);
+      wasActive.current = false;
     }
   }, [isTabActive]);
+
+  React.useEffect(() => {
+    if (!isTabActive) return;
+    const expectedIds = new Set(data.slice(0, 6).map((post) => post.id));
+
+    if (!wasActive.current) {
+      loadedAvatarIds.current = new Set();
+      setAvatarExpected(expectedIds.size);
+      setAvatarLoaded(0);
+      wasActive.current = true;
+      return;
+    }
+
+    const retained = new Set(
+      [...loadedAvatarIds.current].filter((id) => expectedIds.has(id))
+    );
+    loadedAvatarIds.current = retained;
+    setAvatarExpected(expectedIds.size);
+    setAvatarLoaded(retained.size);
+  }, [data, isTabActive]);
 
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -89,10 +118,25 @@ export default function FeedExploreTab({
           onPressCard={onPressCard}
           onPressImage={onPressImage}
           isVisible={hasVideo ? (isTabActive && isActive) : true}
+          onAvatarLoad={(postId) => {
+            if (!avatarExpected) return;
+            if (loadedAvatarIds.current.has(postId)) return;
+            loadedAvatarIds.current.add(postId);
+            setAvatarLoaded((prev) => Math.min(prev + 1, avatarExpected));
+          }}
         />
       );
     },
-    [onToggleLike, onToggleReshare, onPressComment, onPressCard, onPressImage, activeVideoId, isTabActive]
+    [
+      onToggleLike,
+      onToggleReshare,
+      onPressComment,
+      onPressCard,
+      onPressImage,
+      activeVideoId,
+      avatarExpected,
+      isTabActive,
+    ]
   );
 
   const AnimatedFlatList = useMemo(
@@ -100,31 +144,46 @@ export default function FeedExploreTab({
     []
   );
 
+  const showSkeleton = !!isTabActive && (isLoading || !avatarsReady);
+
   return (
-    <AnimatedFlatList
-      data={data}
-      keyExtractor={(item) => item.id}
-      renderItem={renderItem}
-      initialNumToRender={6}
-      maxToRenderPerBatch={6}
-      windowSize={7}
-      updateCellsBatchingPeriod={50}
-      onViewableItemsChanged={onViewableItemsChanged}
-      viewabilityConfig={viewabilityConfig}
-      contentContainerStyle={{
-        paddingHorizontal: 12,
-        paddingTop: 8,
-        paddingBottom: 120,
-      }}
-      ItemSeparatorComponent={() => <View style={{ height: 4 }} />}
-      showsVerticalScrollIndicator={false}
-      onScroll={scrollHandler}
-      scrollEventThrottle={16}
-      onRefresh={onRefresh}
-      refreshing={isRefreshing}
-      onEndReached={onEndReached}
-      onEndReachedThreshold={0.5}
-      ListFooterComponent={isFetchingNextPage ? <View className="p-6"><ActivityIndicator size="large" color="#94A3B8" /></View> : null}
-    />
+    <View className="flex-1">
+      <AnimatedFlatList
+        data={data}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        updateCellsBatchingPeriod={50}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        contentContainerStyle={{
+          paddingHorizontal: 12,
+          paddingTop: 8,
+          paddingBottom: 120,
+        }}
+        ItemSeparatorComponent={() => <View style={{ height: 4 }} />}
+        showsVerticalScrollIndicator={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        onRefresh={onRefresh}
+        refreshing={isRefreshing}
+        onEndReached={onEndReached}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <View className="p-6">
+              <ActivityIndicator size="large" color="#94A3B8" />
+            </View>
+          ) : null
+        }
+      />
+      {showSkeleton ? (
+        <View className="absolute inset-0 bg-white" pointerEvents="none">
+          <FeedListSkeleton />
+        </View>
+      ) : null}
+    </View>
   );
 }
