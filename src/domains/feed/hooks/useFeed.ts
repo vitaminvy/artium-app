@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { User as AuthUser } from "firebase/auth";
 import { FeedComment, FeedPost, FeedTab } from "../types";
-import { 
-  addCommentToPost, 
-  createPost, 
-  getFeedPosts, 
+import {
+  addCommentToPost,
+  createPost,
+  getFeedPosts,
   togglePostLike,
-  subscribeToFeedPosts
 } from "../services/feedService";
 import { QueryDocumentSnapshot, DocumentData, collection, onSnapshot } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
+import { useProfileContext } from "@/domains/user/contexts/ProfileContext";
 
 const POST_PAGE_SIZE = 5;
 
@@ -57,83 +57,114 @@ function attachRelativeTime(posts: FeedPost[]): FeedPost[] {
 }
 
 export function useFeed(currentUser: AuthUser | null): UseFeedResult {
+  const { profile } = useProfileContext();
   const [tab, setTab] = useState<FeedTab>("explore");
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [pageSize, setPageSize] = useState(POST_PAGE_SIZE);
   const [hasMorePosts, setHasMorePosts] = useState(true);
   const [isMorePostsLoading, setIsMorePostsLoading] = useState(false);
   const likeInFlight = useRef<Set<string>>(new Set());
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+  const lastVisibleRef = useRef<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const authorSnapshot = useMemo(() => {
+    if (!currentUser) return null;
+    const rawHandle =
+      profile.user.handle ||
+      (currentUser.email ? currentUser.email.split("@")[0] : "user");
+    const handle = rawHandle.startsWith("@") ? rawHandle.slice(1) : rawHandle;
+    const name =
+      profile.user.name ||
+      currentUser.displayName ||
+      currentUser.email ||
+      "User";
+    const avatar = profile.user.avatarUri || currentUser.photoURL || undefined;
+    return {
+      id: currentUser.uid,
+      name,
+      handle,
+      avatar,
+    };
+  }, [
+    currentUser,
+    profile.user.avatarUri,
+    profile.user.handle,
+    profile.user.name,
+  ]);
 
-  useEffect(() => {
-    let unsubscribe: () => void;
-    let unsubFollowing: () => void;
+  const mergePosts = useCallback((base: FeedPost[], next: FeedPost[]) => {
+    const map = new Map<string, FeedPost>();
+    base.forEach((post) => map.set(post.id, post));
+    next.forEach((post) => map.set(post.id, post));
+    return Array.from(map.values()).sort((a, b) => b.createdAt - a.createdAt);
+  }, []);
 
-    const setupSubscription = async () => {
-      // If we are refreshing, we might want to reset pageSize, but let's handle that in onRefresh
+  const loadPosts = useCallback(
+    async ({ reset }: { reset: boolean }) => {
       try {
-        setLoading(true);
-
-        if (currentUser) {
-          const followingCol = collection(
-            firestore,
-            "users",
-            currentUser.uid,
-            "following"
-          );
-          unsubFollowing = onSnapshot(followingCol, (snap) => {
-            const ids = new Set<string>();
-            snap.forEach((doc) => ids.add(doc.id));
-            setFollowingIds(ids);
-          });
-        } else {
-          setFollowingIds(new Set());
+        if (reset) {
+          setLoading(true);
+          setError(null);
+          lastVisibleRef.current = null;
         }
-
-        unsubscribe = subscribeToFeedPosts(
-          pageSize,
-          (newPosts, lastVisible) => {
-            setPosts(attachRelativeTime(newPosts));
-            // Check if we reached the end (fewer posts returned than requested, or just heuristic)
-            // Note: This heuristic might be slightly off if total posts is exact multiple of pageSize
-            // But good enough for now.
-            setHasMorePosts(newPosts.length >= pageSize); 
-            setLoading(false);
-            setIsMorePostsLoading(false);
-          },
+        const cursor = reset ? null : lastVisibleRef.current;
+        const { posts: fetched, lastVisible: nextCursor } = await getFeedPosts(
+          POST_PAGE_SIZE,
+          cursor,
           currentUser?.uid
         );
+        setPosts((prev) =>
+          attachRelativeTime(reset ? fetched : mergePosts(prev, fetched))
+        );
+        lastVisibleRef.current = nextCursor;
+        setHasMorePosts(fetched.length >= POST_PAGE_SIZE);
       } catch (e: any) {
         setError(e);
-        setLoading(false);
+      } finally {
+        if (reset) setLoading(false);
+        setIsMorePostsLoading(false);
       }
-    };
+    },
+    [currentUser?.uid, mergePosts]
+  );
 
-    setupSubscription();
-
+  useEffect(() => {
+    if (!currentUser) {
+      setFollowingIds(new Set());
+      return;
+    }
+    const followingCol = collection(
+      firestore,
+      "users",
+      currentUser.uid,
+      "following"
+    );
+    const unsubFollowing = onSnapshot(followingCol, (snap) => {
+      const ids = new Set<string>();
+      snap.forEach((doc) => ids.add(doc.id));
+      setFollowingIds(ids);
+    });
     return () => {
-      if (unsubscribe) unsubscribe();
-      if (unsubFollowing) unsubFollowing();
+      unsubFollowing();
     };
-  }, [pageSize, currentUser]); // Re-subscribe if pageSize increases or user changes
+  }, [currentUser]);
+
+  useEffect(() => {
+    loadPosts({ reset: true });
+  }, [loadPosts]);
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    setPageSize(POST_PAGE_SIZE); // This will trigger the effect above
-    // We wait a bit to simulate refresh or let the subscription update
-    setTimeout(() => {
-        setIsRefreshing(false);
-    }, 1000);
-  }, []);
+    await loadPosts({ reset: true });
+    setIsRefreshing(false);
+  }, [loadPosts]);
 
   const loadMorePosts = useCallback(() => {
     if (isMorePostsLoading || !hasMorePosts) return;
     setIsMorePostsLoading(true);
-    setPageSize(prev => prev + POST_PAGE_SIZE);
-  }, [isMorePostsLoading, hasMorePosts]);
+    loadPosts({ reset: false });
+  }, [isMorePostsLoading, hasMorePosts, loadPosts]);
 
   const explorePosts = useMemo(() => posts, [posts]);
 
@@ -197,16 +228,9 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
   }, [currentUser]);
   
   const addComment = useCallback(async (postId: string, content: string) => {
-    if (!content.trim() || !currentUser) return;
+    if (!content.trim() || !currentUser || !authorSnapshot) return;
 
     try {
-      const authorSnapshot = {
-        id: currentUser.uid,
-        name: currentUser.displayName || "User",
-        handle: (currentUser.email || "user").split("@")[0],
-        avatar: currentUser.photoURL || undefined,
-      };
-
       await addCommentToPost(postId, {
         authorSnapshot,
         content: content.trim(),
@@ -214,17 +238,10 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
     } catch (error) {
       console.error("Failed to add comment:", error);
     }
-  }, [currentUser]);
+  }, [currentUser, authorSnapshot]);
 
   const createReshare = useCallback(async (targetPost: FeedPost, note: string) => {
-    if (!currentUser) return;
-
-    const authorSnapshot = {
-      id: currentUser.uid,
-      name: currentUser.displayName || "User",
-      handle: (currentUser.email || "user").split("@")[0],
-      avatar: currentUser.photoURL || undefined,
-    };
+    if (!currentUser || !authorSnapshot) return;
 
     const quote = {
       authorName: targetPost.author.name,
@@ -245,17 +262,10 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
     } as any);
 
     onRefresh();
-  }, [currentUser, onRefresh]);
+  }, [currentUser, authorSnapshot, onRefresh]);
 
   const addMomentPost = useCallback(async (post: any) => {
-    if (!currentUser) throw new Error("User not logged in");
-
-    const authorSnapshot = {
-      id: currentUser.uid,
-      name: currentUser.displayName || "User",
-      handle: (currentUser.email || "user").split("@")[0],
-      avatar: currentUser.photoURL || undefined,
-    };
+    if (!currentUser || !authorSnapshot) throw new Error("User not logged in");
 
     await createPost({
       authorId: currentUser.uid,
@@ -264,7 +274,7 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
       media: post.media || null,
     });
     onRefresh();
-  }, [currentUser, onRefresh]);
+  }, [currentUser, authorSnapshot, onRefresh]);
 
   return {
     tab,
