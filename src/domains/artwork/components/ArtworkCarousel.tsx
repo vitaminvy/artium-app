@@ -21,9 +21,13 @@ const cardShadow: ViewStyle = {
 
 type ArtworkCarouselProps = {
   images: string[];
+  onImageLoad?: () => void;
 };
 
-export default function ArtworkCarousel({ images }: ArtworkCarouselProps) {
+export default function ArtworkCarousel({
+  images,
+  onImageLoad,
+}: ArtworkCarouselProps) {
   const progress = useSharedValue(0);
   const CAROUSEL_WIDTH = SCREEN_WIDTH - 32; // padding 16px each side
   const ITEM_WIDTH = CAROUSEL_WIDTH - 64; // minus padding and spacing
@@ -61,6 +65,7 @@ export default function ArtworkCarousel({ images }: ArtworkCarouselProps) {
               progress={progress}
               width={ITEM_WIDTH}
               height={CAROUSEL_HEIGHT}
+              onImageLoad={index === 0 ? onImageLoad : undefined}
             />
           )}
         />
@@ -81,12 +86,14 @@ function CarouselItem({
   progress,
   width,
   height,
+  onImageLoad,
 }: {
   item: string;
   index: number;
   progress: SharedValue<number>;
   width: number;
   height: number;
+  onImageLoad?: () => void;
 }) {
   const animatedStyle = useAnimatedStyle(() => {
     const distance = Math.abs(progress.value - index);
@@ -131,6 +138,7 @@ function CarouselItem({
           source={{ uri: item }}
           style={{ width: "100%", height: "100%" }}
           resizeMode="cover"
+          onLoadEnd={onImageLoad}
         />
       </View>
     </Animated.View>

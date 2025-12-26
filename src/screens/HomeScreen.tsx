@@ -3,6 +3,7 @@ import {
   FlatList,
   ListRenderItemInfo,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   View,
@@ -48,7 +49,18 @@ export default function HomeScreen() {
     number | null
   >(null);
   const { width } = useWindowDimensions();
-  const { news, blogs, events, sellItemsPreview, following, popularArtists, isLoading, error } = useHome();
+  const {
+    news,
+    blogs,
+    events,
+    sellItemsPreview,
+    following,
+    popularArtists,
+    isLoading,
+    isRefreshing,
+    refreshHome,
+    error,
+  } = useHome();
   const { isFollowing, toggleFollow } = useProfileContext();
   const highlightCardWidth = Math.min(320, Math.round(width * 0.72));
   const highlightCardHeight = Math.round(highlightCardWidth * 0.55);
@@ -141,6 +153,9 @@ export default function HomeScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 100 }}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={refreshHome} />
+          }
         >
           <View className="px-4 pt-4">
             <HomeNewsCarousel data={news} />

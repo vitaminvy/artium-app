@@ -12,6 +12,7 @@ type Props = {
   isSelected: boolean;
   onPress: () => void;
   onLongPress: () => void;
+  onImageLoad?: () => void;
 };
 
 const renderStatusBadge = (status: InventoryStatus) => {
@@ -36,6 +37,7 @@ export function InventoryItemCard({
   isSelected,
   onPress,
   onLongPress,
+  onImageLoad,
 }: Props) {
   if (variant === "list") {
     return (
@@ -51,6 +53,8 @@ export function InventoryItemCard({
             source={{ uri: item.thumbnail }}
             resizeMode="cover"
             style={{ height: "100%", width: "100%" }}
+            onLoadEnd={onImageLoad}
+            onError={onImageLoad}
           />
           {isSelected ? (
             <View className="absolute inset-0 bg-[#0B73FF]/10 items-center justify-center">
@@ -108,6 +112,8 @@ export function InventoryItemCard({
           source={{ uri: item.thumbnail }}
           resizeMode="cover"
           style={{ height: "100%", width: "100%" }}
+          onLoadEnd={onImageLoad}
+          onError={onImageLoad}
         />
         {isSelected ? (
           <View className="absolute inset-0 bg-[#0B73FF]/15 items-center justify-center">

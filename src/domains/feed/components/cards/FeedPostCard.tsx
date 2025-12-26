@@ -20,6 +20,7 @@ type Props = {
   onPressCard?: (post: FeedPost) => void;
   onPressImage?: (images: { uri: string }[], index: number) => void;
   isVisible?: boolean;
+  onAvatarLoad?: (postId: string) => void;
 };
 
 function FeedPostCard({
@@ -30,6 +31,7 @@ function FeedPostCard({
   onPressCard,
   onPressImage,
   isVisible = true,
+  onAvatarLoad,
 }: Props) {
   const { isLiked, toggleOptimistic } = usePostLike(post.id, post.liked);
   const authorName = post.author?.name?.trim() || "User";
@@ -39,6 +41,19 @@ function FeedPostCard({
     (post.author as any)?.avatarUri ||
     (post.author as any)?.photoURL;
   const hasAvatar = typeof authorAvatar === "string" && authorAvatar.length > 0;
+  const avatarLoadNotified = React.useRef(false);
+
+  const notifyAvatarLoad = useCallback(() => {
+    if (!onAvatarLoad || avatarLoadNotified.current) return;
+    avatarLoadNotified.current = true;
+    onAvatarLoad(post.id);
+  }, [onAvatarLoad, post.id]);
+
+  useEffect(() => {
+    if (!hasAvatar) {
+      notifyAvatarLoad();
+    }
+  }, [hasAvatar, notifyAvatarLoad]);
 
   const initials =
     authorName
@@ -130,6 +145,8 @@ function FeedPostCard({
               source={{ uri: authorAvatar }}
               style={{ width: "100%", height: "100%" }}
               resizeMode="cover"
+              onLoadEnd={notifyAvatarLoad}
+              onError={notifyAvatarLoad}
             />
           ) : (
             <Text className="text-[13px] font-semibold text-slate-700">
@@ -368,7 +385,8 @@ const areEqual = (prev: Props, next: Props) =>
   prev.onPressComment === next.onPressComment &&
   prev.onPressCard === next.onPressCard &&
   prev.onPressImage === next.onPressImage &&
-  prev.isVisible === next.isVisible;
+  prev.isVisible === next.isVisible &&
+  prev.onAvatarLoad === next.onAvatarLoad;
 
 export default React.memo(FeedPostCard, areEqual);
 

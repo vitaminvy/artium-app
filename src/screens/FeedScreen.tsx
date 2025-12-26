@@ -29,7 +29,6 @@ import ImageViewing from "react-native-image-viewing";
 import { useRef, useEffect } from "react";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import { useAuth } from "../domains/auth/contexts/AuthContext";
-import Loader from "../shared/components/Loader";
 
 export default function FeedScreen() {
   const navigation =
@@ -150,13 +149,6 @@ export default function FeedScreen() {
   }, []);
   
   const renderContent = () => {
-    if (loading) {
-      return (
-        <View className="flex-1 justify-center items-center">
-          <Loader />
-        </View>
-      );
-    }
     if (error) {
       return (
         <View className="flex-1 justify-center items-center p-4">
@@ -182,6 +174,7 @@ export default function FeedScreen() {
             isFetchingNextPage={isMorePostsLoading}
             onRefresh={onRefresh}
             isRefreshing={isRefreshing}
+            isLoading={loading}
           />
         </View>
         <View style={{ flex: 1, display: tab === "following" ? "flex" : "none" }}>
@@ -196,6 +189,7 @@ export default function FeedScreen() {
             isTabActive={tab === "following"}
             onRefresh={onRefresh}
             isRefreshing={isRefreshing}
+            isLoading={loading}
           />
         </View>
         <View style={{ flex: 1, display: tab === "myFeed" ? "flex" : "none" }}>
@@ -212,6 +206,7 @@ export default function FeedScreen() {
             isFetchingNextPage={isMorePostsLoading}
             onRefresh={onRefresh}
             isRefreshing={isRefreshing}
+            isLoading={loading}
           />
         </View>
       </View>
