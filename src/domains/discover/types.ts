@@ -18,6 +18,7 @@ export type Artwork = {
   id: string;
   title: string;
   artist: string;
+  artistId?: string; // User ID for navigation
   artistAvatar?: string;
   image: string;
   isTrending?: boolean;

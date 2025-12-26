@@ -14,6 +14,7 @@ import type { ArtworkDetail } from "../../../domains/artwork/types";
 import type { EventItem } from "../../../domains/discover/types";
 import BlogDetailScreen from "../../../screens/BlogDetailScreen"; // Renamed import
 import BlogScreen from "../../../screens/BlogScreen";
+import UserProfileScreen from "../../../screens/UserProfileScreen";
 
 export type HomeStackParamList = {
   HomeMain: undefined;
@@ -21,6 +22,7 @@ export type HomeStackParamList = {
   Events: undefined;
   ArtworkDetail: { id: string };
   Profile: undefined;
+  UserProfile: { userId: string };
   EditProfile: undefined;
   Checkout: { artwork?: ArtworkDetail };
   PopularArtists: undefined;
@@ -45,6 +47,7 @@ export default function HomeStack() {
       <Stack.Screen name="Events" component={EventScreen} />
       <Stack.Screen name="ArtworkDetail" component={ArtworkDetailScreen} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="UserProfile" component={UserProfileScreen} />
       <Stack.Screen name="PopularArtists" component={PopularArtistsScreen} />
       <Stack.Screen name="SimilarSaved" component={SimilarSavedScreen} />
       <Stack.Screen name="BlogDetail" component={BlogDetailScreen} options={{ headerShown: false }} />

@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
 import type { BlogArticle } from "../types";
+import { navigateToUserProfile } from "../../../shared/utils/navigateToUserProfile";
 
 type Props = {
   item: BlogArticle;
@@ -48,7 +49,13 @@ export default function BlogArticleCard({ item, onPress }: Props) {
           {item.title}
         </Text>
 
-        <View className="mt-3 flex-row items-center" style={{ columnGap: 8 }}>
+        <Pressable
+          className="mt-3 flex-row items-center"
+          style={{ columnGap: 8 }}
+          onPress={() => item.authorId && navigateToUserProfile(item.authorId)}
+          hitSlop={4}
+          disabled={!item.authorId}
+        >
           <View className="h-9 w-9 overflow-hidden rounded-full bg-slate-200">
             <Image
               source={{ uri: item.authorAvatar }}
@@ -73,7 +80,7 @@ export default function BlogArticleCard({ item, onPress }: Props) {
               {item.readTimeMinutes} mins read
             </Text>
           </View>
-        </View>
+        </Pressable>
 
         <Text
           className="mt-3 text-[14px] leading-5 text-slate-600"

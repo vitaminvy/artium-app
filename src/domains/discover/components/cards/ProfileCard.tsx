@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, Image, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ArtistProfile } from "../../types";
+import { navigateToUserProfile } from "../../../../shared/utils/navigateToUserProfile";
 
 const cardShadow = {
   shadowColor: "#000",
@@ -17,8 +18,16 @@ type Props = {
 };
 
 export default function ProfileCard({ item, onPress }: Props) {
+  const handlePress = () => {
+    if (onPress) {
+      onPress();
+    } else {
+      navigateToUserProfile(item.id);
+    }
+  };
+
   const content = (
-    <View pointerEvents={onPress ? "none" : "auto"} className="items-center">
+    <View pointerEvents="none" className="items-center">
       <View className="h-20 w-20 rounded-full overflow-hidden bg-slate-200">
         <Image source={{ uri: item.avatar }} className="h-full w-full" />
       </View>
@@ -40,24 +49,13 @@ export default function ProfileCard({ item, onPress }: Props) {
     </View>
   );
 
-  if (onPress) {
-    return (
-      <Pressable
-        className="flex-1 rounded-3xl bg-white border border-slate-100 px-4 py-5 items-center"
-        style={cardShadow}
-        onPress={onPress}
-      >
-        {content}
-      </Pressable>
-    );
-  }
-
   return (
-    <View
+    <Pressable
       className="flex-1 rounded-3xl bg-white border border-slate-100 px-4 py-5 items-center"
       style={cardShadow}
+      onPress={handlePress}
     >
       {content}
-    </View>
+    </Pressable>
   );
 }

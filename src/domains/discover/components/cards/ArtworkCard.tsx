@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, Image, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Artwork } from "../../types";
+import { navigateToUserProfile } from "../../../../shared/utils/navigateToUserProfile";
 
 const cardShadow = {
   shadowColor: "#000",
@@ -64,7 +65,12 @@ export default function ArtworkCard({
       </View>
 
       <View className="px-4 py-4 bg-white rounded-b-[28px] justify-between">
-        <View className="flex-row items-center gap-3">
+        <Pressable
+          className="flex-row items-center gap-3"
+          onPress={() => item.artistId && navigateToUserProfile(item.artistId)}
+          hitSlop={4}
+          disabled={!item.artistId}
+        >
           <View className="h-7 w-7 rounded-full bg-slate-200 overflow-hidden">
             {item.artistAvatar ? (
               <Image
@@ -76,7 +82,7 @@ export default function ArtworkCard({
           <Text className="text-[13px] text-slate-600 font-medium">
             {item.artist}
           </Text>
-        </View>
+        </Pressable>
 
         <Text className="text-[18px] font-bold text-slate-900">
           {item.title}
