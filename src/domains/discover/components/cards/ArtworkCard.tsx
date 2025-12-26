@@ -28,6 +28,15 @@ const glassPillStyle = {
   shadowOffset: { width: 0, height: 6 },
 };
 
+const bodyContentStyle = {
+  minHeight: 150,
+};
+
+const titleTextStyle = {
+  lineHeight: 22,
+  minHeight: 44, // Reserve space for 2 lines to keep cards even
+};
+
 export default function ArtworkCard({
   item,
   onPress,
@@ -63,39 +72,52 @@ export default function ArtworkCard({
         ) : null}
       </View>
 
-      <View className="px-4 py-4 bg-white rounded-b-[28px] justify-between">
-        <View className="flex-row items-center gap-3">
-          <View className="h-7 w-7 rounded-full bg-slate-200 overflow-hidden">
-            {item.artistAvatar ? (
-              <Image
-                source={{ uri: item.artistAvatar }}
-                className="h-full w-full"
-              />
-            ) : null}
-          </View>
-          <Text className="text-[13px] text-slate-600 font-medium">
-            {item.artist}
-          </Text>
-        </View>
-
-        <Text className="text-[18px] font-bold text-slate-900">
-          {item.title}
-        </Text>
-
-        <View className="gap-1.5">
-          {item.location ? (
-            <Text className="text-sm text-slate-400">{item.location}</Text>
-          ) : null}
-          {item.price ? (
-            <View
-              className="self-start rounded-full px-3 py-1"
-              style={glassPillStyle}
-            >
-              <Text className="text-[13px] font-semibold text-[#2563EB] tracking-tight">
-                {item.price}
+      <View className="px-4 py-4 bg-white rounded-b-[28px]">
+        <View className="flex-1 justify-between gap-3" style={bodyContentStyle}>
+          <View className="gap-3">
+            <View className="flex-row items-center gap-3">
+              <View className="h-7 w-7 rounded-full bg-slate-200 overflow-hidden">
+                {item.artistAvatar ? (
+                  <Image
+                    source={{ uri: item.artistAvatar }}
+                    className="h-full w-full"
+                  />
+                ) : null}
+              </View>
+              <Text
+                className="text-[13px] text-slate-600 font-medium"
+                numberOfLines={1}
+              >
+                {item.artist}
               </Text>
             </View>
-          ) : null}
+
+            <Text
+              className="text-[18px] font-bold text-slate-900"
+              numberOfLines={2}
+              style={titleTextStyle}
+            >
+              {item.title}
+            </Text>
+          </View>
+
+          <View className="gap-1.5">
+            {item.location ? (
+              <Text className="text-sm text-slate-400" numberOfLines={1}>
+                {item.location}
+              </Text>
+            ) : null}
+            {item.price ? (
+              <View
+                className="self-start rounded-full px-3 py-1"
+                style={glassPillStyle}
+              >
+                <Text className="text-[13px] font-semibold text-[#2563EB] tracking-tight">
+                  {item.price}
+                </Text>
+              </View>
+            ) : null}
+          </View>
         </View>
       </View>
     </Pressable>

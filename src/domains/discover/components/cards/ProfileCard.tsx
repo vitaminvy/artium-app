@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, Image, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ArtistProfile } from "../../types";
+import { HOME_COLORS } from "../../../home/constants";
 
 const cardShadow = {
   shadowColor: "#000",
@@ -34,8 +35,15 @@ export default function ProfileCard({ item, onPress }: Props) {
         ) : null}
       </View>
 
-      <Pressable className="mt-4 px-4 py-2 rounded-full bg-slate-900 active:opacity-90">
-        <Text className="text-xs font-semibold text-white">Follow</Text>
+      <Pressable
+        className="mt-4 flex-row items-center gap-2 rounded-full border px-4 py-2 active:opacity-90"
+        style={{
+          borderColor: HOME_COLORS.FOLLOW_BORDER,
+          backgroundColor: HOME_COLORS.FOLLOW_BG,
+        }}
+      >
+        <Ionicons name="person-add-outline" size={16} color={HOME_COLORS.TEXT_PRIMARY} />
+        <Text className="text-[12px] font-semibold text-slate-900">Follow</Text>
       </Pressable>
     </View>
   );
