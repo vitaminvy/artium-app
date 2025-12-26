@@ -30,6 +30,27 @@ export type PaginatedEventsResult = {
   lastVisible: QueryDocumentSnapshot<DocumentData> | null;
 };
 
+const resolveEventImage = (data: any): string => {
+  const candidate =
+    data.image ??
+    data.coverImage ??
+    data.coverUrl ??
+    data.imageUrl ??
+    data.coverImageUrl ??
+    data.bannerImage;
+  if (typeof candidate === "string") return candidate;
+  if (candidate && typeof candidate === "object") {
+    return (
+      candidate.uri ||
+      candidate.url ||
+      candidate.image ||
+      candidate.imageUrl ||
+      ""
+    );
+  }
+  return "";
+};
+
 const mapEventDoc = (doc: QueryDocumentSnapshot<DocumentData> | DocumentSnapshot<DocumentData>): EventItem => {
   const data = doc.data() || {};
   const start = (data.startDate as Timestamp | undefined)?.toDate?.() ?? new Date();
@@ -52,7 +73,7 @@ const mapEventDoc = (doc: QueryDocumentSnapshot<DocumentData> | DocumentSnapshot
   return {
     id: doc.id,
     title: data.title ?? "Untitled event",
-    image: data.image ?? "",
+    image: resolveEventImage(data),
     location:
       data.location?.city ??
       data.location?.name ??

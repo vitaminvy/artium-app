@@ -1,6 +1,7 @@
 import * as admin from "firebase-admin";
 import { faker } from "@faker-js/faker";
 import { SeededUser } from "./seedUsers";
+import { uploadRandomImage } from "./uploadToStorage";
 
 export const seedEvents = async (
   db: admin.firestore.Firestore,
@@ -18,6 +19,8 @@ export const seedEvents = async (
 
       const startDate = faker.date.soon({ days: 30 });
       const endDate = faker.date.soon({ days: 7, refDate: startDate });
+
+      const image = await uploadRandomImage("events");
 
       batch.set(eventRef, {
         id: eventId,
@@ -39,7 +42,7 @@ export const seedEvents = async (
         },
         startDate: admin.firestore.Timestamp.fromDate(startDate),
         endDate: admin.firestore.Timestamp.fromDate(endDate),
-        image: faker.image.urlLoremFlickr({ category: 'art', width: 800, height: 600 }), // Placeholder image for now
+        image,
         attendeeCount: faker.number.int({ min: 0, max: 500 }),
         isOnline: faker.datatype.boolean(0.3), // 30% chance of being online
         price: faker.helpers.arrayElement([
