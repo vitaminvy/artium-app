@@ -69,16 +69,21 @@ export default function UserProfileOverviewTab({
         }
       >
         {moments.length > 0 ? (
-          <View>
-            {moments.slice(0, 3).map((moment) => (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 4, gap: 12 }}
+          >
+            {moments.slice(0, 6).map((moment) => (
               <MomentCard
                 key={moment.id}
                 item={moment}
+                variant="compact"
                 onPress={() => onPressMoment?.(moment.id)}
                 onPressAuthor={() => {}}
               />
             ))}
-          </View>
+          </ScrollView>
         ) : (
           <View className="rounded-2xl border border-slate-200 bg-[#F8FAFC] px-4 py-8 items-center">
             <Text className="text-sm text-center text-slate-500">

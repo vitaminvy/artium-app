@@ -20,18 +20,26 @@ export default function UserProfileMomentsTab({
   }
 
   return (
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingHorizontal: 4, paddingBottom: 20 }}
-    >
-      {moments.map((moment) => (
-        <MomentCard
-          key={moment.id}
-          item={moment}
-          onPress={() => onPressMoment?.(moment.id)}
-          onPressAuthor={() => {}}
-        />
-      ))}
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          justifyContent: "space-between",
+          paddingHorizontal: 6,
+        }}
+      >
+        {moments.map((moment) => (
+          <MomentCard
+            key={moment.id}
+            item={moment}
+            variant="compact"
+            style={{ width: "48%", marginBottom: 12 }}
+            onPress={() => onPressMoment?.(moment.id)}
+            onPressAuthor={() => {}}
+          />
+        ))}
+      </View>
     </ScrollView>
   );
 }
