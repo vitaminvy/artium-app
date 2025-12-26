@@ -54,9 +54,13 @@
         allow read: if true;
         allow write: if false; // No client-side writes allowed
       }
-       match /events/{eventId} {
+      match /events/{eventId} {
         allow read: if true;
-        allow write: if false;
+        allow create: if isSignedIn() && request.resource.data.organizerId == request.auth.uid;
+        allow update: if isSignedIn()
+          && resource.data.organizerId == request.auth.uid
+          && request.resource.data.organizerId == resource.data.organizerId;
+        allow delete: if false;
       }
       match /posts/{postId} {
         allow read: if true;

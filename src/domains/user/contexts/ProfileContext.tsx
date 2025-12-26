@@ -13,6 +13,7 @@ import { auth, firestore } from "@/configs/firebase";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
 import { upsertUserProfile } from "@/domains/auth/services/userProfile";
 import { toggleFollow as toggleFollowService } from "../services/followService";
+import { isLocalUri, uploadIfLocal } from "@/shared/services/uploadService";
 import { EDIT_PROFILE_DEFAULTS } from "../constants/editProfile";
 import { PROFILE_ACCENT } from "../constants/profile";
 import { profileMockData } from "../mockData";
@@ -304,6 +305,13 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       const firstName = values.firstName?.trim() ?? "";
       const lastName = values.lastName?.trim() ?? "";
       const displayName = [firstName, lastName].filter(Boolean).join(" ").trim();
+      let avatarUri = values.avatar;
+
+      if (typeof avatarUri === "string" && isLocalUri(avatarUri)) {
+        avatarUri = await uploadIfLocal(avatarUri, "avatars");
+      }
+
+      const nextValues = { ...values, avatar: avatarUri };
 
       const payload: Record<string, any> = {
         username,
@@ -316,7 +324,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       };
 
       if (values.avatar !== undefined) {
-        payload.avatarUri = values.avatar;
+        payload.avatarUri = avatarUri;
       }
 
       if (displayName) {
@@ -331,7 +339,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         authUpdates.displayName = displayName;
       }
       if (values.avatar !== undefined) {
-        authUpdates.photoURL = values.avatar ?? null;
+        authUpdates.photoURL = avatarUri ?? null;
       }
       if (authUser && Object.keys(authUpdates).length > 0) {
         try {
@@ -343,8 +351,8 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      setEditProfile(values);
-      setProfile((prev) => buildProfileFromForm(prev, values));
+      setEditProfile(nextValues);
+      setProfile((prev) => buildProfileFromForm(prev, nextValues));
     },
     [currentUser, setCurrentUser]
   );

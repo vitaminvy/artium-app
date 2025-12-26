@@ -121,6 +121,29 @@ const normalizeDimension = (dimension: any) => {
   };
 };
 
+const normalizeImageList = (images: any): string[] => {
+  if (!Array.isArray(images)) return [];
+  return images
+    .map((item) => {
+      if (typeof item === "string") return item;
+      if (item && typeof item === "object") {
+        return (
+          item.uri ||
+          item.url ||
+          item.image ||
+          item.imageUrl ||
+          ""
+        );
+      }
+      return "";
+    })
+    .filter((item) => typeof item === "string" && item.trim().length > 0);
+};
+
+const resolveFirstImage = (images: any): string => {
+  return normalizeImageList(images)[0] || "";
+};
+
 // --- METRIC UPDATES ---
 
 export const incrementArtworkView = async (artworkId: string): Promise<void> => {
@@ -181,7 +204,7 @@ export const getArtworks = async (
         title: data.title || "Untitled",
         artist: artist.name || "Unknown Artist",
         artistAvatar: artist.avatar || "",
-        image: data.images?.[0] || "",
+        image: resolveFirstImage(data.images),
         price: formatPrice(data.price),
         isTrending: false,
       };
@@ -218,7 +241,7 @@ export const getTrendingArtworks = async (count: number = 10): Promise<DiscoverA
         title: data.title || "Untitled",
         artist: artist.name || "Unknown Artist",
         artistAvatar: artist.avatar || "",
-        image: data.images?.[0] || "",
+        image: resolveFirstImage(data.images),
         price: formatPrice(data.price),
         isTrending: true,
       };
@@ -249,7 +272,7 @@ export const getArtworkById = async (id: string): Promise<ArtworkDetail | null> 
       stats: data.stats || { worksSold: 0, buyers: 0 },
       price: formatPrice(data.price),
       availabilityNote: data.availabilityNote,
-      images: data.images || [],
+      images: normalizeImageList(data.images),
       tags: data.tags || [],
       dimension: normalizeDimension(data.dimension),
       weight: formatWeight(data.weight),
