@@ -97,6 +97,12 @@ export default function HomeScreen() {
   const handleSeeAllPopular = useCallback(() => {
     navigation.navigate("PopularArtists");
   }, [navigation]);
+  const handleOpenEventDetail = useCallback(
+    (event: HomeEventItem) => {
+      navigation.navigate("EventDetail", { id: event.id });
+    },
+    [navigation]
+  );
   const handleSellCardLayout = useCallback(
     (height: number) => {
       if (
@@ -203,6 +209,7 @@ export default function HomeScreen() {
                     item={item.item}
                     width={highlightCardWidth}
                     height={highlightCardHeight}
+                    onPress={handleOpenEventDetail}
                   />
                 )
               }
@@ -218,16 +225,16 @@ export default function HomeScreen() {
             keyExtractor={(item) => item.id}
             renderItem={({ item, index }: ListRenderItemInfo<Artwork>) => (
               <View
-                style={{ width: sellCardWidth }}
-                onLayout={
-                  index === 0
-                    ? (event) =>
-                        handleSellCardLayout(event.nativeEvent.layout.height)
-                    : undefined
-                }
+                style={{ width: sellCardWidth, alignSelf: "flex-start" }}
               >
                 <ArtworkCard
                   item={item}
+                  onLayout={
+                    index === 0
+                      ? (event) =>
+                          handleSellCardLayout(event.nativeEvent.layout.height)
+                      : undefined
+                  }
                   onPress={() =>
                     (navigation.navigate as any)("ArtworkDetail", { id: item.id })
                   }

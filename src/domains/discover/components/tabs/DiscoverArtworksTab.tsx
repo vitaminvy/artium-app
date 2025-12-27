@@ -33,17 +33,19 @@ export default function DiscoverArtworksTab({ data, onCardPress, onScroll, onEnd
 
     const artworkItem = item as Artwork;
     return (
-      <ArtworkCard
-        item={artworkItem}
-        onPress={() => {
-          if (onCardPress) {
-            onCardPress(artworkItem);
-          } else {
-            console.log("Navigating to ArtworkDetail with ID:", artworkItem.id);
-            (navigation.navigate as any)("ArtworkDetail", { id: artworkItem.id });
-          }
-        }}
-      />
+      <View className="flex-1">
+        <ArtworkCard
+          item={artworkItem}
+          onPress={() => {
+            if (onCardPress) {
+              onCardPress(artworkItem);
+            } else {
+              console.log("Navigating to ArtworkDetail with ID:", artworkItem.id);
+              (navigation.navigate as any)("ArtworkDetail", { id: artworkItem.id });
+            }
+          }}
+        />
+      </View>
     );
   };
 

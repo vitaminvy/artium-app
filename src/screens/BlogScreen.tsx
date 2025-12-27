@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -9,8 +9,10 @@ import {
 } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { SvgProps } from "react-native-svg";
 
-import ScreenHeader from "../shared/components/ScreenHeader";
 import Sidebar from "../shared/components/Sidebar";
 import {
   SidebarActionKey,
@@ -80,6 +82,14 @@ export default function BlogScreen() {
     setPendingShowMore(false);
   }, [pendingShowMore, isLoadingMore, allArticles.length]);
 
+  const handleBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate("HomeMain");
+    }
+  }, [navigation]);
+
   const handleSidebarSelect = (key: SidebarActionKey) => {
     setSidebarOpen(false);
 
@@ -121,14 +131,13 @@ export default function BlogScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      <ScreenHeader
+      <BlogHeader
         title="Blog"
-        actionType="menu"
-        isMenuOpen={sidebarOpen}
-        onPressAction={() => setSidebarOpen((prev) => !prev)}
-        showBadge={false}
-        onHeightChange={(h) => setHeaderHeight(h)}
         underlineSource={UnderlineHome}
+        isMenuOpen={sidebarOpen}
+        onPressBack={handleBack}
+        onPressMenu={() => setSidebarOpen((prev) => !prev)}
+        onHeightChange={(h) => setHeaderHeight(h)}
       />
 
       {isInitialLoading ? (
@@ -260,5 +269,79 @@ function HorizontalScroller({
     >
       {data.map(renderItem)}
     </ScrollView>
+  );
+}
+
+function BlogHeader({
+  title,
+  underlineSource,
+  isMenuOpen,
+  onPressMenu,
+  onPressBack,
+  onHeightChange,
+}: {
+  title: string;
+  underlineSource?: React.ComponentType<SvgProps>;
+  isMenuOpen?: boolean;
+  onPressMenu?: () => void;
+  onPressBack: () => void;
+  onHeightChange?: (height: number) => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const lastHeight = useRef(0);
+  const topPadding = Math.max(insets.top + 6, 24);
+  const Underline = underlineSource;
+
+  return (
+    <View
+      className="bg-white border-b border-slate-100"
+      onLayout={(e) => {
+        const h = e.nativeEvent.layout.height;
+        if (Math.abs(h - lastHeight.current) > 0.5) {
+          lastHeight.current = h;
+          onHeightChange?.(h);
+        }
+      }}
+    >
+      <View className="flex-row items-center px-4 pb-3" style={{ paddingTop: topPadding }}>
+        <Pressable
+          onPress={onPressBack}
+          hitSlop={8}
+          className="h-11 w-11 items-center justify-center rounded-full active:opacity-80"
+        >
+          <Ionicons name="arrow-back" size={22} color="#0F172A" />
+        </Pressable>
+
+        <View className="flex-1 items-center">
+          <Text className="text-[20px] font-extrabold tracking-[0.5px] text-slate-900">
+            {title}
+          </Text>
+          {Underline ? (
+            <Underline width={120} height={12} style={{ marginTop: -4 }} />
+          ) : (
+            <View
+              className="mt-1 h-[3px] rounded-full"
+              style={{ width: 100, backgroundColor: "#9BE163" }}
+            />
+          )}
+        </View>
+
+        {onPressMenu ? (
+          <Pressable
+            onPress={onPressMenu}
+            hitSlop={8}
+            className="h-11 w-11 items-center justify-center rounded-full active:opacity-80"
+          >
+            <Ionicons
+              name={isMenuOpen ? "close-outline" : "menu-outline"}
+              size={22}
+              color="#0F172A"
+            />
+          </Pressable>
+        ) : (
+          <View className="h-11 w-11" />
+        )}
+      </View>
+    </View>
   );
 }

@@ -9,13 +9,25 @@ type Props = {
   onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
   onEndReached: () => void;
   isFetchingNextPage: boolean;
+  isFollowing?: (id: string) => boolean;
+  onToggleFollow?: (id: string) => void;
 };
 
-export default function DiscoverProfilesTab({ data, onCardPress, onScroll, onEndReached, isFetchingNextPage }: Props) {
+export default function DiscoverProfilesTab({
+  data,
+  onCardPress,
+  onScroll,
+  onEndReached,
+  isFetchingNextPage,
+  isFollowing,
+  onToggleFollow,
+}: Props) {
   const renderItem = ({ item }: ListRenderItemInfo<ArtistProfile>) => (
     <ProfileCard
       item={item}
       onPress={onCardPress ? () => onCardPress(item) : undefined}
+      isFollowing={isFollowing ? isFollowing(item.id) : false}
+      onToggleFollow={onToggleFollow}
     />
   );
 
