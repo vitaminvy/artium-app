@@ -31,7 +31,7 @@ const TABS: { key: DiscoverTab; label: string }[] = [
 
 export default function DiscoverScreen() {
   const navigation = useNavigation<any>();
-  const { status } = useAuth();
+  const { status, currentUser } = useAuth();
   const { isFollowing, toggleFollow } = useProfileContext();
   const {
     tab,
@@ -88,6 +88,10 @@ export default function DiscoverScreen() {
   const handleRequireSignUp = useCallback(() => {
     navigation.navigate("SignUp");
   }, [navigation]);
+  const filteredProfiles = React.useMemo(
+    () => profiles.filter((p) => p.id !== currentUser?.uid),
+    [profiles, currentUser?.uid]
+  );
 
   const renderContent = () => {
     if (loading) {
@@ -118,7 +122,7 @@ export default function DiscoverScreen() {
       case "profiles":
         return (
           <DiscoverProfilesTab
-            data={profiles}
+            data={filteredProfiles}
             onCardPress={onCardPress}
             onScroll={handleScroll}
             onEndReached={loadMoreProfiles}
@@ -135,7 +139,7 @@ export default function DiscoverScreen() {
         return (
           <DiscoverNearbyTab
             artworks={artworks}
-            profiles={profiles}
+            profiles={filteredProfiles}
             events={events}
             locationText={locationText}
             radius={radius}
@@ -255,4 +259,3 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 });
-
