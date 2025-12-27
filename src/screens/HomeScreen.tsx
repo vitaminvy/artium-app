@@ -95,6 +95,12 @@ export default function HomeScreen() {
   const handleSeeAllPopular = useCallback(() => {
     navigation.navigate("PopularArtists");
   }, [navigation]);
+  const handleOpenEventDetail = useCallback(
+    (event: HomeEventItem) => {
+      navigation.navigate("EventDetail", { id: event.id });
+    },
+    [navigation]
+  );
   const handleSellCardLayout = useCallback(
     (height: number) => {
       if (
@@ -201,6 +207,7 @@ export default function HomeScreen() {
                     item={item.item}
                     width={highlightCardWidth}
                     height={highlightCardHeight}
+                    onPress={handleOpenEventDetail}
                   />
                 )
               }
