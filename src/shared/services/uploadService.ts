@@ -31,7 +31,10 @@ const uploadMediaToPath = async (localUri: string, storagePath: string): Promise
   const blob = await uriToBlob(localUri);
   const fileExtension = getFileExtension(localUri);
   const fileType = blob.type || `image/${fileExtension}`;
-  const metadata = { contentType: fileType };
+  const metadata = {
+    contentType: fileType,
+    cacheControl: "public,max-age=31536000,immutable",
+  };
   const storageRef = ref(storage, storagePath);
   const snapshot = await uploadBytes(storageRef, blob, metadata);
   return await getDownloadURL(snapshot.ref);

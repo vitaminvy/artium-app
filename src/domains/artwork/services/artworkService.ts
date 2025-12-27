@@ -183,16 +183,12 @@ export const getArtworks = async (
 ): Promise<PaginatedArtworksResult> => {
   try {
     let artworkQuery;
-    const baseQuery = [
-      collection(firestore, ARTWORKS_COLLECTION),
-      orderBy("createdAt", "desc"),
-      limit(pageSize)
-    ];
-    
+    const collectionRef = collection(firestore, ARTWORKS_COLLECTION);
+
     if (lastVisible) {
-      artworkQuery = query(baseQuery[0], baseQuery[1], startAfter(lastVisible), baseQuery[2]);
+      artworkQuery = query(collectionRef, orderBy("createdAt", "desc"), startAfter(lastVisible), limit(pageSize));
     } else {
-      artworkQuery = query(baseQuery[0], baseQuery[1], baseQuery[2]);
+      artworkQuery = query(collectionRef, orderBy("createdAt", "desc"), limit(pageSize));
     }
 
     const snapshot = await getDocs(artworkQuery);

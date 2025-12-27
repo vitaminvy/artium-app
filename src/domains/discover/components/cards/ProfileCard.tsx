@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, Image, Pressable } from "react-native";
+import { View, Text, Pressable } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { ArtistProfile } from "../../types";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
@@ -27,7 +28,13 @@ export default function ProfileCard({ item, onPress }: Props) {
   const content = (
     <View pointerEvents={onPress ? "none" : "auto"} className="items-center">
       <View className="h-20 w-20 rounded-full overflow-hidden bg-slate-200">
-        <Image source={{ uri: item.avatar }} className="h-full w-full" />
+        <Image
+          source={{ uri: item.avatar }}
+          style={{ width: "100%", height: "100%" }}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={0}
+        />
       </View>
       <Text className="mt-3 text-base font-semibold text-slate-900 text-center">
         {item.name}

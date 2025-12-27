@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useMemo } from "react";
-import { View, Text, Pressable, StyleSheet, StyleProp, ViewStyle, Image } from "react-native";
+import { View, Text, Pressable, StyleSheet, StyleProp, ViewStyle } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { Ionicons } from "@expo/vector-icons";
@@ -141,10 +141,12 @@ function FeedPostCard({
       <View className="flex-row items-center gap-3 mb-2">
         <View className="h-10 w-10 rounded-full bg-slate-200 overflow-hidden items-center justify-center">
           {hasAvatar ? (
-            <Image
+            <ExpoImage
               source={{ uri: authorAvatar }}
               style={{ width: "100%", height: "100%" }}
-              resizeMode="cover"
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={0}
               onLoadEnd={notifyAvatarLoad}
               onError={notifyAvatarLoad}
             />

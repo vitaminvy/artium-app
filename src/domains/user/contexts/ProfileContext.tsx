@@ -26,6 +26,7 @@ type ProfileContextValue = {
   updateProfile: (values: EditProfileFormValues) => Promise<void>;
   isFollowing: (userId: string) => boolean;
   toggleFollow: (userId: string) => void;
+  resetProfile: () => void;
 };
 
 type UserDoc = {
@@ -41,6 +42,10 @@ type UserDoc = {
   address?: string;
   countryCode?: string;
   profileCompleted?: boolean;
+  stats?: {
+    followers?: number;
+    following?: number;
+  };
 };
 
 const baseProfile: ProfileViewModel = {
@@ -214,6 +219,7 @@ const ProfileContext = createContext<ProfileContextValue>({
   updateProfile: async () => {},
   isFollowing: () => false,
   toggleFollow: () => {},
+  resetProfile: () => {},
 });
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
@@ -392,6 +398,13 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     }
   }, [currentUser]);
 
+  const resetProfile = useCallback(() => {
+    setProfile(baseProfile);
+    setEditProfile(defaultEditProfile);
+    setFollowingIds(new Set());
+    setIsLoading(false);
+  }, []);
+
   const value = useMemo(
     () => ({
       profile,
@@ -400,8 +413,9 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       updateProfile,
       isFollowing,
       toggleFollow,
+      resetProfile,
     }),
-    [profile, editProfile, isLoading, updateProfile, isFollowing, toggleFollow]
+    [profile, editProfile, isLoading, updateProfile, isFollowing, toggleFollow, resetProfile]
   );
 
   return (

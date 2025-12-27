@@ -13,11 +13,17 @@ import ProfileMoodboardsTab from "../domains/user/components/profile/tabs/Profil
 import { useProfile } from "../domains/user/hooks/useProfile";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
 import Sidebar from "../shared/components/Sidebar";
-import { useSidebarItems, SidebarKey } from "../shared/hooks/useSidebar";
+import {
+  SidebarActionKey,
+  useSidebarItems,
+  SidebarKey,
+} from "../shared/hooks/useSidebar";
 import { requestPostMomentSheet } from "../shared/utils/postMomentBridge";
 import { shareProfile } from "../shared/utils/shareProfile";
 import { navigate as rootNavigate } from "../app/navigation/navigationRef";
 import { useProfileCompletion } from "../domains/user/contexts/ProfileCompletionContext";
+import { useLogout } from "../domains/auth/hooks/useLogout";
+import { LogoutConfirmModal } from "../domains/auth/components/LogoutConfirmModal";
 
 type NavigationProp = NativeStackNavigationProp<
   HomeStackParamList,
@@ -88,6 +94,13 @@ export default function ProfileScreen() {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [headerHeight, setHeaderHeight] = React.useState(96);
   const [activeKey, setActiveKey] = React.useState<SidebarKey>("profile");
+  const {
+    logout,
+    loading: logoutLoading,
+    showConfirmModal,
+    onConfirmLogout,
+    onCancelLogout,
+  } = useLogout();
   const [avatarLoaded, setAvatarLoaded] = React.useState(false);
 
   const handleBack = () => {
@@ -112,8 +125,13 @@ export default function ProfileScreen() {
     rootNavigate("Upload");
   };
 
-  const handleSidebarSelect = (key: SidebarKey | "more") => {
+  const handleSidebarSelect = (key: SidebarActionKey) => {
     setSidebarOpen(false);
+
+    if (key === "logout") {
+      logout();
+      return;
+    }
 
     if (key === "home") {
       if (navigation.popToTop) {
@@ -170,6 +188,7 @@ export default function ProfileScreen() {
       <ProfileHeader
         onPressBack={handleBack}
         onPressMenu={() => setSidebarOpen((prev) => !prev)}
+        isMenuOpen={sidebarOpen}
         onLayout={(e: any) => setHeaderHeight(e.nativeEvent.layout.height)}
       />
 
@@ -230,6 +249,13 @@ export default function ProfileScreen() {
         topOffset={headerHeight}
         activeKey={activeKey}
         items={sidebarItems}
+      />
+
+      <LogoutConfirmModal
+        visible={showConfirmModal}
+        onConfirm={onConfirmLogout}
+        onCancel={onCancelLogout}
+        loading={logoutLoading}
       />
     </View>
   );

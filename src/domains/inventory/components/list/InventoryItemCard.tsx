@@ -1,5 +1,6 @@
 import React from "react";
-import { Dimensions, Image, Pressable, Text, View } from "react-native";
+import { Dimensions, Pressable, Text, View } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { Artwork, InventoryStatus, ViewMode } from "../../types";
 
@@ -51,8 +52,10 @@ export function InventoryItemCard({
         <View className="h-24 w-24 rounded-xl overflow-hidden bg-slate-100">
           <Image
             source={{ uri: item.thumbnail }}
-            resizeMode="cover"
             style={{ height: "100%", width: "100%" }}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={0}
             onLoadEnd={onImageLoad}
             onError={onImageLoad}
           />
@@ -110,8 +113,10 @@ export function InventoryItemCard({
       <View className="rounded-xl overflow-hidden bg-slate-100 h-36 mb-3">
         <Image
           source={{ uri: item.thumbnail }}
-          resizeMode="cover"
           style={{ height: "100%", width: "100%" }}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={0}
           onLoadEnd={onImageLoad}
           onError={onImageLoad}
         />

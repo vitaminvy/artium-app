@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { Image, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { PostMomentMedia } from "../types";
@@ -65,7 +66,9 @@ export default function PostMomentEditor({
             <Image
               source={{ uri: author?.avatar as string }}
               style={{ width: "100%", height: "100%" }}
-              resizeMode="cover"
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={0}
             />
           ) : (
             <Text className="text-xs font-semibold text-slate-700">{initials}</Text>

@@ -20,6 +20,7 @@ type ProfileCompletionContextValue = {
   refresh: () => Promise<void>;
   dismissPrompt: () => Promise<void>;
   markProfileCompleted: () => Promise<void>;
+  resetCompletion: () => void;
 };
 
 const defaultValue: ProfileCompletionContextValue = {
@@ -30,6 +31,7 @@ const defaultValue: ProfileCompletionContextValue = {
   refresh: async () => {},
   dismissPrompt: async () => {},
   markProfileCompleted: async () => {},
+  resetCompletion: () => {},
 };
 
 const ProfileCompletionContext =
@@ -124,6 +126,12 @@ export function ProfileCompletionProvider({
     }
   }, [currentUser]);
 
+  const resetCompletion = useCallback(() => {
+    setLoading(false);
+    setProfileCompleted(true);
+    setPromptDismissed(true);
+  }, []);
+
   const value = useMemo(
     () => ({
       loading,
@@ -133,6 +141,7 @@ export function ProfileCompletionProvider({
       refresh,
       dismissPrompt,
       markProfileCompleted,
+      resetCompletion,
     }),
     [
       loading,
@@ -141,6 +150,7 @@ export function ProfileCompletionProvider({
       refresh,
       dismissPrompt,
       markProfileCompleted,
+      resetCompletion,
     ]
   );
 

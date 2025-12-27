@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, Image } from "react-native";
+import { View, Text } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import type { ArtworkDetail } from "../types";
 
@@ -24,14 +25,18 @@ export default function ArtworkInfo({ detail }: ArtworkInfoProps) {
               <Image
                 source={{ uri: detail.artist.avatar }}
                 style={{ width: "100%", height: "100%" }}
-                resizeMode="cover"
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={0}
               />
             ) : (
               <View className="h-full w-full items-center justify-center bg-white">
                 <Image
                   source={fallbackLogo}
                   style={{ width: "60%", height: "60%" }}
-                  resizeMode="contain"
+                  contentFit="contain"
+                  cachePolicy="memory-disk"
+                  transition={0}
                 />
               </View>
             )}

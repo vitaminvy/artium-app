@@ -41,7 +41,12 @@ export function useHome() {
         ] = await Promise.all([
           getLatestBlogs(5),
           getOldestEditorialsAsNews(5),
-          getEvents(5).then((res) => res.events), // Fetch 5 events
+          getEvents(5).then((res) => res.events.map(e => ({
+            ...e,
+            dateLabel: e.timeLabel ?? "",
+            dateISO: e.datetime ?? e.startDate,
+            label: e.eventType
+          }))), // Fetch 5 events
           getTrendingArtworks(10), // Fetch 10 trending artworks for "Pick for You"
           getPopularArtists(15), // Fetch 15 popular artists
         ]);

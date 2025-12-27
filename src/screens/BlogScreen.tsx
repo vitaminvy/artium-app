@@ -12,7 +12,11 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import ScreenHeader from "../shared/components/ScreenHeader";
 import Sidebar from "../shared/components/Sidebar";
-import { SidebarKey, useSidebarItems } from "../shared/hooks/useSidebar";
+import {
+  SidebarActionKey,
+  SidebarKey,
+  useSidebarItems,
+} from "../shared/hooks/useSidebar";
 import { useBlogData } from "../domains/blog/hooks/useBlogData";
 import BlogHeroCarousel from "../domains/blog/components/BlogHeroCarousel";
 import BlogHorizontalCard from "../domains/blog/components/BlogHorizontalCard";
@@ -21,6 +25,8 @@ import Loader from "../shared/components/Loader";
 import UnderlineHome from "../../assets/headers/underline-home.svg";
 import type { BlogArticle } from "../domains/blog/types";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
+import { useLogout } from "../domains/auth/hooks/useLogout";
+import { LogoutConfirmModal } from "../domains/auth/components/LogoutConfirmModal";
 
 type BlogScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList>;
 
@@ -32,6 +38,13 @@ export default function BlogScreen() {
   const [visibleAllCount, setVisibleAllCount] = useState(5);
   const [pendingShowMore, setPendingShowMore] = useState(false);
   const sidebarItems = useSidebarItems();
+  const {
+    logout,
+    loading: logoutLoading,
+    showConfirmModal,
+    onConfirmLogout,
+    onCancelLogout,
+  } = useLogout();
   const {
     featured,
     latest,
@@ -67,8 +80,13 @@ export default function BlogScreen() {
     setPendingShowMore(false);
   }, [pendingShowMore, isLoadingMore, allArticles.length]);
 
-  const handleSidebarSelect = (key: SidebarKey | "more") => {
+  const handleSidebarSelect = (key: SidebarActionKey) => {
     setSidebarOpen(false);
+
+    if (key === "logout") {
+      logout();
+      return;
+    }
 
     if (key === "inventory") {
       navigation.navigate("Inventory");
@@ -201,6 +219,13 @@ export default function BlogScreen() {
         topOffset={headerHeight}
         activeKey={activeKey}
         items={sidebarItems}
+      />
+
+      <LogoutConfirmModal
+        visible={showConfirmModal}
+        onConfirm={onConfirmLogout}
+        onCancel={onCancelLogout}
+        loading={logoutLoading}
       />
     </View>
   );

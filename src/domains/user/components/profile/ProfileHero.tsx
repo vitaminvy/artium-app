@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef } from "react";
-import { View, Text, Image } from "react-native";
+import { View, Text } from "react-native";
+import { Image } from "expo-image";
 import { PROFILE_ACCENT } from "../../constants/profile";
 import { ProfileStats, ProfileUser } from "../../types";
 
@@ -43,7 +44,9 @@ export default function ProfileHero({ user, stats, onAvatarLoad }: Props) {
           <Image
             source={{ uri: user.avatarUri as string }}
             style={{ width: "100%", height: "100%" }}
-            resizeMode="cover"
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={0}
             onLoadEnd={notifyAvatarLoad}
             onError={notifyAvatarLoad}
           />
@@ -51,7 +54,9 @@ export default function ProfileHero({ user, stats, onAvatarLoad }: Props) {
           <Image
             source={fallbackLogo}
             style={{ width: "65%", height: "65%" }}
-            resizeMode="contain"
+            contentFit="contain"
+            cachePolicy="memory-disk"
+            transition={0}
           />
         ) : (
           <Text className="text-4xl font-extrabold text-slate-900">

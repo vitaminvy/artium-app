@@ -13,8 +13,7 @@ export type SidebarKey =
   | "salesRecord"
   | "testimonials"
   | "contact"
-  | "marketing"
-  | "more";
+  | "marketing";
 
 export type SidebarItem = {
   key: SidebarKey;
@@ -104,6 +103,8 @@ const ITEMS: SidebarItem[] = [
   //   trailing: "external",
   // },
 ];
+
+export type SidebarActionKey = SidebarKey | "logout";
 
 export function useSidebarItems() {
   return ITEMS;

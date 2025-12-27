@@ -49,7 +49,6 @@ export default function FeedScreen() {
     isMorePostsLoading,
     toggleLike,
     createReshare,
-    commentsByPost,
     addComment,
     addMomentPost,
   } = useFeed(user);

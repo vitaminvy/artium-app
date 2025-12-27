@@ -16,7 +16,10 @@ import UnderlineHome from "../../assets/headers/underline-home.svg";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import { useFocusEffect, useRoute } from "@react-navigation/native";
 import Sidebar from "../shared/components/Sidebar";
-import { useSidebarItems } from "../shared/hooks/useSidebar";
+import {
+  SidebarActionKey,
+  useSidebarItems,
+} from "../shared/hooks/useSidebar";
 
 import { useInventoryList } from "../domains/inventory/hooks/useInventoryList";
 import { VIEW_MODES } from "../domains/inventory/types";
@@ -26,10 +29,19 @@ import { BulkActions } from "../domains/inventory/components/list/BulkActions";
 import { InventoryEmptyState } from "../domains/inventory/components/list/InventoryEmptyState";
 import { FolderPickerModal } from "../domains/inventory/components/list/FolderPickerModal";
 import { Artwork } from "../domains/inventory/types";
+import { useLogout } from "../domains/auth/hooks/useLogout";
+import { LogoutConfirmModal } from "../domains/auth/components/LogoutConfirmModal";
 
 export default function InventoryScreen() {
   const { height: tabBarHeight, setHidden } = useTabBarVisibility();
   const items = useSidebarItems();
+  const {
+    logout,
+    loading: logoutLoading,
+    showConfirmModal,
+    onConfirmLogout,
+    onCancelLogout,
+  } = useLogout();
   const [headerHeight, setHeaderHeight] = useState(96);
   const route = useRoute<any>();
   const lastOffset = useRef(0);
@@ -449,8 +461,14 @@ export default function InventoryScreen() {
       <Sidebar
         visible={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        onSelect={(key) => {
+        onSelect={(key: SidebarActionKey) => {
           setSidebarOpen(false);
+
+          if (key === "logout") {
+            logout();
+            return;
+          }
+
           if (key === "inventory") return;
           if (key === "home") {
             if (navigation.popToTop) {
@@ -468,7 +486,6 @@ export default function InventoryScreen() {
             navigation.navigate("Events");
             return;
           }
-          console.log("Selected sidebar item:", key);
         }}
         topOffset={headerHeight}
         activeKey={activeKey}
@@ -519,6 +536,13 @@ export default function InventoryScreen() {
           }
         }}
         mode={pickerMode}
+      />
+
+      <LogoutConfirmModal
+        visible={showConfirmModal}
+        onConfirm={onConfirmLogout}
+        onCancel={onCancelLogout}
+        loading={logoutLoading}
       />
     </View>
   );

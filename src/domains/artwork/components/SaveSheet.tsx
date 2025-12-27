@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { View, Text, Pressable, Image, Keyboard } from "react-native";
+import { View, Text, Pressable, Keyboard } from "react-native";
+import { Image } from "expo-image";
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView, BottomSheetFooter, BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import type { BottomSheetBackdropProps, BottomSheetFooterProps } from "@gorhom/bottom-sheet";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -167,7 +168,9 @@ export default function SaveSheet({
                 <Image
                   source={{ uri: mb.cover }}
                   className="h-full w-full"
-                  resizeMode="cover"
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  transition={0}
                 />
               </View>
               <View className="flex-1">

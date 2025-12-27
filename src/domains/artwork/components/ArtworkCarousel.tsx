@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { View, Image, Dimensions, ViewStyle } from "react-native";
+import { View, Dimensions, ViewStyle } from "react-native";
+import { Image } from "expo-image";
 import Carousel from "react-native-reanimated-carousel";
 import Animated, {
   Extrapolate,
@@ -137,7 +138,9 @@ function CarouselItem({
         <Image
           source={{ uri: item }}
           style={{ width: "100%", height: "100%" }}
-          resizeMode="cover"
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={0}
           onLoadEnd={onImageLoad}
         />
       </View>

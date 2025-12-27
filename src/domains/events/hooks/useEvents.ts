@@ -306,7 +306,7 @@ export function useEvents(): UseEventsResult {
     // Optimistic Update
     setRsvpMap((prev) => ({ ...prev, [id]: status }));
     
-    if (currentUser?.uid) {
+    if (currentUser?.uid && status !== "none") {
         toggleEventRsvp(currentUser.uid, id, status).catch(err => {
             console.error("Failed to sync RSVP", err);
             // Revert on failure? For now silent fail or toast.
@@ -338,7 +338,6 @@ export function useEvents(): UseEventsResult {
     },
     getRsvpStatus,
     setRsvpStatus,
-    isMoreEventsLoading,
     hostingSortOptions: HOSTING_SORT_OPTIONS,
     hostingSort,
     setHostingSort,

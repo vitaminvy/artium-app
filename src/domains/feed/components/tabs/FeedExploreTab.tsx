@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, ListRenderItemInfo, View, ViewToken } from "react-native";
 import Animated from "react-native-reanimated";
+import { Image } from "expo-image";
 import { FeedPost } from "../../types";
 import FeedPostCard from "../cards/FeedPostCard";
 import FeedListSkeleton from "../ui/FeedListSkeleton";
@@ -40,35 +41,35 @@ export default function FeedExploreTab({
   const [avatarExpected, setAvatarExpected] = useState(0);
   const [avatarLoaded, setAvatarLoaded] = useState(0);
   const loadedAvatarIds = useRef<Set<string>>(new Set());
-  const wasActive = useRef(false);
   const avatarsReady = avatarExpected === 0 || avatarLoaded >= avatarExpected;
 
   // Clear active video when tab becomes inactive
   React.useEffect(() => {
     if (!isTabActive) {
       setActiveVideoId(null);
-      wasActive.current = false;
     }
   }, [isTabActive]);
 
   React.useEffect(() => {
     if (!isTabActive) return;
     const expectedIds = new Set(data.slice(0, 6).map((post) => post.id));
-
-    if (!wasActive.current) {
-      loadedAvatarIds.current = new Set();
-      setAvatarExpected(expectedIds.size);
-      setAvatarLoaded(0);
-      wasActive.current = true;
-      return;
-    }
-
     const retained = new Set(
       [...loadedAvatarIds.current].filter((id) => expectedIds.has(id))
     );
     loadedAvatarIds.current = retained;
     setAvatarExpected(expectedIds.size);
     setAvatarLoaded(retained.size);
+  }, [data, isTabActive]);
+
+  React.useEffect(() => {
+    if (!isTabActive) return;
+    const avatarUrls = data
+      .slice(0, 6)
+      .map((post) => post.author?.avatar)
+      .filter((uri): uri is string => typeof uri === "string" && uri.length > 0);
+    if (avatarUrls.length) {
+      Image.prefetch(avatarUrls);
+    }
   }, [data, isTabActive]);
 
   const onViewableItemsChanged = useCallback(

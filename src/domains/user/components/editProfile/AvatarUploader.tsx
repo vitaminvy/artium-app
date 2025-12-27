@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef } from "react";
-import { View, Text, Pressable, Image, Modal } from "react-native";
+import { View, Text, Pressable, Modal } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -57,7 +58,9 @@ export default function AvatarUploader({
           <Image
             source={imageSource}
             style={{ width: "100%", height: "100%" }}
-            resizeMode={value ? "cover" : "contain"}
+            contentFit={value ? "cover" : "contain"}
+            cachePolicy="memory-disk"
+            transition={0}
             onLoadEnd={notifyImageLoad}
             onError={notifyImageLoad}
           />
