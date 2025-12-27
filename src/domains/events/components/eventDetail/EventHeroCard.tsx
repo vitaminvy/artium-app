@@ -86,7 +86,7 @@ export default function EventHeroCard({
               source={{ uri: event.image }}
               className="h-56 w-full bg-slate-100"
               resizeMode="cover"
-              onLoadEnd={() => {
+              onLoad={() => {
                 setImageLoaded(true);
                 onImageLoad?.();
               }}

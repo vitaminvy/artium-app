@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -44,6 +44,7 @@ export default function EventDetailScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [heroImageLoaded, setHeroImageLoaded] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(initialHeaderHeight);
+  const currentImageRef = useRef<string>("");
 
   const fetchDetail = useCallback(
     async (showLoader: boolean) => {
@@ -62,7 +63,6 @@ export default function EventDetailScreen() {
       try {
         if (showLoader) setIsLoading(true);
         setLoadError(null);
-        setHeroImageLoaded(false);
 
         // Parallel fetch: Event Data, Guest Counts, Guest List (limited)
         const [eventResult, counts, guests] = await Promise.all([
@@ -83,6 +83,13 @@ export default function EventDetailScreen() {
           setLoadError("Event not found");
           if (showLoader) setIsLoading(false);
           return;
+        }
+
+        const nextImage = finalEvent.image ?? "";
+        if (!nextImage) {
+          setHeroImageLoaded(true);
+        } else if (currentImageRef.current !== nextImage) {
+          setHeroImageLoaded(false);
         }
 
         setEventItem(finalEvent);
@@ -124,6 +131,10 @@ export default function EventDetailScreen() {
   useEffect(() => {
     fetchDetail(true);
   }, [fetchDetail]);
+
+  useEffect(() => {
+    currentImageRef.current = eventItem?.image ?? "";
+  }, [eventItem?.image]);
 
   const [showGuests, setShowGuests] = useState(false);
   const [rsvpStatus, setRsvpStatus] = useState<RsvpStatus>(params?.initialRsvp ?? "none");
