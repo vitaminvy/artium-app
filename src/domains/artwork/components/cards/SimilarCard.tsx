@@ -3,6 +3,8 @@ import { View, Text, Pressable, ViewStyle } from "react-native";
 import { Image } from "expo-image";
 import { Artwork } from "../../../discover/types";
 
+const FALLBACK_AVATAR = require("../../../../../assets/logos/logo-light-mode.png");
+
 const cardShadow: ViewStyle = {
   shadowColor: "#000",
   shadowOffset: { width: 0, height: 10 },
@@ -33,15 +35,13 @@ export default function SimilarCard({ item, onPress }: SimilarCardProps) {
       <View className="px-3 py-3 gap-1">
         <View className="flex-row items-center gap-2">
           <View className="h-6 w-6 rounded-full bg-slate-200 overflow-hidden">
-            {item.artistAvatar ? (
-              <Image
-                source={{ uri: item.artistAvatar }}
-                className="h-full w-full"
-                contentFit="cover"
-                cachePolicy="memory-disk"
-                transition={0}
-              />
-            ) : null}
+            <Image
+              source={item.artistAvatar ? { uri: item.artistAvatar } : FALLBACK_AVATAR}
+              style={{ width: "100%", height: "100%" }}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={0}
+            />
           </View>
           <Text
             className="text-xs font-semibold text-slate-700"

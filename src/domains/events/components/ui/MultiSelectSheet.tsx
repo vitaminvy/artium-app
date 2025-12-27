@@ -37,6 +37,7 @@ type Props<T extends OptionBase> = {
   badgeTextColor?: string;
   maxBadges?: number;
   offset?: number;
+  hasError?: boolean;
 };
 
 export default function MultiSelectSheet<T extends OptionBase>({
@@ -58,6 +59,7 @@ export default function MultiSelectSheet<T extends OptionBase>({
   badgeTextColor = "#FFFFFF",
   maxBadges = 2,
   offset,
+  hasError = false,
 }: Props<T>) {
   const insets = useSafeAreaInsets();
   const { height, width } = useWindowDimensions();
@@ -126,7 +128,7 @@ export default function MultiSelectSheet<T extends OptionBase>({
             setOpen(true);
           }
         }}
-        className="flex-row items-center justify-between rounded-full border border-slate-200 bg-white px-4 py-3"
+        className={`flex-row items-center justify-between rounded-full border ${hasError ? "border-red-300" : "border-slate-200"} bg-white px-4 py-3`}
       >
         {showBadges ? (
           <View className="flex-1 flex-row flex-wrap items-center gap-2">
@@ -150,7 +152,7 @@ export default function MultiSelectSheet<T extends OptionBase>({
             ) : null}
           </View>
         ) : (
-          <Text className="text-[13px] font-semibold text-slate-800">
+          <Text className={`text-[13px] font-semibold ${hasError ? "text-red-500" : "text-slate-800"}`}>
             {displayLabel}
           </Text>
         )}
