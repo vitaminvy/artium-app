@@ -190,26 +190,33 @@ export function useEvents(): UseEventsResult {
   const loadInitial = useCallback(async () => {
     setIsInitialLoading(true);
     setIsHostingLoading(true);
-    try {
-        // Discover
+    const discoverPromise = (async () => {
+      try {
         const events = await fetchEventsPage(null);
         setDiscoverItems(events);
         recomputeTypes(events);
-
-        // Hosting
-        if (currentUser?.uid) {
-            const hostingRes = await getEventsByOrganizer(currentUser.uid, 50);
-            setHostingItems(hostingRes.events);
-        } else {
-            setHostingItems([]);
-        }
-    } catch (err) {
-        console.error("Failed to load initial events", err);
-        setError(err instanceof Error ? err : new Error("Failed to load"));
-    } finally {
+      } finally {
         setIsInitialLoading(false);
+      }
+    })();
+
+    const hostingPromise = (async () => {
+      try {
+        if (currentUser?.uid) {
+          const hostingRes = await getEventsByOrganizer(currentUser.uid, 50);
+          setHostingItems(hostingRes.events);
+        } else {
+          setHostingItems([]);
+        }
+      } catch (err) {
+        console.error("Failed to load hosting events", err);
+        setError(err instanceof Error ? err : new Error("Failed to load"));
+      } finally {
         setIsHostingLoading(false);
-    }
+      }
+    })();
+
+    await Promise.all([discoverPromise, hostingPromise]);
   }, [fetchEventsPage, recomputeTypes, currentUser?.uid]);
 
   const loadRsvps = useCallback(async () => {

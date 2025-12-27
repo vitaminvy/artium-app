@@ -4,6 +4,8 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { Artwork } from "../../types";
 
+const FALLBACK_AVATAR = require("../../../../../assets/logos/logo-light-mode.png");
+
 const cardShadow = {
   shadowColor: "#000",
   shadowOffset: { width: 0, height: 6 },
@@ -37,15 +39,13 @@ export default function MomentCard({
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-2">
             <View className="h-8 w-8 rounded-full bg-slate-200 overflow-hidden">
-              {item.artistAvatar ? (
-                <Image
-                  source={{ uri: item.artistAvatar }}
-                  className="h-full w-full"
-                  contentFit="cover"
-                  cachePolicy="memory-disk"
-                  transition={0}
-                />
-              ) : null}
+              <Image
+                source={item.artistAvatar ? { uri: item.artistAvatar } : FALLBACK_AVATAR}
+                style={{ width: "100%", height: "100%" }}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={0}
+              />
             </View>
             <View className="flex-row items-center gap-1">
               <Text className="text-sm font-semibold text-slate-800">
