@@ -6,6 +6,8 @@ import DiscoverScreen from "../../../screens/DiscoverScreen";
 import ArtworkDetailScreen from "../../../screens/ArtworkDetailScreen";
 import CheckoutScreen from "../../../screens/CheckoutScreen";
 import UserProfileScreen from "../../../screens/UserProfileScreen";
+import FeedDetailScreen from "../../../screens/FeedDetailScreen";
+import type { FeedPost } from "../../../domains/feed/types";
 import type { ArtworkDetail } from "../../../domains/artwork/types";
 
 export type DiscoverStackParamList = {
@@ -13,6 +15,7 @@ export type DiscoverStackParamList = {
   ArtworkDetail: { id: string };
   Checkout: { artwork?: ArtworkDetail };
   UserProfile: { userId: string };
+  MomentDetail: { post: FeedPost };
 };
 
 const Stack = createNativeStackNavigator<DiscoverStackParamList>();
@@ -24,6 +27,7 @@ export default function DiscoverStack() {
       <Stack.Screen name="ArtworkDetail" component={ArtworkDetailScreen} />
       <Stack.Screen name="Checkout" component={CheckoutScreen} />
       <Stack.Screen name="UserProfile" component={UserProfileScreen} />
+      <Stack.Screen name="MomentDetail" component={FeedDetailScreen} />
     </Stack.Navigator>
   );
 }

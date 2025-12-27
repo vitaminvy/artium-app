@@ -18,6 +18,7 @@ import DiscoverProfilesTab from "../domains/discover/components/tabs/DiscoverPro
 import DiscoverEventsTab from "../domains/discover/components/tabs/DiscoverEventsTab";
 import DiscoverMomentsTab from "../domains/discover/components/tabs/DiscoverMomentsTab";
 import DiscoverNearbyTab from "../domains/discover/components/tabs/DiscoverNearbyTab";
+import type { DiscoverMoment } from "../domains/discover/types";
 
 const TABS: { key: DiscoverTab; label: string }[] = [
   { key: "topPicks", label: "TOP PICKS" },
@@ -107,6 +108,10 @@ export default function DiscoverScreen() {
     }
 
     const onCardPress = isGuest ? handleRequireSignUp : undefined;
+    const onMomentPress = isGuest
+      ? handleRequireSignUp
+      : (moment: DiscoverMoment) =>
+          navigation.navigate("MomentDetail", { post: moment.post });
 
     switch (tab) {
       case "topPicks":
@@ -118,7 +123,7 @@ export default function DiscoverScreen() {
       case "events":
         return <DiscoverEventsTab data={events} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreEvents} isFetchingNextPage={isMoreEventsLoading} />;
       case "moments":
-        return <DiscoverMomentsTab data={moments} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreMoments} isFetchingNextPage={isMoreMomentsLoading} />;
+        return <DiscoverMomentsTab data={moments} onCardPress={onMomentPress} onScroll={handleScroll} onEndReached={loadMoreMoments} isFetchingNextPage={isMoreMomentsLoading} />;
       case "nearby":
         return (
           <DiscoverNearbyTab
