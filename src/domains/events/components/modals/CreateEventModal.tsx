@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Image, Keyboard, Modal, Pressable, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Keyboard, Modal, Pressable, Text, TextInput, View, type LayoutChangeEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
@@ -9,13 +9,21 @@ import type { EventFilterOption, TimeZoneOption } from "../../types";
 import { DEFAULT_TIME_ZONE_ID, TIME_ZONE_OPTIONS } from "../../constants.optimized";
 import SelectSheet from "../ui/SelectSheet.optimized";
 import MultiSelectSheet from "../ui/MultiSelectSheet";
-import Loader from "../../../../shared/components/Loader";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
 import { useProfileContext } from "@/domains/user/contexts/ProfileContext";
 
 const MAX_TITLE = 255;
 const MAX_VENUE = 255;
 const MAX_DESCRIPTION = 10000;
+type ErrorKey = "title" | "type" | "date" | "location" | "description" | "cover";
+const INITIAL_ERRORS: Record<ErrorKey, string> = {
+  title: "",
+  type: "",
+  date: "",
+  location: "",
+  description: "",
+  cover: "",
+};
 
 const getDefaultTimeZone = () =>
   TIME_ZONE_OPTIONS.find((option) => option.id === DEFAULT_TIME_ZONE_ID) ??
@@ -28,7 +36,7 @@ type Props = {
   visible: boolean;
   typeOptions: EventFilterOption[];
   onClose: () => void;
-  onCreate: (event: EventItem) => void;
+  onCreate: (event: EventItem) => Promise<boolean | void> | boolean | void;
 };
 
 export default function CreateEventModal({
@@ -45,6 +53,7 @@ export default function CreateEventModal({
   const venueRef = useRef<TextInput>(null);
   const websiteRef = useRef<TextInput>(null);
   const descriptionRef = useRef<TextInput>(null);
+  const scrollRef = useRef<KeyboardAwareScrollView>(null);
 
   // Store initial values to compare changes
   const initialStartDateRef = useRef<Date>(new Date());
@@ -66,16 +75,16 @@ export default function CreateEventModal({
   const [description, setDescription] = useState("");
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   // Validation errors
-  const [errors, setErrors] = useState({
-    title: "",
-    type: "",
-    location: "",
-    description: "",
-    cover: "",
-  });
+  const [errors, setErrors] = useState<Record<ErrorKey, string>>(() => ({ ...INITIAL_ERRORS }));
+  const fieldPositions = useRef<Partial<Record<ErrorKey, number>>>({});
+
+  const markDirty = useCallback(() => {
+    setHasChanges(true);
+  }, []);
 
   useEffect(() => {
     if (visible) {
@@ -107,19 +116,57 @@ export default function CreateEventModal({
       setDescription("");
       setCoverImage(null);
       setShowExitConfirm(false);
-      setErrors({
-        title: "",
-        type: "",
-        location: "",
-        description: "",
-        cover: "",
-      });
+      setErrors({ ...INITIAL_ERRORS });
+      setHasChanges(false);
+      setIsCreating(false);
+      fieldPositions.current = {};
     }
   }, [visible]);
 
   const filteredTypes = useMemo(
     () => typeOptions.filter((option) => option.id !== "all"),
     [typeOptions]
+  );
+
+  const registerFieldPosition = useCallback(
+    (key: ErrorKey) => (event: LayoutChangeEvent) => {
+      fieldPositions.current[key] = event.nativeEvent.layout.y;
+    },
+    []
+  );
+
+  const scrollToField = useCallback((key: ErrorKey) => {
+    const y = fieldPositions.current[key];
+    if (y === undefined) return;
+
+    const targetY = Math.max(y - 12, 0);
+    const node = scrollRef.current as any;
+    if (typeof node?.scrollToPosition === "function") {
+      node.scrollToPosition(0, targetY, true);
+    } else if (typeof node?.scrollTo === "function") {
+      node.scrollTo({ x: 0, y: targetY, animated: true });
+    }
+  }, []);
+
+  const focusField = useCallback(
+    (key: ErrorKey) => {
+      if (key === "title") {
+        titleRef.current?.focus();
+        return;
+      }
+      if (key === "location") {
+        if (locationMode === "inPerson") {
+          addressRef.current?.focus();
+        } else {
+          websiteRef.current?.focus();
+        }
+        return;
+      }
+      if (key === "description") {
+        descriptionRef.current?.focus();
+      }
+    },
+    [locationMode]
   );
 
   const handleStartDateChange = useCallback((date: Date) => {
@@ -130,22 +177,40 @@ export default function CreateEventModal({
       }
       return prevEnd;
     });
-  }, []);
+    setErrors((prev) => ({ ...prev, date: "" }));
+    markDirty();
+  }, [markDirty]);
 
   const handleEndDateChange = useCallback((date: Date) => {
     setEndDate(date);
-  }, []);
+    setErrors((prev) => ({ ...prev, date: "" }));
+    markDirty();
+  }, [markDirty]);
 
   // Memoized handlers for radio buttons to avoid recreating callbacks every render
-  const handleInPerson = useCallback(() => setLocationMode("inPerson"), []);
-  const handleOnline = useCallback(() => setLocationMode("online"), []);
+  const handleInPerson = useCallback(() => {
+    setLocationMode("inPerson");
+    setErrors((prev) => ({ ...prev, location: "" }));
+    markDirty();
+  }, [markDirty]);
+  const handleOnline = useCallback(() => {
+    setLocationMode("online");
+    setErrors((prev) => ({ ...prev, location: "" }));
+    markDirty();
+  }, [markDirty]);
   const handleVisibilityPublic = useCallback(
-    () => setVisibility("public"),
-    []
+    () => {
+      setVisibility("public");
+      markDirty();
+    },
+    [markDirty]
   );
   const handleVisibilityPrivate = useCallback(
-    () => setVisibility("private"),
-    []
+    () => {
+      setVisibility("private");
+      markDirty();
+    },
+    [markDirty]
   );
 
   const pickCoverImage = useCallback(async () => {
@@ -155,9 +220,11 @@ export default function CreateEventModal({
     });
     if (!result.canceled && result.assets?.length) {
       setCoverImage(result.assets[0].uri);
+      setErrors((prev) => ({ ...prev, cover: "" }));
+      markDirty();
     }
-  }, []);
-
+  }, [markDirty]);
+  
   const handleCloseAttempt = useCallback(() => {
     // Check directly if form has changes
     const hasTextChanges =
@@ -221,45 +288,61 @@ export default function CreateEventModal({
     endDate,
   ]);
 
+  const isCreateEnabled = canCreate && !isCreating;
+
   const validateForm = useCallback(() => {
-    const newErrors = {
-      title: "",
-      type: "",
-      location: "",
-      description: "",
-      cover: "",
+    const newErrors: Record<ErrorKey, string> = {
+      ...INITIAL_ERRORS,
     };
+    const missing: ErrorKey[] = [];
 
     if (!title.trim()) {
-      newErrors.title = "Event title is required";
+      newErrors.title = "Please enter an event title";
+      missing.push("title");
     }
     if (selectedTypes.length === 0) {
       newErrors.type = "Please select at least one event type";
+      missing.push("type");
+    }
+    if (endDate.getTime() < startDate.getTime()) {
+      newErrors.date = "End date must be after the start date";
+      missing.push("date");
     }
     if (locationMode === "inPerson" && !address.trim()) {
-      newErrors.location = "Address is required for in-person events";
+      newErrors.location = "Please add an address for in-person events";
+      missing.push("location");
     }
     if (locationMode === "online" && !websiteUrl.trim()) {
-      newErrors.location = "Website URL is required for online events";
+      newErrors.location = "Please add a website URL for online events";
+      missing.push("location");
     }
     if (!description.trim()) {
-      newErrors.description = "Event description is required";
+      newErrors.description = "Please add a short description";
+      missing.push("description");
     }
     if (!coverImage) {
-      newErrors.cover = "Cover image is required";
+      newErrors.cover = "Please upload a cover image";
+      missing.push("cover");
     }
 
     setErrors(newErrors);
-    return Object.values(newErrors).every((error) => !error);
-  }, [title, selectedTypes, locationMode, address, websiteUrl, description, coverImage]);
+    return { isValid: missing.length === 0, missing };
+  }, [title, selectedTypes, locationMode, address, websiteUrl, description, coverImage, endDate, startDate]);
 
   const handleCreate = useCallback(async () => {
-    if (!canCreate || !validateForm()) return;
+    if (!isCreateEnabled) return;
+
+    const { isValid, missing } = validateForm();
+    if (!isValid) {
+      const firstErrorKey = missing.find(Boolean);
+      if (firstErrorKey) {
+        scrollToField(firstErrorKey);
+        focusField(firstErrorKey);
+      }
+      return;
+    }
 
     setIsCreating(true);
-
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 800));
 
     const now = new Date().toISOString();
     const typeLabels = selectedTypes.map((item) => item.label);
@@ -305,12 +388,20 @@ export default function CreateEventModal({
       },
     };
 
-    onCreate(newEvent as EventItem);
-    setIsCreating(false);
-    onClose();
+    try {
+      const result = await onCreate(newEvent as EventItem);
+      if (result !== false) {
+        onClose();
+        setHasChanges(false);
+      }
+    } finally {
+      setIsCreating(false);
+    }
   }, [
-    canCreate,
+    isCreateEnabled,
     validateForm,
+    scrollToField,
+    focusField,
     selectedTypes,
     locationMode,
     websiteUrl,
@@ -342,17 +433,6 @@ export default function CreateEventModal({
           className="rounded-3xl bg-white p-5 shadow-2xl"
           style={{ maxHeight: "90%" }}
         >
-          {isCreating && (
-            <View
-              className="absolute inset-0 bg-white/90 z-50 rounded-3xl"
-              style={{
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Loader color="#0F172A" backgroundColor="transparent" />
-            </View>
-          )}
           <View className="flex-row items-center justify-between mb-2">
             <View className="w-10" />
             <Text className="text-lg font-semibold text-slate-900">
@@ -364,6 +444,7 @@ export default function CreateEventModal({
           </View>
 
           <KeyboardAwareScrollView
+            ref={scrollRef}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             extraScrollHeight={32}
@@ -372,7 +453,7 @@ export default function CreateEventModal({
             contentContainerStyle={{ paddingBottom: 12 }}
           >
             <View className="gap-4">
-              <View>
+              <View onLayout={registerFieldPosition("title")}>
                 <Text className="text-[11px] font-semibold text-slate-500">
                   EVENT TITLE <Text className="text-red-500">*</Text>
                 </Text>
@@ -382,6 +463,7 @@ export default function CreateEventModal({
                     value={title}
                     onChangeText={(text) => {
                       setTitle(text);
+                      markDirty();
                       if (errors.title) setErrors((prev) => ({ ...prev, title: "" }));
                     }}
                     placeholder="Enter event title"
@@ -407,7 +489,7 @@ export default function CreateEventModal({
                 ) : null}
               </View>
 
-              <View>
+              <View onLayout={registerFieldPosition("type")}>
                 <Text className="text-[11px] font-semibold text-slate-500">
                   TYPE <Text className="text-red-500">*</Text>
                 </Text>
@@ -415,11 +497,19 @@ export default function CreateEventModal({
                   <MultiSelectSheet
                     value={selectedTypes}
                     options={filteredTypes}
-                    onChange={setSelectedTypes}
+                    onChange={(next) => {
+                      setSelectedTypes(next);
+                      markDirty();
+                      if (errors.type) setErrors((prev) => ({ ...prev, type: "" }));
+                    }}
                     placeholder="Select event type"
                     searchable
+                    hasError={!!errors.type}
                   />
                 </View>
+                {errors.type ? (
+                  <Text className="mt-1 text-[11px] text-red-500">{errors.type}</Text>
+                ) : null}
               </View>
 
               <View>
@@ -429,11 +519,14 @@ export default function CreateEventModal({
                 <DateTimeField value={startDate} onChange={handleStartDateChange} />
               </View>
 
-              <View>
+              <View onLayout={registerFieldPosition("date")}>
                 <Text className="text-[11px] font-semibold text-slate-500">
                   END DATE <Text className="text-red-500">*</Text>
                 </Text>
-                <DateTimeField value={endDate} onChange={handleEndDateChange} />
+                <DateTimeField value={endDate} onChange={handleEndDateChange} hasError={!!errors.date} />
+                {errors.date ? (
+                  <Text className="mt-1 text-[11px] text-red-500">{errors.date}</Text>
+                ) : null}
               </View>
 
               <View>
@@ -444,7 +537,10 @@ export default function CreateEventModal({
                   <SelectSheet
                     value={timeZone}
                     options={TIME_ZONE_OPTIONS}
-                    onChange={setTimeZone}
+                    onChange={(value) => {
+                      setTimeZone(value);
+                      markDirty();
+                    }}
                     searchable
                     searchPlaceholder="Search time zone"
                     offset={4}
@@ -452,7 +548,7 @@ export default function CreateEventModal({
                 </View>
               </View>
 
-              <View>
+              <View onLayout={registerFieldPosition("location")}>
                 <Text className="text-[11px] font-semibold text-slate-500">
                   LOCATION <Text className="text-red-500">*</Text>
                 </Text>
@@ -472,11 +568,15 @@ export default function CreateEventModal({
 
               {locationMode === "inPerson" ? (
                 <View className="gap-3">
-                  <View className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                  <View className={`rounded-2xl border ${errors.location ? "border-red-300" : "border-slate-200"} bg-white px-4 py-3`}>
                     <TextInput
                       ref={addressRef}
                       value={address}
-                      onChangeText={setAddress}
+                      onChangeText={(text) => {
+                        setAddress(text);
+                        markDirty();
+                        if (errors.location) setErrors((prev) => ({ ...prev, location: "" }));
+                      }}
                       placeholder="Search address"
                       placeholderTextColor="#94A3B8"
                       className="text-[14px] text-slate-900"
@@ -490,7 +590,10 @@ export default function CreateEventModal({
                     <TextInput
                       ref={venueRef}
                       value={venueDetails}
-                      onChangeText={setVenueDetails}
+                      onChangeText={(text) => {
+                        setVenueDetails(text);
+                        markDirty();
+                      }}
                       placeholder="Venue details (Optional)"
                       placeholderTextColor="#94A3B8"
                       maxLength={MAX_VENUE}
@@ -506,11 +609,15 @@ export default function CreateEventModal({
                   </View>
                 </View>
               ) : (
-                <View className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                <View className={`rounded-2xl border ${errors.location ? "border-red-300" : "border-slate-200"} bg-white px-4 py-3`}>
                   <TextInput
                     ref={websiteRef}
                     value={websiteUrl}
-                    onChangeText={setWebsiteUrl}
+                    onChangeText={(text) => {
+                      setWebsiteUrl(text);
+                      markDirty();
+                      if (errors.location) setErrors((prev) => ({ ...prev, location: "" }));
+                    }}
                     placeholder="https://www.example.com"
                     placeholderTextColor="#94A3B8"
                     className="text-[14px] text-slate-900"
@@ -522,6 +629,9 @@ export default function CreateEventModal({
                   />
                 </View>
               )}
+              {errors.location ? (
+                <Text className="mt-1 text-[11px] text-red-500">{errors.location}</Text>
+              ) : null}
 
               <View>
                 <Text className="text-[11px] font-semibold text-slate-500">
@@ -541,15 +651,19 @@ export default function CreateEventModal({
                 </View>
               </View>
 
-              <View>
+              <View onLayout={registerFieldPosition("description")}>
                 <Text className="text-[11px] font-semibold text-slate-500">
                   DESCRIPTION <Text className="text-red-500">*</Text>
                 </Text>
-                <View className="mt-2 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                <View className={`mt-2 rounded-2xl border ${errors.description ? "border-red-300" : "border-slate-200"} bg-white px-4 py-3`}>
                   <TextInput
                     ref={descriptionRef}
                     value={description}
-                    onChangeText={setDescription}
+                    onChangeText={(text) => {
+                      setDescription(text);
+                      markDirty();
+                      if (errors.description) setErrors((prev) => ({ ...prev, description: "" }));
+                    }}
                     placeholder="Tell people a little more about your event"
                     placeholderTextColor="#94A3B8"
                     maxLength={MAX_DESCRIPTION}
@@ -564,15 +678,18 @@ export default function CreateEventModal({
                     {description.length}/{MAX_DESCRIPTION}
                   </Text>
                 </View>
+                {errors.description ? (
+                  <Text className="mt-1 text-[11px] text-red-500">{errors.description}</Text>
+                ) : null}
               </View>
 
-              <View>
+              <View onLayout={registerFieldPosition("cover")}>
                 <Text className="text-[11px] font-semibold text-slate-500">
                   COVER IMAGE <Text className="text-red-500">*</Text>
                 </Text>
                 <Pressable
                   onPress={pickCoverImage}
-                  className="mt-2 rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-4 items-center"
+                  className={`mt-2 rounded-2xl ${errors.cover ? "border border-red-300" : "border border-dashed border-slate-300"} bg-white px-4 py-4 items-center`}
                 >
                   {coverImage ? (
                     <View className="w-full">
@@ -609,6 +726,9 @@ export default function CreateEventModal({
                     </>
                   )}
                 </Pressable>
+                {errors.cover ? (
+                  <Text className="mt-1 text-[11px] text-red-500">{errors.cover}</Text>
+                ) : null}
               </View>
             </View>
           </KeyboardAwareScrollView>
@@ -624,13 +744,16 @@ export default function CreateEventModal({
             </Pressable>
             <Pressable
               onPress={handleCreate}
-              disabled={!canCreate}
-              className="flex-1 rounded-full py-3 items-center"
-              style={{ backgroundColor: canCreate ? "#0B73FF" : "#E2E8F0" }}
+              disabled={!isCreateEnabled}
+              className="flex-1 rounded-full py-3 items-center flex-row justify-center gap-2"
+              style={{ backgroundColor: isCreateEnabled || isCreating ? "#0B73FF" : "#E2E8F0" }}
             >
+              {isCreating ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : null}
               <Text
                 className="text-[14px] font-semibold"
-                style={{ color: canCreate ? "#FFFFFF" : "#94A3B8" }}
+                style={{ color: isCreateEnabled || isCreating ? "#FFFFFF" : "#94A3B8" }}
               >
                 Create
               </Text>
@@ -721,16 +844,17 @@ const RadioOption = React.memo(({ label, selected, onPress }: RadioProps) => {
 type DateTimeFieldProps = {
   value: Date;
   onChange: (date: Date) => void;
+  hasError?: boolean;
 };
 
-function DateTimeField({ value, onChange }: DateTimeFieldProps) {
+function DateTimeField({ value, onChange, hasError = false }: DateTimeFieldProps) {
   const [pickerVisible, setPickerVisible] = useState(false);
 
   return (
     <>
       <Pressable
         onPress={() => setPickerVisible(true)}
-        className="mt-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 flex-row items-center"
+        className={`mt-2 rounded-2xl border ${hasError ? "border-red-300" : "border-slate-200"} bg-white px-4 py-3 flex-row items-center`}
       >
         <Ionicons name="calendar-outline" size={16} color="#0F172A" />
         <Text className="ml-3 text-[14px] text-slate-900">
