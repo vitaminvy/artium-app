@@ -159,7 +159,7 @@ export function useDiscover(): UseDiscoverResult {
         return {
           id: doc.id,
           name: data.displayName,
-          avatar: data.photoURL,
+          avatar: data.avatarUri || data.avatar || data.photoURL || "",
           location: "From Firestore",
           artworks: [],
         } as ArtistProfile;
@@ -236,4 +236,3 @@ export function useDiscover(): UseDiscoverResult {
     hasMoreEvents,
   };
 }
-

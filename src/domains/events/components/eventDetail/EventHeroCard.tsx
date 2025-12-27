@@ -11,6 +11,7 @@ type Props = {
   initialRsvp?: RsvpStatus;
   rsvp?: RsvpStatus;
   onChangeRsvp?: (status: RsvpStatus) => void;
+  onImageLoad?: () => void;
 };
 
 const RSVP_META: Record<
@@ -30,10 +31,13 @@ export default function EventHeroCard({
   initialRsvp = "none",
   rsvp,
   onChangeRsvp,
+  onImageLoad,
 }: Props) {
   const [localRsvp, setLocalRsvp] = useState<RsvpStatus>(initialRsvp);
   const [openMenu, setOpenMenu] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
+  const hasImage = typeof event.image === "string" && event.image.trim().length > 0;
+  const [imageLoaded, setImageLoaded] = useState(!hasImage);
 
   // Keep local state in sync with controlled prop or updated initial value
   useEffect(() => {
@@ -43,6 +47,15 @@ export default function EventHeroCard({
       setLocalRsvp(initialRsvp);
     }
   }, [rsvp, initialRsvp]);
+
+  useEffect(() => {
+    if (!hasImage) {
+      setImageLoaded(true);
+      onImageLoad?.();
+    } else {
+      setImageLoaded(false);
+    }
+  }, [hasImage, event.image, onImageLoad]);
 
   const displayedRsvp = rsvp ?? localRsvp;
 
@@ -65,98 +78,123 @@ export default function EventHeroCard({
   };
 
   return (
-    <View className="rounded-3xl bg-white border border-slate-200 overflow-hidden">
-      <View className="relative">
-        <Image
-          source={{ uri: event.image }}
-          className="h-56 w-full bg-slate-100"
-          resizeMode="cover"
-        />
-        <View className="absolute top-3 right-3 bg-white rounded-2xl px-2 py-2 items-center shadow-sm">
-          <View className="rounded-full bg-[#0B73FF] px-2 py-0.5">
-            <Text className="text-[11px] font-semibold text-white">{month}</Text>
-          </View>
-          <Text className="mt-1 text-xl font-extrabold text-[#0B1223] leading-6">
-            {day}
-          </Text>
-        </View>
-      </View>
-
-      <View className="px-4 py-4 gap-3">
-        {event.eventType ? (
-          <View className="self-start rounded-full bg-slate-100 px-3 py-1">
-            <Text className="text-[11px] font-semibold text-slate-700 uppercase">
-              {event.eventType}
+    <View className="rounded-3xl bg-white border border-slate-200 overflow-hidden relative">
+      <View style={{ opacity: imageLoaded ? 1 : 0 }}>
+        <View className="relative">
+          {hasImage ? (
+            <Image
+              source={{ uri: event.image }}
+              className="h-56 w-full bg-slate-100"
+              resizeMode="cover"
+              onLoadEnd={() => {
+                setImageLoaded(true);
+                onImageLoad?.();
+              }}
+              onError={() => {
+                setImageLoaded(true);
+                onImageLoad?.();
+              }}
+            />
+          ) : (
+            <View className="h-56 w-full bg-slate-200" />
+          )}
+          <View className="absolute top-3 right-3 bg-white rounded-2xl px-2 py-2 items-center shadow-sm">
+            <View className="rounded-full bg-[#0B73FF] px-2 py-0.5">
+              <Text className="text-[11px] font-semibold text-white">{month}</Text>
+            </View>
+            <Text className="mt-1 text-xl font-extrabold text-[#0B1223] leading-6">
+              {day}
             </Text>
           </View>
-        ) : null}
+        </View>
 
-        <Text className="text-lg font-semibold text-slate-900">{event.title}</Text>
+        <View className="px-4 py-4 gap-3">
+          {event.eventType ? (
+            <View className="self-start rounded-full bg-slate-100 px-3 py-1">
+              <Text className="text-[11px] font-semibold text-slate-700 uppercase">
+                {event.eventType}
+              </Text>
+            </View>
+          ) : null}
 
-        <View className="flex-row items-center gap-2">
-          <Pressable
-            className="flex-1 flex-row items-center justify-center gap-2 px-4 py-3 rounded-full border"
-            style={{
-              backgroundColor: RSVP_META[displayedRsvp].bg,
-              borderColor:
-                displayedRsvp === "none" ? "#E2E8F0" : RSVP_META[displayedRsvp].bg,
-            }}
-            onPress={() => setOpenMenu((prev) => !prev)}
-          >
-            {displayedRsvp !== "none" ? (
+          <Text className="text-lg font-semibold text-slate-900">{event.title}</Text>
+
+          <View className="flex-row items-center gap-2">
+            <Pressable
+              className="flex-1 flex-row items-center justify-center gap-2 px-4 py-3 rounded-full border"
+              style={{
+                backgroundColor: RSVP_META[displayedRsvp].bg,
+                borderColor:
+                  displayedRsvp === "none" ? "#E2E8F0" : RSVP_META[displayedRsvp].bg,
+              }}
+              onPress={() => setOpenMenu((prev) => !prev)}
+            >
+              {displayedRsvp !== "none" ? (
+                <Ionicons
+                  name={RSVP_META[displayedRsvp].icon}
+                  size={16}
+                  color={RSVP_META[displayedRsvp].color}
+                />
+              ) : null}
+              <Text
+                className="text-xs font-semibold"
+                style={{ color: RSVP_META[displayedRsvp].color }}
+              >
+                {RSVP_META[displayedRsvp].label}
+              </Text>
               <Ionicons
-                name={RSVP_META[displayedRsvp].icon}
-                size={16}
+                name="chevron-down-outline"
+                size={14}
                 color={RSVP_META[displayedRsvp].color}
               />
-            ) : null}
-            <Text
-              className="text-xs font-semibold"
-              style={{ color: RSVP_META[displayedRsvp].color }}
+            </Pressable>
+
+            <Pressable
+              className="h-11 w-11 rounded-full border border-slate-200 items-center justify-center active:opacity-90"
+              onPress={() => setShowEmail(true)}
             >
-              {RSVP_META[displayedRsvp].label}
-            </Text>
-            <Ionicons
-              name="chevron-down-outline"
-              size={14}
-              color={RSVP_META[displayedRsvp].color}
-            />
-          </Pressable>
-
-          <Pressable
-            className="h-11 w-11 rounded-full border border-slate-200 items-center justify-center active:opacity-90"
-            onPress={() => setShowEmail(true)}
-          >
-            <Ionicons name="mail-outline" size={18} color="#0F172A" />
-          </Pressable>
-          <Pressable className="h-11 w-11 rounded-full border border-slate-200 items-center justify-center active:opacity-90">
-            <Ionicons name="share-outline" size={18} color="#0F172A" />
-          </Pressable>
-        </View>
-
-        {openMenu ? (
-          <View className="bg-white rounded-2xl border border-slate-200 shadow-lg">
-            {RSVP_OPTIONS.map((status, idx) => (
-              <Pressable
-                key={status}
-                className={`px-4 py-3 flex-row items-center gap-2 ${
-                  idx < RSVP_OPTIONS.length - 1 ? "border-b border-slate-100" : ""
-                }`}
-                onPress={() => handleSelect(status)}
-              >
-                <Ionicons
-                  name={RSVP_META[status].icon}
-                  size={18}
-                  color={RSVP_META[status].color}
-                />
-                <Text className="text-sm font-semibold text-slate-900">
-                  {RSVP_META[status].label}
-                </Text>
-              </Pressable>
-            ))}
+              <Ionicons name="mail-outline" size={18} color="#0F172A" />
+            </Pressable>
+            <Pressable className="h-11 w-11 rounded-full border border-slate-200 items-center justify-center active:opacity-90">
+              <Ionicons name="share-outline" size={18} color="#0F172A" />
+            </Pressable>
           </View>
-        ) : null}
+
+          {openMenu ? (
+            <View className="bg-white rounded-2xl border border-slate-200 shadow-lg">
+              {RSVP_OPTIONS.map((status, idx) => (
+                <Pressable
+                  key={status}
+                  className={`px-4 py-3 flex-row items-center gap-2 ${
+                    idx < RSVP_OPTIONS.length - 1 ? "border-b border-slate-100" : ""
+                  }`}
+                  onPress={() => handleSelect(status)}
+                >
+                  <Ionicons
+                    name={RSVP_META[status].icon}
+                    size={18}
+                    color={RSVP_META[status].color}
+                  />
+                  <Text className="text-sm font-semibold text-slate-900">
+                    {RSVP_META[status].label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+        </View>
       </View>
+
+      {!imageLoaded ? (
+        <View className="absolute inset-0 bg-white animate-pulse">
+          <View className="h-56 w-full bg-slate-200" />
+          <View className="px-4 py-4 gap-3">
+            <View className="h-4 w-20 rounded bg-slate-200" />
+            <View className="h-6 w-52 rounded bg-slate-200" />
+            <View className="h-10 rounded-full bg-slate-200" />
+          </View>
+        </View>
+      ) : null}
 
       <EventEmailModal
         visible={showEmail}

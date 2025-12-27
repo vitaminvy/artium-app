@@ -11,6 +11,7 @@ import ChangeLocationSheet from "../domains/discover/components/sheets/ChangeLoc
 import Loader from "../shared/components/Loader";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
+import { useProfileContext } from "../domains/user/contexts/ProfileContext";
 
 // Import Tabs
 import DiscoverArtworksTab from "../domains/discover/components/tabs/DiscoverArtworksTab";
@@ -31,6 +32,7 @@ const TABS: { key: DiscoverTab; label: string }[] = [
 export default function DiscoverScreen() {
   const navigation = useNavigation<any>();
   const { status } = useAuth();
+  const { isFollowing, toggleFollow } = useProfileContext();
   const {
     tab,
     setTab,
@@ -114,7 +116,17 @@ export default function DiscoverScreen() {
       case "artworks":
         return <DiscoverArtworksTab data={artworks} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreArtworks} isFetchingNextPage={isMoreArtworksLoading} />;
       case "profiles":
-        return <DiscoverProfilesTab data={profiles} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreProfiles} isFetchingNextPage={isMoreProfilesLoading} />;
+        return (
+          <DiscoverProfilesTab
+            data={profiles}
+            onCardPress={onCardPress}
+            onScroll={handleScroll}
+            onEndReached={loadMoreProfiles}
+            isFetchingNextPage={isMoreProfilesLoading}
+            isFollowing={isFollowing}
+            onToggleFollow={toggleFollow}
+          />
+        );
       case "events":
         return <DiscoverEventsTab data={events} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreEvents} isFetchingNextPage={isMoreEventsLoading} />;
       case "moments":

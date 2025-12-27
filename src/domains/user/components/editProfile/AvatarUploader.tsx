@@ -1,5 +1,6 @@
-import React from "react";
-import { View, Text, Pressable, Image, Modal } from "react-native";
+import React, { useCallback, useEffect, useRef } from "react";
+import { View, Text, Pressable, Modal } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -7,13 +8,40 @@ type Props = {
   value?: string | null;
   onPick?: () => void;
   onClear?: () => void;
+  onImageLoad?: () => void;
 };
 
-export default function AvatarUploader({ value, onPick, onClear }: Props) {
+export default function AvatarUploader({
+  value,
+  onPick,
+  onClear,
+  onImageLoad,
+}: Props) {
   const insets = useSafeAreaInsets();
   const [sheetVisible, setSheetVisible] = React.useState(false);
   const fallbackLogo = require("../../../../../assets/logos/logo-light-mode.png");
   const imageSource = value ? { uri: value } : fallbackLogo;
+  const notifiedRef = useRef(false);
+  const lastValueRef = useRef<string | null | undefined>(value);
+
+  useEffect(() => {
+    if (lastValueRef.current !== value) {
+      notifiedRef.current = false;
+      lastValueRef.current = value;
+    }
+  }, [value]);
+
+  const notifyImageLoad = useCallback(() => {
+    if (!onImageLoad || notifiedRef.current) return;
+    notifiedRef.current = true;
+    onImageLoad();
+  }, [onImageLoad]);
+
+  useEffect(() => {
+    if (!value) {
+      notifyImageLoad();
+    }
+  }, [value, notifyImageLoad]);
 
   return (
     <View className="mb-6">
@@ -30,7 +58,11 @@ export default function AvatarUploader({ value, onPick, onClear }: Props) {
           <Image
             source={imageSource}
             style={{ width: "100%", height: "100%" }}
-            resizeMode={value ? "cover" : "contain"}
+            contentFit={value ? "cover" : "contain"}
+            cachePolicy="memory-disk"
+            transition={0}
+            onLoadEnd={notifyImageLoad}
+            onError={notifyImageLoad}
           />
           <View className="absolute bottom-1 right-1 h-8 w-8 rounded-full bg-white items-center justify-center shadow-sm">
             <Ionicons name="pencil" size={16} color="#0F172A" />

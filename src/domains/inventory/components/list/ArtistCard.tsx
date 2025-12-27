@@ -1,5 +1,6 @@
 import React from "react";
-import { Image, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { Artist } from "../../types";
 
@@ -37,8 +38,10 @@ export function ArtistCard({ item, variant = "list", width, onPress }: Props) {
         <View className="h-20 w-20 rounded-full overflow-hidden bg-slate-100 mb-3">
           <Image
             source={{ uri: item.avatar }}
-            resizeMode="cover"
             style={{ height: "100%", width: "100%" }}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={0}
           />
         </View>
         <Text className="text-base font-semibold text-slate-900 text-center">
@@ -60,8 +63,10 @@ export function ArtistCard({ item, variant = "list", width, onPress }: Props) {
       <View className="h-14 w-14 rounded-full overflow-hidden bg-slate-100">
         <Image
           source={{ uri: item.avatar }}
-          resizeMode="cover"
           style={{ height: "100%", width: "100%" }}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={0}
         />
       </View>
       <View className="flex-1">
