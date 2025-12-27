@@ -8,6 +8,7 @@ import { useHome } from "../domains/home/hooks/useHome";
 import HomeFollowingCard from "../domains/home/components/cards/HomeFollowingCard";
 import { useProfileContext } from "../domains/user/contexts/ProfileContext";
 import type { HomeFollowingProfile } from "../domains/home/types";
+import { useAuth } from "../domains/auth/contexts/AuthContext";
 
 export default function PopularArtistsScreen() {
   const navigation = useNavigation<any>();
@@ -15,6 +16,7 @@ export default function PopularArtistsScreen() {
   const { width } = useWindowDimensions();
   const { popularArtists } = useHome();
   const { isFollowing, toggleFollow } = useProfileContext();
+  const { currentUser } = useAuth();
   const cardWidth = Math.round((width - 16 * 2 - 12) / 2);
 
   const renderItem = useCallback(
@@ -50,7 +52,7 @@ export default function PopularArtistsScreen() {
       </View>
 
       <FlatList
-        data={popularArtists}
+        data={popularArtists.filter((item) => item.id !== currentUser?.uid)}
         keyExtractor={keyExtractor}
         numColumns={2}
         initialNumToRender={8}

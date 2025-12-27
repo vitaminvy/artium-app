@@ -38,6 +38,7 @@ import ArtworkCard from "../domains/discover/components/cards/ArtworkCard";
 import type { Artwork } from "../domains/discover/types";
 import { useLogout } from "../domains/auth/hooks/useLogout";
 import { LogoutConfirmModal } from "../domains/auth/components/LogoutConfirmModal";
+import { useAuth } from "../domains/auth/contexts/AuthContext";
 
 type HomeScreenNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<HomeStackParamList, "HomeMain">,
@@ -74,6 +75,7 @@ export default function HomeScreen() {
     onConfirmLogout,
     onCancelLogout,
   } = useLogout();
+  const { currentUser } = useAuth();
   const highlightCardWidth = Math.min(320, Math.round(width * 0.72));
   const highlightCardHeight = Math.round(highlightCardWidth * 0.55);
   const sellCardWidth = Math.round((width - 16 * 2 - 12) / 2);
@@ -251,7 +253,7 @@ export default function HomeScreen() {
             onPressAction={handleSeeAllPopular}
           />
           <FlatList
-            data={following}
+            data={following.filter((item) => item.id !== currentUser?.uid)}
             keyExtractor={(item) => item.id}
             renderItem={({ item }: ListRenderItemInfo<HomeFollowingProfile>) => (
               <View style={{ width: followingCardWidth }}>
