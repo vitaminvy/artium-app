@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,6 +23,7 @@ import type { EventItem } from "../domains/discover/types";
 import type { EventDetail } from "../domains/events/types";
 import { getEventById, fetchEventGuestCounts, fetchEventGuests } from "../domains/discover/services/eventService";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
+import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 
 type NavigationProp = NativeStackNavigationProp<HomeStackParamList, "EventDetail">;
 type RsvpStatus = "none" | "going" | "maybe" | "notGoing";
@@ -31,6 +32,7 @@ export default function EventDetailScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute();
   const insets = useSafeAreaInsets();
+  const { setHidden } = useTabBarVisibility();
   const initialHeaderHeight = Math.max(insets.top + 60, 60);
   const params = route.params as
     | { id?: string; initialRsvp?: RsvpStatus; onRsvpChange?: (status: RsvpStatus) => void; event?: EventItem }
@@ -42,7 +44,6 @@ export default function EventDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [heroImageLoaded, setHeroImageLoaded] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(initialHeaderHeight);
 
   const fetchDetail = useCallback(
@@ -62,7 +63,6 @@ export default function EventDetailScreen() {
       try {
         if (showLoader) setIsLoading(true);
         setLoadError(null);
-        setHeroImageLoaded(false);
 
         // Parallel fetch: Event Data, Guest Counts, Guest List (limited)
         const [eventResult, counts, guests] = await Promise.all([
@@ -124,6 +124,13 @@ export default function EventDetailScreen() {
   useEffect(() => {
     fetchDetail(true);
   }, [fetchDetail]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setHidden(true);
+      return () => setHidden(false);
+    }, [setHidden])
+  );
 
   const [showGuests, setShowGuests] = useState(false);
   const [rsvpStatus, setRsvpStatus] = useState<RsvpStatus>(params?.initialRsvp ?? "none");
@@ -229,7 +236,6 @@ export default function EventDetailScreen() {
           initialRsvp={rsvpStatus}
           rsvp={rsvpStatus}
           onChangeRsvp={handleRsvpChange}
-          onImageLoad={() => setHeroImageLoaded(true)}
         />
 
         {detail ? <OverviewCard detail={detail} /> : null}
@@ -271,16 +277,6 @@ export default function EventDetailScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
-
-      {!heroImageLoaded ? (
-        <View
-          className="absolute left-0 right-0 bottom-0 bg-white"
-          style={{ top: headerHeight, zIndex: 1 }}
-          pointerEvents="auto"
-        >
-          <EventDetailSkeleton />
-        </View>
-      ) : null}
     </View>
   );
 }
