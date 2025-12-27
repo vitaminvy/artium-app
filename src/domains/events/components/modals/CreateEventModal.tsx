@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Keyboard, Modal, Pressable, Text, TextInput, View } from "react-native";
-import { Image } from "expo-image";
+import { Image, Keyboard, Modal, Pressable, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
@@ -528,9 +527,7 @@ export default function CreateEventModal({
                       <Image
                         source={{ uri: coverImage }}
                         className="w-full h-40 rounded-2xl"
-                        contentFit="cover"
-                        cachePolicy="memory-disk"
-                        transition={0}
+                        resizeMode="cover"
                       />
                       <View className="mt-3 rounded-full border border-slate-200 px-4 py-2 self-center">
                         <Text className="text-[12px] font-semibold text-slate-700">

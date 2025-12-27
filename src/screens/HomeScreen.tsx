@@ -36,7 +36,6 @@ import {
 } from "../domains/home/types";
 import ArtworkCard from "../domains/discover/components/cards/ArtworkCard";
 import type { Artwork } from "../domains/discover/types";
-import Loader from "../shared/components/Loader";
 import { useLogout } from "../domains/auth/hooks/useLogout";
 import { LogoutConfirmModal } from "../domains/auth/components/LogoutConfirmModal";
 
@@ -153,9 +152,13 @@ export default function HomeScreen() {
         underlineSource={UnderlineHome}
       />
       {isLoading ? (
-        <View className="flex-1 justify-center items-center">
-          <Loader />
-        </View>
+        <HomeSkeleton
+          highlightCardWidth={highlightCardWidth}
+          highlightCardHeight={highlightCardHeight}
+          sellCardWidth={sellCardWidth}
+          sellCardHeight={sellCardHeight}
+          followingCardWidth={followingCardWidth}
+        />
       ) : error ? (
         <View className="flex-1 justify-center items-center p-4">
           <Text className="text-lg text-red-500 text-center">
@@ -354,3 +357,116 @@ const cardShadow = {
   shadowRadius: 10,
   elevation: 4,
 };
+
+function HomeSkeleton({
+  highlightCardWidth,
+  highlightCardHeight,
+  sellCardWidth,
+  sellCardHeight,
+  followingCardWidth,
+}: {
+  highlightCardWidth: number;
+  highlightCardHeight: number;
+  sellCardWidth: number;
+  sellCardHeight: number;
+  followingCardWidth: number;
+}) {
+  return (
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: 100 }}
+    >
+      <View className="px-4 pt-4 animate-pulse">
+        <View className="h-44 rounded-3xl bg-slate-200" />
+      </View>
+
+      <View className="mt-4 animate-pulse">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 4 }}
+        >
+          {[0, 1, 2].map((idx) => (
+            <View
+              key={`highlight-skeleton-${idx}`}
+              className="rounded-3xl bg-white border border-slate-100 overflow-hidden"
+              style={[
+                cardShadow,
+                {
+                  width: highlightCardWidth,
+                  height: highlightCardHeight,
+                  marginRight: idx < 2 ? 12 : 0,
+                },
+              ]}
+            >
+              <View className="h-full w-full bg-slate-200" />
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+
+      <View className="mt-6 px-4 mb-3 animate-pulse flex-row items-center justify-between">
+        <View className="h-5 w-32 rounded bg-slate-200" />
+        <View className="h-3 w-12 rounded bg-slate-200" />
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={horizontalContent}
+        className="animate-pulse"
+      >
+        {[0, 1, 2].map((idx) => (
+          <View
+            key={`sell-skeleton-${idx}`}
+            className="rounded-3xl bg-white border border-slate-100 overflow-hidden"
+            style={[
+              cardShadow,
+              {
+                width: sellCardWidth,
+                height: sellCardHeight,
+                marginRight: idx < 2 ? 12 : 0,
+              },
+            ]}
+          >
+            <View className="h-44 bg-slate-200" />
+            <View className="px-4 py-3 gap-2">
+              <View className="h-4 w-24 rounded bg-slate-200" />
+              <View className="h-3 w-16 rounded bg-slate-200" />
+              <View className="h-3 w-12 rounded bg-slate-200" />
+            </View>
+          </View>
+        ))}
+      </ScrollView>
+
+      <View className="mt-6 px-4 mb-3 animate-pulse flex-row items-center justify-between">
+        <View className="h-5 w-40 rounded bg-slate-200" />
+        <View className="h-3 w-12 rounded bg-slate-200" />
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={horizontalContent}
+        className="animate-pulse"
+      >
+        {[0, 1, 2].map((idx) => (
+          <View
+            key={`follow-skeleton-${idx}`}
+            className="rounded-3xl bg-white border border-slate-100 items-center px-4 py-5"
+            style={[
+              cardShadow,
+              {
+                width: followingCardWidth,
+                marginRight: idx < 2 ? 12 : 0,
+              },
+            ]}
+          >
+            <View className="h-16 w-16 rounded-full bg-slate-200" />
+            <View className="mt-3 h-4 w-24 rounded bg-slate-200" />
+            <View className="mt-2 h-3 w-16 rounded bg-slate-200" />
+            <View className="mt-4 h-8 w-20 rounded-full bg-slate-200" />
+          </View>
+        ))}
+      </ScrollView>
+    </ScrollView>
+  );
+}
