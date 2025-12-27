@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, Image, Pressable, ViewStyle } from "react-native";
+import { View, Text, Pressable, ViewStyle } from "react-native";
+import { Image } from "expo-image";
 import { Artwork } from "../../../discover/types";
 
 const cardShadow: ViewStyle = {
@@ -25,7 +26,9 @@ export default function SimilarCard({ item, onPress }: SimilarCardProps) {
       <Image
         source={{ uri: item.image }}
         className="h-44 w-full rounded-t-2xl"
-        resizeMode="cover"
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        transition={0}
       />
       <View className="px-3 py-3 gap-1">
         <View className="flex-row items-center gap-2">
@@ -34,6 +37,9 @@ export default function SimilarCard({ item, onPress }: SimilarCardProps) {
               <Image
                 source={{ uri: item.artistAvatar }}
                 className="h-full w-full"
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={0}
               />
             ) : null}
           </View>

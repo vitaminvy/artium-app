@@ -101,6 +101,7 @@ export default function ProfileScreen() {
     onConfirmLogout,
     onCancelLogout,
   } = useLogout();
+  const [avatarLoaded, setAvatarLoaded] = React.useState(false);
 
   const handleBack = () => {
     if (navigation.canGoBack()) {
@@ -170,6 +171,18 @@ export default function ProfileScreen() {
     }, [navigation, profileCompleted, profileStatusLoading, promptDismissed, isLoading])
   );
 
+  React.useEffect(() => {
+    if (isLoading) {
+      setAvatarLoaded(false);
+      return;
+    }
+    if (!profile.user.avatarUri) {
+      setAvatarLoaded(true);
+      return;
+    }
+    setAvatarLoaded(false);
+  }, [isLoading, profile.user.avatarUri]);
+
   return (
     <View className="flex-1 bg-white">
       <ProfileHeader
@@ -187,7 +200,11 @@ export default function ProfileScreen() {
           <ProfileSkeleton />
         ) : (
           <>
-            <ProfileHero user={profile.user} stats={profile.stats} />
+            <ProfileHero
+              user={profile.user}
+              stats={profile.stats}
+              onAvatarLoad={() => setAvatarLoaded(true)}
+            />
             <ProfileActionButtons
               onPressEdit={openEditProfile}
               onPressShare={handleShare}
@@ -214,6 +231,16 @@ export default function ProfileScreen() {
           </>
         )}
       </ScrollView>
+
+      {!isLoading && !avatarLoaded ? (
+        <View
+          className="absolute left-0 right-0 bottom-0 bg-white"
+          style={{ top: headerHeight, zIndex: 2 }}
+          pointerEvents="none"
+        >
+          <ProfileSkeleton />
+        </View>
+      ) : null}
 
       <Sidebar
         visible={sidebarOpen}

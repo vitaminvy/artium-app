@@ -104,6 +104,8 @@ export default function BlogDetailScreen() {
             source={{ uri: article.coverImage }}
             style={{ width: "100%", height: heroHeight }}
             contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={0}
           />
           <View className="absolute inset-0 bg-black/20" />
           <View
@@ -140,6 +142,8 @@ export default function BlogDetailScreen() {
                       source={{ uri: article.authorAvatar }}
                       style={{ width: "100%", height: "100%" }}
                       contentFit="cover"
+                      cachePolicy="memory-disk"
+                      transition={0}
                     />
                   </View>
                   <View>

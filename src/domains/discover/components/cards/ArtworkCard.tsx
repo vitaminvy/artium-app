@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, Image, Pressable } from "react-native";
+import { View, Text, Pressable } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { Artwork } from "../../types";
 
@@ -46,7 +47,9 @@ export default function ArtworkCard({
           source={{ uri: item.image }}
           className="w-full"
           style={{ aspectRatio: 3 / 4, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
-          resizeMode="cover"
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={0}
         />
         {item.isTrending ? (
           <View className="absolute bottom-3 left-3">
@@ -70,6 +73,9 @@ export default function ArtworkCard({
               <Image
                 source={{ uri: item.artistAvatar }}
                 className="h-full w-full"
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={0}
               />
             ) : null}
           </View>

@@ -9,6 +9,7 @@ import { FieldKey } from "../components/ArtworkDetailsStep";
 import { firestore } from "@/configs/firebase";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
 import { useProfileContext } from "@/domains/user/contexts/ProfileContext";
+import { uploadIfLocal } from "@/shared/services/uploadService";
 
 const DEFAULT_UPLOAD_FOLDER = "Unsorted";
 
@@ -239,11 +240,17 @@ export function useUploadInventory() {
     const authorAvatar = profile.user.avatarUri || currentUser.photoURL || "";
 
     try {
+      const uploadedImages = await Promise.all(
+        images.map(async (img) => (await uploadIfLocal(img.uri, "artworks")) || img.uri)
+      );
+      const uploadedAuthorAvatar =
+        (await uploadIfLocal(authorAvatar, "avatars")) || authorAvatar;
+
       await setDoc(
         doc(firestore, "artists", currentUser.uid),
         {
           name: authorName,
-          avatar: authorAvatar,
+          avatar: uploadedAuthorAvatar,
           verified: false,
         },
         { merge: true }
@@ -255,7 +262,7 @@ export function useUploadInventory() {
         artistId: currentUser.uid,
         artist: {
           name: authorName,
-          avatar: authorAvatar,
+          avatar: uploadedAuthorAvatar,
           verified: false,
         },
         title: details.title || "Untitled",
@@ -265,7 +272,7 @@ export function useUploadInventory() {
         materials: details.materials || "",
         price: details.price ? `USD $${details.price}` : "Price on Request",
         availabilityNote: "",
-        images: images.length ? images.map((img) => img.uri) : [],
+        images: uploadedImages,
         tags: selectedTags,
         dimension: {
           h: Number.isFinite(height) ? height : 0,

@@ -1,5 +1,6 @@
 import React from "react";
-import { Image, Text, View } from "react-native";
+import { Text, View } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import type { EventDetail } from "../../types";
 
@@ -61,6 +62,9 @@ export default function OverviewCard({ detail }: Props) {
             <Image
               source={{ uri: overview.organizer.avatar }}
               className="h-10 w-10 rounded-full bg-slate-200"
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={0}
             />
           ) : (
             <View className="h-10 w-10 rounded-full bg-slate-200" />
@@ -76,7 +80,9 @@ export default function OverviewCard({ detail }: Props) {
             </View>
             {overview.organizer.handle ? (
               <Text className="text-[12px] text-slate-500">
-                {overview.organizer.handle}
+                {overview.organizer.handle.startsWith("@")
+                  ? overview.organizer.handle
+                  : `@${overview.organizer.handle}`}
               </Text>
             ) : null}
           </View>

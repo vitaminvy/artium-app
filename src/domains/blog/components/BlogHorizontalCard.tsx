@@ -26,6 +26,7 @@ export default function BlogHorizontalCard({ item, onPress, width }: Props) {
           style={{ width: "100%", height: "100%", transform: [{ scale: 1.25 }] }}
           contentFit="cover"
           cachePolicy="memory-disk"
+          transition={0}
         />
 
         <View
@@ -50,6 +51,8 @@ export default function BlogHorizontalCard({ item, onPress, width }: Props) {
               source={{ uri: item.authorAvatar }}
               style={{ width: "100%", height: "100%" }}
               contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={0}
             />
           </View>
           <Text className="text-[12px] font-semibold text-slate-700">

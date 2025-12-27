@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback, useMemo } from "react";
 import { View, Text, Pressable, StyleSheet, StyleProp, ViewStyle } from "react-native";
-import { Image } from "expo-image";
+import { Image as ExpoImage } from "expo-image";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from "react-native-reanimated";
@@ -20,6 +20,7 @@ type Props = {
   onPressCard?: (post: FeedPost) => void;
   onPressImage?: (images: { uri: string }[], index: number) => void;
   isVisible?: boolean;
+  onAvatarLoad?: (postId: string) => void;
 };
 
 function FeedPostCard({
@@ -30,11 +31,32 @@ function FeedPostCard({
   onPressCard,
   onPressImage,
   isVisible = true,
+  onAvatarLoad,
 }: Props) {
   const { isLiked, toggleOptimistic } = usePostLike(post.id, post.liked);
+  const authorName = post.author?.name?.trim() || "User";
+  const authorHandle = normalizeHandle(post.author?.handle, authorName);
+  const authorAvatar =
+    post.author?.avatar ||
+    (post.author as any)?.avatarUri ||
+    (post.author as any)?.photoURL;
+  const hasAvatar = typeof authorAvatar === "string" && authorAvatar.length > 0;
+  const avatarLoadNotified = React.useRef(false);
+
+  const notifyAvatarLoad = useCallback(() => {
+    if (!onAvatarLoad || avatarLoadNotified.current) return;
+    avatarLoadNotified.current = true;
+    onAvatarLoad(post.id);
+  }, [onAvatarLoad, post.id]);
+
+  useEffect(() => {
+    if (!hasAvatar) {
+      notifyAvatarLoad();
+    }
+  }, [hasAvatar, notifyAvatarLoad]);
 
   const initials =
-    post.author.name
+    authorName
       .split(" ")
       .map((p) => p[0])
       .join("")
@@ -111,17 +133,22 @@ function FeedPostCard({
         <View className="flex-row items-center gap-1 mb-2">
           <Ionicons name="repeat-outline" size={16} color="#0F172A" />
           <Text className="text-[12px] text-slate-600 font-medium">
-            {post.author.name === "You" ? "You" : post.author.name} reshared
+            {authorName === "You" ? "You" : authorName} reshared
           </Text>
         </View>
       ) : null}
 
       <View className="flex-row items-center gap-3 mb-2">
         <View className="h-10 w-10 rounded-full bg-slate-200 overflow-hidden items-center justify-center">
-          {post.author.avatar ? (
-            <Image
-              source={{ uri: post.author.avatar }}
-              className="h-full w-full"
+          {hasAvatar ? (
+            <ExpoImage
+              source={{ uri: authorAvatar }}
+              style={{ width: "100%", height: "100%" }}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={0}
+              onLoadEnd={notifyAvatarLoad}
+              onError={notifyAvatarLoad}
             />
           ) : (
             <Text className="text-[13px] font-semibold text-slate-700">
@@ -140,11 +167,11 @@ function FeedPostCard({
               numberOfLines={1}
               ellipsizeMode="tail"
             >
-              {post.author.name}
+              {authorName}
             </Text>
             <Text className="text-xs text-slate-400">· {post.relativeTime}</Text>
           </View>
-          <Text className="text-xs text-slate-500">@{post.author.handle}</Text>
+          <Text className="text-xs text-slate-500">@{authorHandle}</Text>
         </View>
       </View>
 
@@ -206,7 +233,7 @@ function FeedPostCard({
                 aspectRatio: media?.aspectRatio ?? MEDIA_CONFIG.SINGLE_IMAGE_ASPECT_RATIO,
               }}
             >
-              <Image
+              <ExpoImage
                 source={legacyImageSource}
                 style={{ width: "100%", height: "100%" }}
                 contentFit="cover"
@@ -232,7 +259,7 @@ function FeedPostCard({
                 {post.quote?.authorName}
               </Text>
               <Text className="text-[11px] text-slate-500">
-                @{post.quote?.handle} · {post.quote?.relativeTime}
+                @{normalizeHandle(post.quote?.handle, post.quote?.authorName)} · {post.quote?.relativeTime}
               </Text>
             </View>
           </View>
@@ -247,7 +274,7 @@ function FeedPostCard({
                 aspectRatio: quoteMedia.aspectRatio ?? 2,
               }}
             >
-              <Image
+              <ExpoImage
                 source={quoteImageSource}
                 style={{ width: "100%", height: "100%" }}
                 contentFit="cover"
@@ -314,7 +341,7 @@ function FeedPostCard({
           onPress={() =>
             shareArtwork({
               title: post.content,
-              artistName: post.author.name,
+              artistName: authorName,
               marketing: "Khám phá tác phẩm này",
               deepLink: `https://www.artium.com/post/${post.id}`,
             })
@@ -360,7 +387,8 @@ const areEqual = (prev: Props, next: Props) =>
   prev.onPressComment === next.onPressComment &&
   prev.onPressCard === next.onPressCard &&
   prev.onPressImage === next.onPressImage &&
-  prev.isVisible === next.isVisible;
+  prev.isVisible === next.isVisible &&
+  prev.onAvatarLoad === next.onAvatarLoad;
 
 export default React.memo(FeedPostCard, areEqual);
 
@@ -381,6 +409,14 @@ const getLegacyImageSource = (media?: FeedMedia) => {
     return typeof media.url === "number" ? media.url : { uri: media.url };
   }
   return undefined;
+};
+
+const normalizeHandle = (handle?: string, fallbackName?: string) => {
+  const raw = (handle ?? "").trim();
+  const cleaned = raw.startsWith("@") ? raw.slice(1) : raw;
+  if (cleaned) return cleaned;
+  const fallback = (fallbackName ?? "").trim();
+  return fallback ? fallback.replace(/\s+/g, "").toLowerCase() : "user";
 };
 
 type MediaGridProps = {
@@ -406,7 +442,7 @@ function MediaGrid({ items, placeholder, onPressImage }: MediaGridProps) {
         }}
         onPress={() => onPressImage?.(normalized, 0)}
       >
-        <Image
+        <ExpoImage
           source={{ uri: item.uri }}
           style={{ width: "100%", height: "100%" }}
           contentFit="cover"
@@ -431,7 +467,7 @@ function MediaGrid({ items, placeholder, onPressImage }: MediaGridProps) {
           }}
           onPress={() => onPressImage?.(normalized, 0)}
         >
-          <Image
+          <ExpoImage
             source={{ uri: normalized[0].uri }}
             style={{ width: "100%", height: "100%" }}
             contentFit="cover"
@@ -449,13 +485,13 @@ function MediaGrid({ items, placeholder, onPressImage }: MediaGridProps) {
             }}
             onPress={() => onPressImage?.(normalized, 1)}
           >
-            <Image
-              source={{ uri: normalized[1].uri }}
-              style={{ width: "100%", height: "100%" }}
-              contentFit="cover"
-              transition={0}
-              cachePolicy="memory-disk"
-            />
+          <ExpoImage
+            source={{ uri: normalized[1].uri }}
+            style={{ width: "100%", height: "100%" }}
+            contentFit="cover"
+            transition={0}
+            cachePolicy="memory-disk"
+          />
           </Pressable>
           <Pressable
             style={{
@@ -466,13 +502,13 @@ function MediaGrid({ items, placeholder, onPressImage }: MediaGridProps) {
             }}
             onPress={() => onPressImage?.(normalized, 2)}
           >
-            <Image
-              source={{ uri: normalized[2].uri }}
-              style={{ width: "100%", height: "100%" }}
-              contentFit="cover"
-              transition={0}
-              cachePolicy="memory-disk"
-            />
+          <ExpoImage
+            source={{ uri: normalized[2].uri }}
+            style={{ width: "100%", height: "100%" }}
+            contentFit="cover"
+            transition={0}
+            cachePolicy="memory-disk"
+          />
           </Pressable>
         </View>
       </View>
@@ -501,7 +537,7 @@ function MediaGrid({ items, placeholder, onPressImage }: MediaGridProps) {
               }}
               onPress={() => onPressImage?.(normalized, idx)}
             >
-              <Image
+              <ExpoImage
                 source={{ uri: item.uri }}
                 style={{ width: "100%", height: "100%" }}
                 contentFit="cover"

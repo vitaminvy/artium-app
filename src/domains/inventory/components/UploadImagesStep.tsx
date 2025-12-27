@@ -47,6 +47,7 @@ export function UploadImagesStep({ images, onPickImages, onRemoveImage }: Props)
                     style={{ width: "100%", height: "100%" }}
                     contentFit="cover"
                     cachePolicy="memory-disk"
+                    transition={0}
                   />
                   {index === 0 ? (
                     <View className="absolute top-3 left-3 rounded-full bg-white/90 px-3 py-1">

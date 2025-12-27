@@ -3,6 +3,7 @@ export type ArtworkDetail = {
   id: string;
 
   title: string;
+  description?: string;
 
   artist: {
     name: string;
@@ -17,6 +18,11 @@ export type ArtworkDetail = {
 
   price: string;
   availabilityNote?: string;
+  priceSnapshot?: {
+    amount?: number;
+    currency?: string;
+    status?: string;
+  };
 
   images: string[];
   tags: string[];
@@ -29,6 +35,8 @@ export type ArtworkDetail = {
   };
 
   weight: string;
+  weightValue?: number;
+  weightUnit?: string;
   year: number;
   edition: number;
   materials: string;
@@ -37,4 +45,13 @@ export type ArtworkDetail = {
     title: string;
     subtitle?: string;
   }[];
+
+  metrics?: {
+    likes?: number;
+    saves?: number;
+    views?: number;
+    shares?: number;
+  };
+
+  status?: string;
 };
