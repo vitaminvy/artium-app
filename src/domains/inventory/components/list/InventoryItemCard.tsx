@@ -1,5 +1,6 @@
 import React from "react";
-import { Dimensions, Image, Pressable, Text, View } from "react-native";
+import { Dimensions, Pressable, Text, View } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { Artwork, InventoryStatus, ViewMode } from "../../types";
 
@@ -12,6 +13,7 @@ type Props = {
   isSelected: boolean;
   onPress: () => void;
   onLongPress: () => void;
+  onImageLoad?: () => void;
 };
 
 const renderStatusBadge = (status: InventoryStatus) => {
@@ -36,6 +38,7 @@ export function InventoryItemCard({
   isSelected,
   onPress,
   onLongPress,
+  onImageLoad,
 }: Props) {
   if (variant === "list") {
     return (
@@ -49,8 +52,12 @@ export function InventoryItemCard({
         <View className="h-24 w-24 rounded-xl overflow-hidden bg-slate-100">
           <Image
             source={{ uri: item.thumbnail }}
-            resizeMode="cover"
             style={{ height: "100%", width: "100%" }}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={0}
+            onLoadEnd={onImageLoad}
+            onError={onImageLoad}
           />
           {isSelected ? (
             <View className="absolute inset-0 bg-[#0B73FF]/10 items-center justify-center">
@@ -106,8 +113,12 @@ export function InventoryItemCard({
       <View className="rounded-xl overflow-hidden bg-slate-100 h-36 mb-3">
         <Image
           source={{ uri: item.thumbnail }}
-          resizeMode="cover"
           style={{ height: "100%", width: "100%" }}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={0}
+          onLoadEnd={onImageLoad}
+          onError={onImageLoad}
         />
         {isSelected ? (
           <View className="absolute inset-0 bg-[#0B73FF]/15 items-center justify-center">

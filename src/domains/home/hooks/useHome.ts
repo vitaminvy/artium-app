@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { HOME_CONSTANTS } from "../constants";
 import { getLatestBlogs, getOldestEditorialsAsNews } from "../services/blogService";
 import { getEvents } from "../../discover/services/eventService"; // Re-use from discover
@@ -19,23 +19,34 @@ export function useHome() {
   const [following, setFollowing] = useState<HomeFollowingProfile[]>([]);
   
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchData = useCallback(
+    async (asRefresh: boolean) => {
       try {
-        setIsLoading(true);
-        
+        if (asRefresh) {
+          setIsRefreshing(true);
+        } else {
+          setIsLoading(true);
+        }
+        setError(null);
+
         const [
-          fetchedBlogs, 
-          fetchedNews, 
-          fetchedEvents, 
+          fetchedBlogs,
+          fetchedNews,
+          fetchedEvents,
           fetchedTrending,
-          fetchedArtists
+          fetchedArtists,
         ] = await Promise.all([
           getLatestBlogs(5),
           getOldestEditorialsAsNews(5),
-          getEvents(5).then(res => res.events), // Fetch 5 events
+          getEvents(5).then((res) => res.events.map(e => ({
+            ...e,
+            dateLabel: e.timeLabel ?? "",
+            dateISO: e.datetime ?? e.startDate,
+            label: e.eventType
+          }))), // Fetch 5 events
           getTrendingArtworks(10), // Fetch 10 trending artworks for "Pick for You"
           getPopularArtists(15), // Fetch 15 popular artists
         ]);
@@ -45,15 +56,22 @@ export function useHome() {
         setEvents(fetchedEvents);
         setSellItems(fetchedTrending);
         setFollowing(fetchedArtists);
-
       } catch (err: any) {
         setError(err);
       } finally {
-        setIsLoading(false);
+        if (asRefresh) {
+          setIsRefreshing(false);
+        } else {
+          setIsLoading(false);
+        }
       }
-    };
-    fetchData();
-  }, []);
+    },
+    []
+  );
+
+  useEffect(() => {
+    fetchData(false);
+  }, [fetchData]);
 
   const sellItemsPreview = useMemo(
     () => sellItems.slice(0, HOME_CONSTANTS.SELL_ITEMS_PREVIEW_COUNT),
@@ -71,6 +89,8 @@ export function useHome() {
     popularArtists,
     sellItemsPreview,
     isLoading,
+    isRefreshing,
+    refreshHome: () => fetchData(true),
     error,
   };
 }

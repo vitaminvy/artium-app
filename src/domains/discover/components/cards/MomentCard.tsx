@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, Image, Pressable } from "react-native";
+import { View, Text, Pressable } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { Artwork } from "../../types";
 
@@ -28,7 +29,9 @@ export default function MomentCard({
         source={{ uri: item.image }}
         className="w-full"
         style={{ aspectRatio: 3 / 4 }}
-        resizeMode="cover"
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        transition={0}
       />
       <View className="px-4 py-4 gap-2">
         <View className="flex-row items-center justify-between">
@@ -38,6 +41,9 @@ export default function MomentCard({
                 <Image
                   source={{ uri: item.artistAvatar }}
                   className="h-full w-full"
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  transition={0}
                 />
               ) : null}
             </View>

@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, Image, Pressable } from "react-native";
+import { View, Text, Pressable } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { Artwork } from "../../types";
 
@@ -26,6 +27,17 @@ const glassPillStyle = {
   shadowOpacity: 0.08,
   shadowRadius: 10,
   shadowOffset: { width: 0, height: 6 },
+};
+
+const pricePillStyle = {
+  backgroundColor: "#EFF6FF",
+  borderColor: "#BFDBFE",
+  borderWidth: 1,
+  shadowColor: "#2563EB",
+  shadowOpacity: 0.15,
+  shadowRadius: 6,
+  shadowOffset: { width: 0, height: 2 },
+  elevation: 2,
 };
 
 const bodyContentStyle = {
@@ -55,7 +67,9 @@ export default function ArtworkCard({
           source={{ uri: item.image }}
           className="w-full"
           style={{ aspectRatio: 3 / 4, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
-          resizeMode="cover"
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={0}
         />
         {item.isTrending ? (
           <View className="absolute bottom-3 left-3">
@@ -73,25 +87,31 @@ export default function ArtworkCard({
       </View>
 
       <View className="px-4 py-4 bg-white rounded-b-[28px]">
-        <View className="flex-1 justify-between gap-3" style={bodyContentStyle}>
+        <View className="flex-1 justify-between" style={bodyContentStyle}>
+          {/* Artist info + Title */}
           <View className="gap-3">
+            {/* Artist Avatar + Name */}
             <View className="flex-row items-center gap-3">
               <View className="h-7 w-7 rounded-full bg-slate-200 overflow-hidden">
                 {item.artistAvatar ? (
                   <Image
                     source={{ uri: item.artistAvatar }}
                     className="h-full w-full"
+                    contentFit="cover"
+                    cachePolicy="memory-disk"
+                    transition={0}
                   />
                 ) : null}
               </View>
               <Text
-                className="text-[13px] text-slate-600 font-medium"
+                className="flex-1 text-[13px] text-slate-600 font-medium"
                 numberOfLines={1}
               >
                 {item.artist}
               </Text>
             </View>
 
+            {/* Title */}
             <Text
               className="text-[18px] font-bold text-slate-900"
               numberOfLines={2}
@@ -101,20 +121,27 @@ export default function ArtworkCard({
             </Text>
           </View>
 
-          <View className="gap-1.5">
+          {/* Bottom section: Location + Price */}
+          <View className="gap-2">
+            {/* Location */}
             {item.location ? (
               <Text className="text-sm text-slate-400" numberOfLines={1}>
                 {item.location}
               </Text>
             ) : null}
+
+            {/* Price Pill - positioned at bottom */}
             {item.price ? (
               <View
-                className="self-start rounded-full px-3 py-1"
-                style={glassPillStyle}
+                className="self-start rounded-full px-4 py-2"
+                style={pricePillStyle}
               >
-                <Text className="text-[13px] font-semibold text-[#2563EB] tracking-tight">
-                  {item.price}
-                </Text>
+                <View className="flex-row items-center gap-1.5">
+                  <Ionicons name="pricetag" size={14} color="#2563EB" />
+                  <Text className="text-[14px] font-bold text-[#1E40AF] tracking-tight">
+                    {item.price}
+                  </Text>
+                </View>
               </View>
             ) : null}
           </View>

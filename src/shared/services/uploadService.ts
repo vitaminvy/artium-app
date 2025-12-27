@@ -3,6 +3,11 @@ import { auth, storage } from "@/configs/firebase";
 import 'react-native-get-random-values'; // Required for uuid to work on RN
 import { v4 as uuidv4 } from 'uuid';
 
+export const isLocalUri = (uri?: string | null): boolean => {
+  if (!uri || typeof uri !== "string") return false;
+  return uri.startsWith("file://") || uri.startsWith("content://");
+};
+
 function uriToBlob(uri: string): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -14,37 +19,50 @@ function uriToBlob(uri: string): Promise<Blob> {
   });
 }
 
+const getFileExtension = (uri: string): string => {
+  const clean = uri.split("?")[0];
+  const parts = clean.split(".");
+  if (parts.length <= 1) return "jpg";
+  const ext = parts.pop()?.toLowerCase();
+  return ext && ext.length <= 5 ? ext : "jpg";
+};
+
+const uploadMediaToPath = async (localUri: string, storagePath: string): Promise<string> => {
+  const blob = await uriToBlob(localUri);
+  const fileExtension = getFileExtension(localUri);
+  const fileType = blob.type || `image/${fileExtension}`;
+  const metadata = {
+    contentType: fileType,
+    cacheControl: "public,max-age=31536000,immutable",
+  };
+  const storageRef = ref(storage, storagePath);
+  const snapshot = await uploadBytes(storageRef, blob, metadata);
+  return await getDownloadURL(snapshot.ref);
+};
+
 /**
  * Uploads a media file (from a local URI) to Firebase Storage and returns the public download URL.
  * @param localUri The `file:///` URI of the media on the user's device.
  * @param path The path in storage to upload to, e.g., 'posts' or 'avatars'.
  * @returns The public URL of the uploaded file.
  */
-export const uploadMedia = async (localUri: string, path: 'posts' | 'avatars' = 'posts'): Promise<string> => {
+export const uploadMedia = async (localUri: string, path: string = "posts"): Promise<string> => {
   const user = auth.currentUser;
   if (!user) {
     throw new Error("User must be logged in to upload media.");
   }
 
-  const blob = await uriToBlob(localUri);
-
   // Create a unique file name to avoid overwrites
-  const fileExtension = localUri.split('.').pop() || 'tmp';
+  const fileExtension = getFileExtension(localUri);
   const fileName = `${uuidv4()}.${fileExtension}`;
-  
-  // Create a storage reference
-  const storageRef = ref(storage, `${path}/${user.uid}/${fileName}`);
+  const storagePath = `${path}/${user.uid}/${fileName}`;
+  return await uploadMediaToPath(localUri, storagePath);
+};
 
-  // 'uploadBytes' is the simplest way to upload a blob.
-  // We can also pass metadata, such as the content type
-  console.log(`Blob Info: size=${blob.size}, type=${blob.type}`); // Log blob info
-  const fileType = blob.type || `image/${fileExtension}`; // Fallback for safety
-  const metadata = { contentType: fileType };
-  const snapshot = await uploadBytes(storageRef, blob, metadata);
-  console.log('Uploaded a blob or file!', snapshot.metadata.fullPath);
-
-  // Get the public download URL
-  const downloadURL = await getDownloadURL(snapshot.ref);
-
-  return downloadURL;
+export const uploadIfLocal = async (
+  uri?: string | null,
+  path: string = "posts"
+): Promise<string | undefined> => {
+  if (!uri || !isLocalUri(uri)) return uri ?? undefined;
+  return await uploadMedia(uri, path);
 };

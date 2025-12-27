@@ -11,7 +11,11 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import Sidebar from "../shared/components/Sidebar";
-import { useSidebarItems, type SidebarKey } from "../shared/hooks/useSidebar";
+import {
+  SidebarActionKey,
+  useSidebarItems,
+  type SidebarKey,
+} from "../shared/hooks/useSidebar";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
 
@@ -22,6 +26,8 @@ import DiscoverEventsSection from "../domains/events/components/sections/Discove
 import EventHeader from "../domains/events/components/ui/EventHeader";
 import CreateEventModal from "../domains/events/components/modals/CreateEventModal";
 import { createEvent } from "../domains/discover/services/eventService";
+import { useLogout } from "../domains/auth/hooks/useLogout";
+import { LogoutConfirmModal } from "../domains/auth/components/LogoutConfirmModal";
 
 type NavigationProp = NativeStackNavigationProp<HomeStackParamList, "Events">;
 
@@ -112,10 +118,21 @@ export default function EventScreen() {
     [setHidden]
   );
 
-  const handleSidebarSelect = (key: SidebarKey | "more") => {
+  const {
+    logout,
+    loading: logoutLoading,
+    showConfirmModal,
+    onConfirmLogout,
+    onCancelLogout,
+  } = useLogout();
+
+  const handleSidebarSelect = (key: SidebarActionKey) => {
     setSidebarOpen(false);
 
-    if (key === "more") return;
+    if (key === "logout") {
+      logout();
+      return;
+    }
 
     if (key === "home") {
       if (navigation.popToTop) {
@@ -209,6 +226,8 @@ export default function EventScreen() {
             navigation.navigate("HomeMain");
           }
         }}
+        onPressSidebar={() => setSidebarOpen((prev) => !prev)}
+        isSidebarOpen={sidebarOpen}
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
       />
 
@@ -329,6 +348,13 @@ export default function EventScreen() {
           </View>
         </View>
       ) : null}
+
+      <LogoutConfirmModal
+        visible={showConfirmModal}
+        onConfirm={onConfirmLogout}
+        onCancel={onCancelLogout}
+        loading={logoutLoading}
+      />
     </View>
   );
 }

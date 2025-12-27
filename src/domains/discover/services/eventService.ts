@@ -1,6 +1,5 @@
 import {
   collection,
-  addDoc,
   getDocs,
   doc,
   getDoc,
@@ -16,17 +15,40 @@ import {
   serverTimestamp,
   collectionGroup,
   getCountFromServer,
-  runTransaction
+  runTransaction,
+  setDoc,
 } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 import { EventItem } from "../types";
 import { EventGuest } from "@/domains/events/types";
+import { uploadIfLocal } from "@/shared/services/uploadService";
 
 const EVENTS_COLLECTION = "events";
 
 export type PaginatedEventsResult = {
   events: EventItem[];
   lastVisible: QueryDocumentSnapshot<DocumentData> | null;
+};
+
+const resolveEventImage = (data: any): string => {
+  const candidate =
+    data.image ??
+    data.coverImage ??
+    data.coverUrl ??
+    data.imageUrl ??
+    data.coverImageUrl ??
+    data.bannerImage;
+  if (typeof candidate === "string") return candidate;
+  if (candidate && typeof candidate === "object") {
+    return (
+      candidate.uri ||
+      candidate.url ||
+      candidate.image ||
+      candidate.imageUrl ||
+      ""
+    );
+  }
+  return "";
 };
 
 const mapEventDoc = (doc: QueryDocumentSnapshot<DocumentData> | DocumentSnapshot<DocumentData>): EventItem => {
@@ -51,7 +73,7 @@ const mapEventDoc = (doc: QueryDocumentSnapshot<DocumentData> | DocumentSnapshot
   return {
     id: doc.id,
     title: data.title ?? "Untitled event",
-    image: data.image ?? "",
+    image: resolveEventImage(data),
     location:
       data.location?.city ??
       data.location?.name ??
@@ -185,9 +207,19 @@ export const createEvent = async (event: EventItem): Promise<EventItem> => {
       console.warn("Creating event without organizerId. Firestore rules might reject this.");
   }
 
+  const docRef = doc(collection(firestore, EVENTS_COLLECTION));
+  const uploadedImage = await uploadIfLocal(event.image, "events");
+  const organizerSnapshot = { ...(event as any).organizerSnapshot };
+  if (organizerSnapshot?.avatar) {
+    organizerSnapshot.avatar = await uploadIfLocal(
+      organizerSnapshot.avatar,
+      "avatars"
+    );
+  }
+
   const payload: any = {
     title: event.title,
-    image: event.image,
+    image: uploadedImage || event.image || "",
     startDate: start,
     endDate: end,
     isOnline,
@@ -204,12 +236,21 @@ export const createEvent = async (event: EventItem): Promise<EventItem> => {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     organizerId: organizerId,
-    organizerSnapshot: (event as any).organizerSnapshot || {},
+    organizerSnapshot,
   };
   
   try {
-    const docRef = await addDoc(collection(firestore, EVENTS_COLLECTION), payload);
-    return { ...event, id: docRef.id, datetime: start.toISOString(), startDate: start.toISOString(), endDatetime: end?.toISOString(), category: tags.join(", ") };
+    await setDoc(docRef, payload);
+    return {
+      ...event,
+      id: docRef.id,
+      image: uploadedImage || event.image || "",
+      organizerSnapshot,
+      datetime: start.toISOString(),
+      startDate: start.toISOString(),
+      endDatetime: end?.toISOString(),
+      category: tags.join(", "),
+    };
   } catch (e) {
     console.error("Failed to create event in Firestore:", e);
     throw e;
