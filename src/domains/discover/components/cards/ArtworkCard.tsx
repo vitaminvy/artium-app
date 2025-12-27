@@ -1,8 +1,10 @@
 import React from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, LayoutChangeEvent } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { Artwork } from "../../types";
+
+const FALLBACK_AVATAR = require("../../../../../assets/logos/logo-light-mode.png");
 
 const cardShadow = {
   shadowColor: "#000",
@@ -41,7 +43,7 @@ const pricePillStyle = {
 };
 
 const bodyContentStyle = {
-  minHeight: 150,
+  // Removed minHeight to let the card shrink to its content
 };
 
 const titleTextStyle = {
@@ -52,14 +54,17 @@ const titleTextStyle = {
 export default function ArtworkCard({
   item,
   onPress,
+  onLayout,
 }: {
   item: Artwork;
   onPress: () => void;
+  onLayout?: (event: LayoutChangeEvent) => void;
 }) {
   return (
     <Pressable
       onPress={onPress}
-      className="flex-1 bg-white overflow-hidden"
+      onLayout={onLayout}
+      className="w-full bg-white overflow-hidden"
       style={[cardShadow, cardContainer]}
     >
       <View className="relative">
@@ -86,22 +91,20 @@ export default function ArtworkCard({
         ) : null}
       </View>
 
-      <View className="px-4 py-4 bg-white rounded-b-[28px]">
-        <View className="flex-1 justify-between" style={bodyContentStyle}>
+      <View className="px-4 pt-4 pb-1 bg-white rounded-b-[28px]">
+        <View className="gap-y-3" style={bodyContentStyle}>
           {/* Artist info + Title */}
           <View className="gap-3">
             {/* Artist Avatar + Name */}
             <View className="flex-row items-center gap-3">
               <View className="h-7 w-7 rounded-full bg-slate-200 overflow-hidden">
-                {item.artistAvatar ? (
-                  <Image
-                    source={{ uri: item.artistAvatar }}
-                    className="h-full w-full"
-                    contentFit="cover"
-                    cachePolicy="memory-disk"
-                    transition={0}
-                  />
-                ) : null}
+                <Image
+                  source={item.artistAvatar ? { uri: item.artistAvatar } : FALLBACK_AVATAR}
+                  style={{ width: "100%", height: "100%" }}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  transition={0}
+                />
               </View>
               <Text
                 className="flex-1 text-[13px] text-slate-600 font-medium"
@@ -122,7 +125,7 @@ export default function ArtworkCard({
           </View>
 
           {/* Bottom section: Location + Price */}
-          <View className="gap-2">
+          <View className="gap-2 mb-2">
             {/* Location */}
             {item.location ? (
               <Text className="text-sm text-slate-400" numberOfLines={1}>
