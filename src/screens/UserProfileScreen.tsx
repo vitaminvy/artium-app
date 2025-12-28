@@ -14,6 +14,8 @@ import ProfileMoodboardsTab from "../domains/user/components/profile/tabs/Profil
 import type { ArtworkCardItem } from "../domains/user/components/profile/ArtworkCard";
 import type { MomentCardItem } from "../domains/user/components/profile/MomentCard";
 import { useUserProfile } from "../domains/user/hooks/useUserProfile";
+import { useUserArtworks } from "../domains/user/hooks/useUserArtworks";
+import { useUserMoments } from "../domains/user/hooks/useUserMoments";
 import { useProfileContext } from "../domains/user/contexts/ProfileContext";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
 import { shareProfile } from "../shared/utils/shareProfile";
@@ -82,96 +84,22 @@ export default function UserProfileScreen() {
   const { profile, tab, setTab, isLoading, error } = useUserProfile(userId);
   const { isFollowing, toggleFollow } = useProfileContext();
 
+  // Fetch real data from database
+  const { artworks, loading: artworksLoading } = useUserArtworks(userId);
+  const { moments, loading: momentsLoading } = useUserMoments(userId);
+
   const [headerHeight, setHeaderHeight] = React.useState(96);
 
-  // Mock data for artworks and moments - replace with real data from API
-  const mockArtworks: ArtworkCardItem[] = [
-    {
-      id: "1",
-      title: "Conscion in a conch",
-      artist: {
-        name: profile.user.name,
-        avatar: profile.user.avatarUri ?? undefined,
-        verified: true,
-      },
-      image: "https://picsum.photos/400/500?random=1",
-      price: "$1,500",
-    },
-    {
-      id: "2",
-      title: "Cat man do",
-      artist: {
-        name: profile.user.name,
-        avatar: profile.user.avatarUri ?? undefined,
-        verified: true,
-      },
-      image: "https://picsum.photos/400/500?random=2",
-      price: "$1,400",
-    },
-  ];
-
-  const mockMoments: MomentCardItem[] = [
-    {
-      id: "1",
-      author: {
-        id: userId,
-        name: profile.user.name,
-        handle: profile.user.handle,
-        avatar: profile.user.avatarUri || undefined,
-        verified: true,
-      },
-      title: "The Curse of the Black Pearl",
-      content: "I am on Instagram",
-      media: {
-        type: "image",
-        url: "https://picsum.photos/600/800?random=3",
-        aspectRatio: 4 / 5,
-      },
-      metrics: { likes: 1, comments: 0, shares: 0 },
-      liked: false,
-      relativeTime: "1h",
-    },
-    {
-      id: "2",
-      author: {
-        id: userId,
-        name: profile.user.name,
-        handle: profile.user.handle,
-        avatar: profile.user.avatarUri || undefined,
-        verified: true,
-      },
-      title: "My oddities in the studio",
-      content: "My oddities...",
-      media: {
-        type: "video",
-        uri: "https://picsum.photos/600/800?random=4",
-        aspectRatio: 4 / 5,
-      },
-      metrics: { likes: 2, comments: 0, shares: 0 },
-      liked: false,
-      relativeTime: "2h",
-    },
-    {
-      id: "3",
-      author: {
-        id: userId,
-        name: profile.user.name,
-        handle: profile.user.handle,
-        avatar: profile.user.avatarUri || undefined,
-        verified: false,
-      },
-      title: "Welcome to my oddities",
-      content: "Studio drop sneak peek",
-      media: {
-        type: "image",
-        url: "https://picsum.photos/600/800?random=5",
-        aspectRatio: 3 / 4,
-      },
-      metrics: { likes: 8, comments: 2, shares: 1 },
-      liked: true,
-      relativeTime: "1d",
-    },
-  ];
+  // Debug: Log fetched data
+  React.useEffect(() => {
+    console.log("📊 UserProfile Data:", {
+      userId,
+      artworksCount: artworks.length,
+      momentsCount: moments.length,
+      artworksLoading,
+      momentsLoading,
+    });
+  }, [userId, artworks.length, moments.length, artworksLoading, momentsLoading]);
 
   const handleBack = () => {
     if (navigation.canGoBack()) {
@@ -251,8 +179,8 @@ export default function UserProfileScreen() {
               {tab === "overview" && (
                 <UserProfileOverviewTab
                   profile={profile}
-                  artworks={mockArtworks}
-                  moments={mockMoments}
+                  artworks={artworks}
+                  moments={moments}
                   onPressSeeAllArtworks={handleSeeAllArtworks}
                   onPressSeeAllMoments={handleSeeAllMoments}
                   onPressArtwork={handlePressArtwork}
@@ -261,13 +189,13 @@ export default function UserProfileScreen() {
               )}
               {tab === "artworks" && (
                 <UserProfileArtworksTab
-                  artworks={mockArtworks}
+                  artworks={artworks}
                   onPressArtwork={handlePressArtwork}
                 />
               )}
               {tab === "moments" && (
                 <UserProfileMomentsTab
-                  moments={mockMoments}
+                  moments={moments}
                   onPressMoment={handlePressMoment}
                 />
               )}
