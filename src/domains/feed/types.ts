@@ -32,6 +32,7 @@ export type FeedMedia =
   | {
       type: "video";
       uri: string;
+      thumbnail?: string; // Video thumbnail URL for preview
       durationMs?: number;
       placeholderColor?: string;
       aspectRatio?: number;
@@ -102,6 +103,7 @@ export type PostMomentMedia =
   | {
       type: "video";
       uri: string;
+      thumbnail?: string; // Video thumbnail URL for preview
       durationMs?: number;
       width?: number;
       height?: number;

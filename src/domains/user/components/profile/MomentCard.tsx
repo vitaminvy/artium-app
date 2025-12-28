@@ -34,6 +34,7 @@ type CoverMedia = {
   source?: ImageSourcePropType;
   aspectRatio: number;
   isVideo: boolean;
+  thumbnail?: ImageSourcePropType;
 };
 
 const getCoverMedia = (media?: FeedMedia): CoverMedia => {
@@ -42,10 +43,18 @@ const getCoverMedia = (media?: FeedMedia): CoverMedia => {
   }
 
   if (media.type === "video") {
+    // For video, try to use thumbnail if available, otherwise use video URI as fallback
+    const thumbnail = media.thumbnail
+      ? { uri: media.thumbnail }
+      : media.uri
+        ? { uri: media.uri }
+        : undefined;
+
     return {
-      source: media.uri ? { uri: media.uri } : undefined,
+      source: thumbnail,
       aspectRatio: media.aspectRatio ?? 4 / 5,
       isVideo: true,
+      thumbnail,
     };
   }
 
@@ -146,29 +155,26 @@ export default function MomentCard({
               resizeMode="cover"
             />
           ) : null}
-          {hasMedia ? <View className="absolute inset-0 bg-black/10" /> : null}
           {cover.isVideo && hasMedia ? (
             <View className="absolute inset-0 items-center justify-center">
-              <View className="h-12 w-12 rounded-full bg-black/55 items-center justify-center">
-                <Ionicons name="play" size={22} color="#fff" />
+              <View className="h-14 w-14 rounded-full bg-black/60 items-center justify-center">
+                <Ionicons name="play" size={26} color="#fff" />
               </View>
-            </View>
-          ) : null}
-          {hasMedia ? (
-            <View className="absolute inset-0 justify-end px-3 pb-3">
-              <Text
-                className="text-base font-semibold text-white"
-                numberOfLines={2}
-                ellipsizeMode="tail"
-              >
-                {item.title || item.content}
-              </Text>
             </View>
           ) : null}
         </View>
 
         <View className="px-3 py-3 border-t border-slate-100">
-          <Text className="text-[13px] text-slate-800" numberOfLines={3}>
+          {item.title ? (
+            <Text
+              className="text-sm font-semibold text-slate-900 mb-1"
+              numberOfLines={2}
+              ellipsizeMode="tail"
+            >
+              {item.title}
+            </Text>
+          ) : null}
+          <Text className="text-[13px] text-slate-600" numberOfLines={3}>
             {item.content}
           </Text>
         </View>
