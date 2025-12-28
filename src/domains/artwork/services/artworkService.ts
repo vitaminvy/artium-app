@@ -1,4 +1,4 @@
-import { doc, getDoc, collection, getDocs, query, where, DocumentData, updateDoc, increment, orderBy, limit, startAfter, QueryDocumentSnapshot } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, query, where, DocumentData, updateDoc, increment, orderBy, limit, startAfter, QueryDocumentSnapshot, runTransaction, serverTimestamp } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 import { ArtworkDetail } from "../types";
 import { Artwork as DiscoverArtwork } from "../../discover/types";
@@ -156,11 +156,34 @@ export const incrementArtworkView = async (artworkId: string): Promise<void> => 
   }
 };
 
-export const toggleArtworkLike = async (artworkId: string, isCurrentlyLiked: boolean): Promise<void> => {
-  if (!artworkId) return;
+export const toggleArtworkLike = async (
+  artworkId: string,
+  userId: string,
+  isCurrentlyLiked: boolean
+): Promise<boolean> => {
+  if (!artworkId || !userId) {
+    throw new Error("artworkId and userId are required to like an artwork.");
+  }
   const artworkRef = doc(firestore, ARTWORKS_COLLECTION, artworkId);
+  const likeRef = doc(collection(artworkRef, "likes"), userId);
+
   try {
-    await updateDoc(artworkRef, { "metrics.likes": increment(isCurrentlyLiked ? -1 : 1) });
+    await runTransaction(firestore, async (tx) => {
+      const likeSnap = await tx.get(likeRef);
+      const artworkSnap = await tx.get(artworkRef);
+      if (!artworkSnap.exists()) {
+        throw new Error("Artwork not found");
+      }
+
+      if (likeSnap.exists()) {
+        tx.delete(likeRef);
+        tx.update(artworkRef, { "metrics.likes": increment(-1) });
+      } else {
+        tx.set(likeRef, { createdAt: serverTimestamp(), userId });
+        tx.update(artworkRef, { "metrics.likes": increment(1) });
+      }
+    });
+    return !isCurrentlyLiked;
   } catch (error) {
     console.error("Failed to toggle artwork like:", error);
     throw error;
@@ -251,7 +274,7 @@ export const getTrendingArtworks = async (count: number = 10): Promise<DiscoverA
 /**
  * Fetches an artwork by ID.
  */
-export const getArtworkById = async (id: string): Promise<ArtworkDetail | null> => {
+export const getArtworkById = async (id: string, userId?: string): Promise<ArtworkDetail | null> => {
   try {
     const artworkRef = doc(firestore, ARTWORKS_COLLECTION, id);
     const artworkSnap = await getDoc(artworkRef);
@@ -261,6 +284,17 @@ export const getArtworkById = async (id: string): Promise<ArtworkDetail | null> 
     }
 
     const data = artworkSnap.data();
+    let liked = false;
+    if (userId) {
+      try {
+        const likeRef = doc(collection(artworkRef, "likes"), userId);
+        const likeSnap = await getDoc(likeRef);
+        liked = likeSnap.exists();
+      } catch (err) {
+        console.warn("Failed to check artwork like status:", err);
+      }
+    }
+
     const artworkDetail: ArtworkDetail = {
       id: artworkSnap.id,
       title: data.title || "Untitled",
@@ -291,6 +325,7 @@ export const getArtworkById = async (id: string): Promise<ArtworkDetail | null> 
       metrics: data.metrics,
       status: data.status,
       priceSnapshot: typeof data.price === "object" ? data.price : undefined,
+      liked,
     };
 
     return artworkDetail;

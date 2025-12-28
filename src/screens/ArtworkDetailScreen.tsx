@@ -41,6 +41,7 @@ import ArtworkHeader from "../domains/artwork/components/ArtworkHeader";
 import ArtworkInfo from "../domains/artwork/components/ArtworkInfo";
 import ArtworkDetails from "../domains/artwork/components/ArtworkDetails";
 import ArtworkActionBar from "../domains/artwork/components/ArtworkActionBar";
+import { useAuth } from "../domains/auth/contexts/AuthContext";
 
 export default function ArtworkDetailScreen() {
   const navigation = useNavigation<any>();
@@ -64,6 +65,7 @@ export default function ArtworkDetailScreen() {
   const [showReportSheet, setShowReportSheet] = useState(false);
   const [heroImageLoaded, setHeroImageLoaded] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(initialHeaderHeight);
+  const { currentUser } = useAuth();
 
   // Bottom Sheet Refs
   const optionsSheetRef = useRef<BottomSheetModal>(null);
@@ -81,8 +83,9 @@ export default function ArtworkDetailScreen() {
       try {
         setLoading(true);
         setHeroImageLoaded(false);
-        const artworkData: any = await getArtworkById(artworkId);
+        const artworkData: any = await getArtworkById(artworkId, currentUser?.uid);
         setArtwork(artworkData);
+        setLiked(Boolean(artworkData?.liked));
         if (!artworkData?.images?.length) {
           setHeroImageLoaded(true);
         }
@@ -98,7 +101,7 @@ export default function ArtworkDetailScreen() {
     };
 
     fetchArtwork();
-  }, [route.params?.id]);
+  }, [route.params?.id, currentUser?.uid]);
 
 
   const reshareTarget: FeedPost | null = useMemo(() => {
@@ -174,6 +177,10 @@ export default function ArtworkDetailScreen() {
   // --- LIKE HANDLER ---
   const handleLike = async () => {
     if (!artwork) return;
+    if (!currentUser) {
+      Alert.alert("Sign in required", "Please sign in to like this artwork.");
+      return;
+    }
     
     // Immediately update UI for better UX
     const newLikedState = !liked;
@@ -181,7 +188,7 @@ export default function ArtworkDetailScreen() {
 
     try {
       // Call the service to update Firestore
-      await toggleArtworkLike(artwork.id, !newLikedState); // Pass the original state
+      await toggleArtworkLike(artwork.id, currentUser.uid, liked); // send previous state
     } catch (err) {
       // If the update fails, revert the UI and show an error
       console.error("Failed to update like status:", err);
