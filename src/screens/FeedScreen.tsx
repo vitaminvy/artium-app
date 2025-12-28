@@ -222,6 +222,7 @@ export default function FeedScreen() {
             onToggleReshare={openReshare}
             onPressComment={openComments}
             onPressCard={openDetail}
+            onPressQuote={openQuote}
             onPressImage={handleOpenViewer}
             scrollHandler={scrollHandler}
             isTabActive={tab === "myFeed"}
