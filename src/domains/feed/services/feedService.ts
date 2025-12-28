@@ -22,6 +22,21 @@ import {
 import { firestore } from "@/configs/firebase";
 import { FeedPost, FeedComment } from "../types";
 
+const mapQuote = (raw: any) => {
+  if (!raw) return undefined;
+  const toMillis = (value: any) => {
+    if (!value) return undefined;
+    if (value instanceof Timestamp) return value.toMillis();
+    if (typeof value?.toDate === "function") return value.toDate().getTime();
+    if (typeof value === "number") return value;
+    return undefined;
+  };
+  return {
+    ...raw,
+    createdAt: toMillis(raw.createdAt) ?? raw.createdAt ?? Date.now(),
+  };
+};
+
 const POSTS_COLLECTION = "posts";
 
 export type PaginatedPostsResult = {
@@ -62,6 +77,7 @@ export const getFeedPosts = async (
         ...data,
         author: data.authorSnapshot,
         createdAt: (data.createdAt as Timestamp)?.toMillis() || Date.now(),
+        quote: mapQuote(data.quote),
         liked,
       } as FeedPost;
     }));
@@ -112,6 +128,7 @@ export const subscribeToFeedPosts = (
         ...data,
         author: data.authorSnapshot,
         createdAt: (data.createdAt as Timestamp)?.toMillis() || Date.now(),
+        quote: mapQuote(data.quote),
         liked: false, 
       } as FeedPost;
     });
@@ -154,13 +171,26 @@ export const togglePostLike = async (
 /**
  * Đăng bài viết mới (Moment)
  */
-export const createPost = async (params: { authorId: string, authorSnapshot: any, content: string, media?: any }) => {
+type CreatePostInput = {
+  authorId: string;
+  authorSnapshot: any;
+  content: string;
+  media?: any;
+  quote?: any;
+  isReshare?: boolean;
+  resharedFrom?: any;
+};
+
+export const createPost = async (params: CreatePostInput) => {
   try {
     const docRef = await addDoc(collection(firestore, POSTS_COLLECTION), {
       authorId: params.authorId,
       authorSnapshot: params.authorSnapshot,
       content: params.content,
-      media: params.media,
+      media: params.media ?? null,
+      quote: params.quote ?? null,
+      isReshare: params.isReshare ?? false,
+      resharedFrom: params.resharedFrom ?? null,
       metrics: { likes: 0, comments: 0, shares: 0 },
       createdAt: serverTimestamp(),
     });

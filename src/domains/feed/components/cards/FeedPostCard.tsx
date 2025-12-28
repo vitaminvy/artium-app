@@ -248,24 +248,47 @@ function FeedPostCard({
       {hasQuote ? (
         <View className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 mb-3">
           <View className="flex-row items-center gap-2 mb-1">
-            <View className="h-8 w-8 rounded-full bg-slate-200" />
+            <View className="h-8 w-8 rounded-full overflow-hidden bg-slate-200 items-center justify-center">
+              {post.quote?.avatar ? (
+                <ExpoImage
+                  source={{ uri: post.quote.avatar }}
+                  style={{ width: "100%", height: "100%" }}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  transition={0}
+                />
+              ) : (
+                <Text className="text-[12px] font-semibold text-slate-700">
+                  {post.quote?.authorName?.charAt(0) ?? "?"}
+                </Text>
+              )}
+            </View>
             <View className="flex-1">
-              <Text
-                className="text-[13px] font-semibold text-slate-800"
-                style={{ flexShrink: 1 }}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {post.quote?.authorName}
-              </Text>
-              <Text className="text-[11px] text-slate-500">
+              <View className="flex-row items-center justify-between gap-2">
+                <Text
+                  className="text-[13px] font-semibold text-slate-800"
+                  style={{ flexShrink: 1 }}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {post.quote?.title ?? post.quote?.authorName}
+                </Text>
+                {post.quote?.priceLabel ? (
+                  <Text className="text-[12px] font-semibold text-slate-900">
+                    {post.quote.priceLabel}
+                  </Text>
+                ) : null}
+              </View>
+              <Text className="text-[11px] text-slate-500" numberOfLines={1}>
                 @{normalizeHandle(post.quote?.handle, post.quote?.authorName)} · {post.quote?.relativeTime}
               </Text>
             </View>
           </View>
-          <Text className="text-[13px] text-slate-800 leading-5 mb-2">
-            {post.quote?.content}
-          </Text>
+          {post.quote?.content ? (
+            <Text className="text-[13px] text-slate-800 leading-5 mb-2">
+              {post.quote?.content}
+            </Text>
+          ) : null}
           {quoteMedia && quoteImageSource ? (
             <View
               className="rounded-xl overflow-hidden"

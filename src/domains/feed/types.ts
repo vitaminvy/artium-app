@@ -54,8 +54,14 @@ export type FeedComment = {
 };
 
 export type FeedQuote = {
+  id?: string;
+  authorId?: string;
   authorName: string;
   handle: string;
+  avatar?: string;
+  title?: string;
+  subtitle?: string;
+  priceLabel?: string;
   content: string;
   createdAt: number;
   relativeTime: string;
