@@ -183,9 +183,14 @@ export default function EventScreen() {
   }, [isRefreshing, refreshEvents]);
 
   const handleRsvpChange = useCallback(
-    (id: string, status: "none" | "going" | "maybe" | "notGoing") => {
-      setRsvpStatus(id, status);
-      showToast("Updated successfully");
+    async (id: string, status: "none" | "going" | "maybe" | "notGoing") => {
+      try {
+        await setRsvpStatus(id, status);
+        showToast("Updated successfully");
+      } catch (error) {
+        console.error("Failed to update RSVP:", error);
+        showToast("Failed to update RSVP");
+      }
     },
     [setRsvpStatus, showToast]
   );

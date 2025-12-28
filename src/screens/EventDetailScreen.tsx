@@ -45,6 +45,19 @@ export default function EventDetailScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [headerHeight, setHeaderHeight] = useState(initialHeaderHeight);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const showToast = useCallback((text: string) => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    setToastMessage(text);
+    toastTimerRef.current = setTimeout(() => {
+      setToastMessage(null);
+      toastTimerRef.current = null;
+    }, 2400);
+  }, []);
 
   const fetchDetail = useCallback(
     async (showLoader: boolean) => {
@@ -142,14 +155,61 @@ export default function EventDetailScreen() {
   }, [params?.initialRsvp]);
 
   const handleRsvpChange = useCallback(
-    (status: RsvpStatus) => {
-      setRsvpStatus(status);
-      params?.onRsvpChange?.(status);
-      
-      // Update local counts optimistically
-      fetchEventGuestCounts(eventItem?.id!).then(c => setGuestCounts(c));
+    async (status: RsvpStatus) => {
+      const previousStatus = rsvpStatus;
+      const previousCounts = { ...guestCounts };
+
+      try {
+        // Update local RSVP status immediately
+        setRsvpStatus(status);
+
+        // Optimistic update for guest counts
+        setGuestCounts((prev) => {
+          const updated = { ...prev };
+
+          // Decrease old status count
+          if (previousStatus === "going" && prev.going > 0) {
+            updated.going = prev.going - 1;
+          } else if (previousStatus === "maybe" && prev.maybe > 0) {
+            updated.maybe = prev.maybe - 1;
+          }
+
+          // Increase new status count
+          if (status === "going") {
+            updated.going = prev.going + 1;
+          } else if (status === "maybe") {
+            updated.maybe = prev.maybe + 1;
+          }
+
+          return updated;
+        });
+
+        // Call parent callback and wait for Firebase update
+        if (params?.onRsvpChange) {
+          await params.onRsvpChange(status);
+        }
+
+        // Show success toast
+        showToast("Updated successfully");
+
+        // Fetch actual counts from Firebase to ensure accuracy
+        try {
+          const counts = await fetchEventGuestCounts(eventItem?.id!);
+          setGuestCounts(counts);
+        } catch (error) {
+          console.error("Failed to fetch guest counts:", error);
+        }
+      } catch (error) {
+        console.error("Failed to update RSVP:", error);
+
+        // Revert optimistic updates on error
+        setRsvpStatus(previousStatus);
+        setGuestCounts(previousCounts);
+
+        showToast("Failed to update RSVP");
+      }
     },
-    [params?.onRsvpChange, eventItem?.id]
+    [params?.onRsvpChange, eventItem?.id, showToast, rsvpStatus, guestCounts]
   );
 
   const handleRefresh = useCallback(async () => {
@@ -220,6 +280,31 @@ export default function EventDetailScreen() {
           }}
         />
       </View>
+
+      {toastMessage ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            left: 16,
+            right: 16,
+            top: Math.max(headerHeight - 6, 24),
+            zIndex: 30,
+            elevation: 8,
+          }}
+        >
+          <View className="rounded-2xl border border-[#0B73FF] bg-white px-4 py-3 shadow-lg shadow-[#0B73FF]/30">
+            <View className="flex-row items-center gap-2">
+              <View className="h-8 w-8 rounded-full bg-[#E0F2FE] items-center justify-center">
+                <Ionicons name="checkmark-done" size={18} color="#0B73FF" />
+              </View>
+              <Text className="text-sm font-semibold text-slate-900 flex-1">
+                {toastMessage}
+              </Text>
+            </View>
+          </View>
+        </View>
+      ) : null}
 
       <ScrollView
         className="flex-1"

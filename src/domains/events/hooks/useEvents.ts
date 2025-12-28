@@ -309,15 +309,23 @@ export function useEvents(): UseEventsResult {
     [rsvpMap]
   );
 
-  const setRsvpStatus = useCallback((id: string, status: RsvpStatus) => {
+  const setRsvpStatus = useCallback(async (id: string, status: RsvpStatus) => {
     // Optimistic Update
     setRsvpMap((prev) => ({ ...prev, [id]: status }));
-    
+
     if (currentUser?.uid && status !== "none") {
-        toggleEventRsvp(currentUser.uid, id, status).catch(err => {
+        try {
+            await toggleEventRsvp(currentUser.uid, id, status);
+        } catch (err) {
             console.error("Failed to sync RSVP", err);
-            // Revert on failure? For now silent fail or toast.
-        });
+            // Revert on failure
+            setRsvpMap((prev) => {
+                const updated = { ...prev };
+                delete updated[id];
+                return updated;
+            });
+            throw err;
+        }
     }
   }, [currentUser?.uid]);
 
