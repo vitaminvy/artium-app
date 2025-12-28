@@ -170,11 +170,12 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
 
   const followingPosts = useMemo(() => {
     if (!currentUser) return [];
-    return posts.filter(
-      (p) =>
-        (p.author?.id && followingIds.has(p.author.id)) ||
-        p.author?.id === currentUser.uid
-    );
+    return posts.filter((p) => {
+      const authorId = p.author?.id;
+      if (!authorId) return false;
+      // Only show people currentUser follow (exclude self)
+      return followingIds.has(authorId);
+    });
   }, [posts, currentUser, followingIds]);
 
   const myPosts = useMemo(() => {
