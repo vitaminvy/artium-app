@@ -17,6 +17,7 @@ import {
   getCountFromServer,
   runTransaction,
   setDoc,
+  deleteDoc,
 } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 import { EventItem } from "../types";
@@ -383,21 +384,21 @@ export const fetchEventGuests = async (eventId: string): Promise<EventGuest[]> =
   try {
     const rsvpsRef = collectionGroup(firestore, "event_rsvps");
     const q = query(rsvpsRef, where("eventId", "==", eventId));
-    
+
     // Limit to 50 guests for performance in this demo
     // In a real app, we would paginate this
     const snapshot = await getDocs(query(q, limit(50)));
-    
+
     // We need to fetch user details for each RSVP
     // Using promise.all with map might trigger too many reads at once if 50+
     // But for <50 it's fine.
-    
+
     const userPromises = snapshot.docs.map(async (rsvpDoc) => {
       const data = rsvpDoc.data();
       // The parent of 'event_rsvps' is the user doc
       // Path: users/{uid}/event_rsvps/{eventId}
       const userRef = rsvpDoc.ref.parent.parent;
-      
+
       if (userRef) {
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
@@ -407,7 +408,7 @@ export const fetchEventGuests = async (eventId: string): Promise<EventGuest[]> =
              name: userData.displayName || "Unknown User",
              status: data.status,
              // Fallbacks for missing schema fields
-             ticketType: "General", 
+             ticketType: "General",
              quantity: 1,
              avatar: userData.photoURL
            } as EventGuest;
@@ -422,5 +423,34 @@ export const fetchEventGuests = async (eventId: string): Promise<EventGuest[]> =
   } catch (error) {
     console.error("Error fetching event guests:", error);
     return [];
+  }
+};
+
+export const deleteEvent = async (eventId: string, organizerId: string): Promise<void> => {
+  try {
+    // Verify the event exists and user is the organizer
+    const eventRef = doc(firestore, EVENTS_COLLECTION, eventId);
+    const eventSnap = await getDoc(eventRef);
+
+    if (!eventSnap.exists()) {
+      throw new Error("Event not found");
+    }
+
+    const eventData = eventSnap.data();
+    if (eventData.organizerId !== organizerId) {
+      throw new Error("Only the event organizer can delete this event");
+    }
+
+    // Delete the event document
+    await deleteDoc(eventRef);
+
+    // Note: In a production app, you might also want to:
+    // 1. Delete all RSVPs for this event (from users/{uid}/event_rsvps/{eventId})
+    // 2. Send notifications to attendees
+    // 3. Use Cloud Functions to handle cleanup
+
+  } catch (error) {
+    console.error("Error deleting event:", error);
+    throw error;
   }
 };

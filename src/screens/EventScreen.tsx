@@ -73,6 +73,7 @@ export default function EventScreen() {
     refreshEvents,
     error,
     addHostedEvent,
+    deleteHostedEvent,
     getRsvpStatus,
     setRsvpStatus,
     hostingSortOptions,
@@ -208,6 +209,19 @@ export default function EventScreen() {
     [navigation, getRsvpStatus, handleRsvpChange]
   );
 
+  const handleDeleteEvent = useCallback(
+    async (eventId: string) => {
+      try {
+        await deleteHostedEvent(eventId);
+        showToast("Event deleted successfully");
+      } catch (error) {
+        console.error("Failed to delete event:", error);
+        showToast("Failed to delete event");
+      }
+    },
+    [deleteHostedEvent, showToast]
+  );
+
   const handleYourLayout = useCallback(
     (layout: { x: number; y: number; width: number; height: number }) => {
       const prev = yourLayoutRef.current;
@@ -296,8 +310,7 @@ export default function EventScreen() {
           sortValue={hostingSort}
           onChangeSort={setHostingSort}
           onCreateEvent={handleCreateEvent}
-          getRsvpStatus={getRsvpStatus}
-          onChangeRsvp={handleRsvpChange}
+          onDeleteEvent={handleDeleteEvent}
           onPressEvent={handleOpenEvent}
           isLoading={isHostingLoading}
         />
