@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Image, Keyboard, Modal, Pressable, Text, TextInput, View, type LayoutChangeEvent } from "react-native";
+import { ActivityIndicator, Image, Keyboard, Modal, Platform, Pressable, Text, TextInput, View, type LayoutChangeEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
@@ -849,6 +849,14 @@ type DateTimeFieldProps = {
 
 function DateTimeField({ value, onChange, hasError = false }: DateTimeFieldProps) {
   const [pickerVisible, setPickerVisible] = useState(false);
+  const iosMajorVersion =
+    Platform.OS === "ios"
+      ? typeof Platform.Version === "string"
+        ? Number.parseInt(Platform.Version, 10)
+        : Platform.Version
+      : 0;
+  const iosDisplay =
+    Platform.OS === "ios" && iosMajorVersion >= 14 ? "inline" : "spinner";
 
   return (
     <>
@@ -873,6 +881,7 @@ function DateTimeField({ value, onChange, hasError = false }: DateTimeFieldProps
         isVisible={pickerVisible}
         mode="datetime"
         date={value}
+        display={Platform.OS === "ios" ? iosDisplay : undefined}
         onConfirm={(date) => {
           onChange(date);
           setPickerVisible(false);
