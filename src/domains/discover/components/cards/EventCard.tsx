@@ -52,12 +52,13 @@ export default function EventCard({
   useEffect(() => {
     setImageLoaded(!hasImage);
   }, [hasImage, item.image]);
-  const [rsvp, setRsvp] = useState<RsvpStatus>(rsvpStatus ?? "none");
+  const [rsvp, setRsvp] = useState<RsvpStatus>(rsvpStatus ?? item.rsvpStatus ?? "none");
   React.useEffect(() => {
-    if (rsvpStatus !== undefined && rsvpStatus !== rsvp) {
-      setRsvp(rsvpStatus);
+    const effectiveRsvp = rsvpStatus ?? item.rsvpStatus;
+    if (effectiveRsvp !== undefined && effectiveRsvp !== rsvp) {
+      setRsvp(effectiveRsvp);
     }
-  }, [rsvpStatus, rsvp]);
+  }, [rsvpStatus, item.rsvpStatus, rsvp]);
   const [showMenu, setShowMenu] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [copied, setCopied] = useState(false);
