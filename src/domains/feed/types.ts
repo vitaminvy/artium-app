@@ -54,6 +54,8 @@ export type FeedComment = {
 };
 
 export type FeedQuote = {
+  id?: string;
+  authorId?: string;
   authorName: string;
   handle: string;
   content: string;

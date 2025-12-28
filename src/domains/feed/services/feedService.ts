@@ -65,19 +65,12 @@ export const getFeedPosts = async (
         return undefined;
       };
 
-      const quote = data.quote
-        ? {
-            ...data.quote,
-            createdAt: toMillis(data.quote.createdAt) ?? data.quote.createdAt ?? Date.now(),
-          }
-        : undefined;
-
       return {
         id: docSnapshot.id,
         ...data,
         author: data.authorSnapshot,
         createdAt: (data.createdAt as Timestamp)?.toMillis() || Date.now(),
-        quote,
+        quote: mapQuote(data.quote),
         liked,
       } as FeedPost;
     }));
@@ -119,22 +112,8 @@ export const subscribeToFeedPosts = (
   const q = query(collection(firestore, POSTS_COLLECTION), orderBy("createdAt", "desc"), limit(pageSize));
 
   return onSnapshot(q, async (snapshot) => {
-    const toMillis = (value: any) => {
-      if (!value) return undefined;
-      if (value instanceof Timestamp) return value.toMillis();
-      if (typeof value?.toDate === "function") return value.toDate().getTime();
-      if (typeof value === "number") return value;
-      return undefined;
-    };
-
     const posts = snapshot.docs.map(docSnapshot => {
       const data = docSnapshot.data();
-      const quote = data.quote
-        ? {
-            ...data.quote,
-            createdAt: toMillis(data.quote.createdAt) ?? data.quote.createdAt ?? Date.now(),
-          }
-        : undefined;
 
       // Liked status is now handled by individual components/subscriptions
       // We default to false here or undefined, the UI component will fetch the real status.
@@ -143,7 +122,7 @@ export const subscribeToFeedPosts = (
         ...data,
         author: data.authorSnapshot,
         createdAt: (data.createdAt as Timestamp)?.toMillis() || Date.now(),
-        quote,
+        quote: mapQuote(data.quote),
         liked: false, 
       } as FeedPost;
     });
@@ -262,4 +241,37 @@ export const subscribeToPostComments = (
   }, (error) => {
     console.error(`Error subscribing to comments for post ${postId}:`, error);
   });
+};
+const mapQuote = (raw: any) => {
+  if (!raw) return undefined;
+  const toMillis = (value: any) => {
+    if (!value) return undefined;
+    if (value instanceof Timestamp) return value.toMillis();
+    if (typeof value?.toDate === "function") return value.toDate().getTime();
+    if (typeof value === "number") return value;
+    return undefined;
+  };
+  return {
+    ...raw,
+    createdAt: toMillis(raw.createdAt) ?? raw.createdAt ?? Date.now(),
+  };
+};
+export const getPostById = async (id: string): Promise<FeedPost | null> => {
+  try {
+    const ref = doc(firestore, POSTS_COLLECTION, id);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    return {
+      id: snap.id,
+      ...data,
+      author: data.authorSnapshot,
+      createdAt: (data.createdAt as Timestamp)?.toMillis?.() || Date.now(),
+      quote: mapQuote(data.quote),
+      liked: false,
+    } as FeedPost;
+  } catch (error) {
+    console.error("Error fetching post by id:", error);
+    return null;
+  }
 };

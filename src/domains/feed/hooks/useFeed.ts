@@ -245,6 +245,8 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
     if (!currentUser || !authorSnapshot) return;
 
     const quote = {
+      id: targetPost.id,
+      authorId: targetPost.author.id,
       authorName: targetPost.author.name,
       handle: targetPost.author.handle,
       content: targetPost.content,
