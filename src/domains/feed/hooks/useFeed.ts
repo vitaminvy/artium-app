@@ -249,6 +249,7 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
       authorId: targetPost.author.id,
       authorName: targetPost.author.name,
       handle: targetPost.author.handle,
+      avatar: targetPost.author.avatar,
       content: targetPost.content,
       createdAt: targetPost.createdAt,
       media: targetPost.media,

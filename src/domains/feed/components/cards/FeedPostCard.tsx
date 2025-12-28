@@ -257,7 +257,21 @@ function FeedPostCard({
           }}
         >
           <View className="flex-row items-center gap-2 mb-1">
-            <View className="h-8 w-8 rounded-full bg-slate-200" />
+            <View className="h-8 w-8 rounded-full overflow-hidden bg-slate-200 items-center justify-center">
+              {post.quote?.avatar ? (
+                <ExpoImage
+                  source={{ uri: post.quote.avatar }}
+                  style={{ width: "100%", height: "100%" }}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  transition={0}
+                />
+              ) : (
+                <Text className="text-[12px] font-semibold text-slate-700">
+                  {post.quote?.authorName?.charAt(0) ?? "?"}
+                </Text>
+              )}
+            </View>
             <View className="flex-1">
               <Text
                 className="text-[13px] font-semibold text-slate-800"

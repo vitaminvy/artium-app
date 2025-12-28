@@ -58,6 +58,7 @@ export type FeedQuote = {
   authorId?: string;
   authorName: string;
   handle: string;
+  avatar?: string;
   content: string;
   createdAt: number;
   relativeTime: string;
