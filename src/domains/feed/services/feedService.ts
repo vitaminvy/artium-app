@@ -22,20 +22,6 @@ import {
 import { firestore } from "@/configs/firebase";
 import { FeedPost, FeedComment } from "../types";
 
-const mapQuote = (raw: any) => {
-  if (!raw) return undefined;
-  const toMillis = (value: any) => {
-    if (!value) return undefined;
-    if (value instanceof Timestamp) return value.toMillis();
-    if (typeof value?.toDate === "function") return value.toDate().getTime();
-    if (typeof value === "number") return value;
-    return undefined;
-  };
-  return {
-    ...raw,
-    createdAt: toMillis(raw.createdAt) ?? raw.createdAt ?? Date.now(),
-  };
-};
 
 const POSTS_COLLECTION = "posts";
 
