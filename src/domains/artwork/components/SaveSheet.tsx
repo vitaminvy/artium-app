@@ -157,7 +157,7 @@ export default function SaveSheet({
               <View className="h-14 w-14 rounded-2xl overflow-hidden bg-slate-200 mr-3">
                 <Image
                   source={mb.cover ? { uri: mb.cover } : logoLight}
-                  className="h-full w-full"
+                  style={{ width: "100%", height: "100%" }}
                   contentFit={mb.cover ? "cover" : "contain"}
                   cachePolicy="memory-disk"
                   transition={0}

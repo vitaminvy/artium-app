@@ -31,6 +31,7 @@ import {
   incrementArtworkView,
   toggleArtworkLike,
 } from "../domains/artwork/services/artworkService";
+import { addArtworkToMoodboard, findMoodboardForArtwork } from "../domains/artwork/services/moodboardService";
 import SaveSheet from "../domains/artwork/components/SaveSheet";
 import ReportSheet from "../domains/artwork/components/ReportSheet";
 import ArtworkCarousel from "../domains/artwork/components/ArtworkCarousel";
@@ -41,7 +42,6 @@ import ArtworkHeader from "../domains/artwork/components/ArtworkHeader";
 import ArtworkInfo from "../domains/artwork/components/ArtworkInfo";
 import ArtworkDetails from "../domains/artwork/components/ArtworkDetails";
 import ArtworkActionBar from "../domains/artwork/components/ArtworkActionBar";
-import { addArtworkToMoodboard } from "../domains/artwork/services/moodboardService";
 import { useAuth } from "../domains/auth/contexts/AuthContext";
 import { createPost } from "../domains/feed/services/feedService";
 
@@ -105,6 +105,25 @@ export default function ArtworkDetailScreen() {
 
     fetchArtwork();
   }, [route.params?.id, currentUser?.uid]);
+
+  useEffect(() => {
+    if (!currentUser?.uid || !artwork?.id) {
+      setSavedBoardId(null);
+      return;
+    }
+    let isActive = true;
+    findMoodboardForArtwork(currentUser.uid, artwork.id)
+      .then((boardId) => {
+        if (isActive) setSavedBoardId(boardId);
+      })
+      .catch((err) => {
+        console.warn("Failed to load moodboard selection:", err);
+        if (isActive) setSavedBoardId(null);
+      });
+    return () => {
+      isActive = false;
+    };
+  }, [currentUser?.uid, artwork?.id]);
 
 
   const reshareTarget: FeedPost | null = useMemo(() => {
