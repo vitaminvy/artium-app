@@ -18,6 +18,7 @@ import UserProfileScreen from "../../../screens/UserProfileScreen";
 import FeedDetailScreen from "../../../screens/FeedDetailScreen";
 import type { FeedPost } from "../../../domains/feed/types";
 import MoodboardDetailScreen from "../../../screens/MoodboardDetailScreen";
+import FollowsScreen from "../../../screens/FollowsScreen";
 
 export type HomeStackParamList = {
   HomeMain: undefined;
@@ -32,6 +33,8 @@ export type HomeStackParamList = {
   SimilarSaved: undefined;
   BlogDetail: { blogId: string };
   FeedDetail: { post: FeedPost };
+  MoodboardDetail: { id: string; ownerId?: string; title?: string; cover?: string | null; ownerName?: string };
+  Follows: { type: "followers" | "following" };
   EventDetail: {
     id?: string;
     initialRsvp?: "none" | "going" | "maybe" | "notGoing";
@@ -39,7 +42,6 @@ export type HomeStackParamList = {
     event?: EventItem;
   };
   Blog: undefined;
-  MoodboardDetail: { id: string; ownerId?: string; title?: string; cover?: string | null; ownerName?: string };
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -59,6 +61,7 @@ export default function HomeStack() {
       <Stack.Screen name="Blog" component={BlogScreen} />
       <Stack.Screen name="FeedDetail" component={FeedDetailScreen} />
       <Stack.Screen name="MoodboardDetail" component={MoodboardDetailScreen} />
+      <Stack.Screen name="Follows" component={FollowsScreen} />
       <Stack.Screen
         name="EditProfile"
         component={EditProfileScreen}
