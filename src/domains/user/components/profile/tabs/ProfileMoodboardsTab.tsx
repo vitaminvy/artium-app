@@ -1,28 +1,35 @@
 import React from "react";
-import { View, Text } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { PROFILE_ACCENT } from "../../../constants/profile";
 import { ProfileMoodboard, ProfileViewModel } from "../../../types";
 
 type Props = {
   profile: ProfileViewModel;
+  onPressMoodboard?: (id: string) => void;
 };
 
-export default function ProfileMoodboardsTab({ profile }: Props) {
+export default function ProfileMoodboardsTab({ profile, onPressMoodboard }: Props) {
   return (
     <View className="pt-3 px-4 pb-6">
       <View className="mt-5" style={{ rowGap: 14 }}>
         {profile.moodboards.map((mb) => (
-          <MoodboardCard key={mb.id} moodboard={mb} />
+          <MoodboardCard
+            key={mb.id}
+            moodboard={mb}
+            onPress={onPressMoodboard ? () => onPressMoodboard(mb.id) : undefined}
+          />
         ))}
       </View>
     </View>
   );
 }
 
-function MoodboardCard({ moodboard }: { moodboard: ProfileMoodboard }) {
+function MoodboardCard({ moodboard, onPress }: { moodboard: ProfileMoodboard; onPress?: () => void }) {
   const ownerInitial =
     moodboard.ownerName?.charAt(0)?.toUpperCase?.() ?? "A";
+
+  const CardContainer = onPress ? Pressable : View;
 
   return (
     <View className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -37,12 +44,15 @@ function MoodboardCard({ moodboard }: { moodboard: ProfileMoodboard }) {
         <Ionicons name="ellipsis-horizontal" size={18} color="#94A3B8" />
       </View>
 
-      <View className="h-36 mb-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 overflow-hidden">
+      <CardContainer
+        className="h-36 mb-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 overflow-hidden active:opacity-90"
+        onPress={onPress}
+      >
         <View
           className="flex-1 m-3 rounded-xl"
           style={{ backgroundColor: moodboard.previewColor ?? "#F1F5F9" }}
         />
-      </View>
+      </CardContainer>
 
       <View className="flex-row items-center" style={{ columnGap: 10 }}>
         <View

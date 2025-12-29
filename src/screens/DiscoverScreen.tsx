@@ -1,6 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, View, Text } from "react-native";
+import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, View, Text, TextInput } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { CompositeNavigationProp } from "@react-navigation/native";
+import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import type { DiscoverStackParamList } from "../app/navigation/Stack/DiscoverStack";
+import type { TabParamList } from "../app/navigation/tabTypes";
 import ScreenHeader from "../shared/components/ScreenHeader";
 import UnderlineHome from "../../assets/headers/underline-home.svg";
 
@@ -11,7 +17,15 @@ import ChangeLocationSheet from "../domains/discover/components/sheets/ChangeLoc
 import Loader from "../shared/components/Loader";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
+import Sidebar from "../shared/components/Sidebar";
+import {
+  SidebarActionKey,
+  SidebarKey,
+  useSidebarItems,
+} from "../shared/hooks/useSidebar";
+import { useLogout } from "../domains/auth/hooks/useLogout";
 import { useProfileContext } from "../domains/user/contexts/ProfileContext";
+import { toggleEventRsvp } from "../domains/discover/services/eventService";
 
 // Import Tabs
 import DiscoverArtworksTab from "../domains/discover/components/tabs/DiscoverArtworksTab";
@@ -30,8 +44,13 @@ const TABS: { key: DiscoverTab; label: string }[] = [
   { key: "events", label: "EVENTS" },
 ];
 
+type NavigationProp = CompositeNavigationProp<
+  NativeStackNavigationProp<DiscoverStackParamList>,
+  BottomTabNavigationProp<TabParamList>
+>;
+
 export default function DiscoverScreen() {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NavigationProp>();
   const { status, currentUser } = useAuth();
   const { isFollowing, toggleFollow } = useProfileContext();
   const {
@@ -56,7 +75,36 @@ export default function DiscoverScreen() {
     loadMoreEvents,
     isMoreEventsLoading,
     hasMoreEvents,
+    updateEventRsvp,
   } = useDiscover();
+  const handleSidebarSelect = (key: SidebarActionKey) => {
+    setSidebarOpen(false);
+
+    if (key === "logout") {
+      logout();
+      return;
+    }
+    if (key === "inventory") {
+      // Navigate to Home tab -> Inventory screen
+      navigation.navigate("Home", { screen: "Inventory" } as any);
+      return;
+    }
+    if (key === "profile") {
+      // Navigate to Home tab -> Profile screen
+      navigation.navigate("Home", { screen: "Profile" } as any);
+      return;
+    }
+    if (key === "events") {
+      // Navigate to Home tab -> Events screen
+      navigation.navigate("Home", { screen: "Events" } as any);
+      return;
+    }
+    if (key === "home") {
+      // Navigate to Home tab
+      navigation.navigate("Home", {} as any);
+      return;
+    }
+  };
 
   const isGuest = status !== "authenticated";
   const { setHidden } = useTabBarVisibility();
@@ -86,12 +134,104 @@ export default function DiscoverScreen() {
   const [locationText, setLocationText] = useState("Albuquerque, NM, USA");
   const [radius, setRadius] = useState("10 miles");
   const [showRadiusOptions, setShowRadiusOptions] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const sidebarItems = useSidebarItems();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [headerHeight, setHeaderHeight] = useState(96);
+  const [activeKey, setActiveKey] = useState<SidebarKey>("home");
+  const { logout, showConfirmModal, onConfirmLogout, onCancelLogout, loading: logoutLoading } = useLogout();
   const handleRequireSignUp = useCallback(() => {
-    navigation.navigate("SignUp");
+    navigation.navigate("SignUp" as any);
   }, [navigation]);
+
+  const handleRsvpChange = useCallback(async (eventId: string, status: "none" | "going" | "maybe" | "notGoing") => {
+    if (isGuest) {
+      handleRequireSignUp();
+      return;
+    }
+
+    try {
+      // Update local state immediately for responsive UI
+      updateEventRsvp(eventId, status);
+
+      // Sync with backend - only if status is not "none"
+      if (currentUser?.uid && status !== "none") {
+        await toggleEventRsvp(currentUser.uid, eventId, status);
+      }
+    } catch (error) {
+      console.error("Failed to update RSVP:", error);
+      // Could add error handling here (e.g., show a toast)
+    }
+  }, [isGuest, currentUser?.uid, updateEventRsvp, handleRequireSignUp]);
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filterArtwork = useCallback(
+    (item: any) => {
+      if (!normalizedQuery) return true;
+      const haystack = [
+        item.title,
+        item.artist,
+        item.price,
+        item.location,
+        Array.isArray(item.tags) ? item.tags.join(" ") : undefined,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(normalizedQuery);
+    },
+    [normalizedQuery]
+  );
+  const filterProfile = useCallback(
+    (item: any) => {
+      if (!normalizedQuery) return true;
+      const haystack = [item.name, item.title, item.location]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(normalizedQuery);
+    },
+    [normalizedQuery]
+  );
+  const filterEvent = useCallback(
+    (item: any) => {
+      if (!normalizedQuery) return true;
+      const haystack = [
+        item.title,
+        item.location,
+        item.category,
+        item.eventType,
+        item.description,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(normalizedQuery);
+    },
+    [normalizedQuery]
+  );
+
   const filteredProfiles = React.useMemo(
-    () => profiles.filter((p) => p.id !== currentUser?.uid),
-    [profiles, currentUser?.uid]
+    () =>
+      profiles
+        .filter((p) => p.id !== currentUser?.uid)
+        .filter(filterProfile),
+    [profiles, currentUser?.uid, filterProfile]
+  );
+  const filteredTopPicks = React.useMemo(
+    () => topPicks.filter(filterArtwork),
+    [topPicks, filterArtwork]
+  );
+  const filteredArtworks = React.useMemo(
+    () => artworks.filter(filterArtwork),
+    [artworks, filterArtwork]
+  );
+  const filteredMoments = React.useMemo(
+    () => moments.filter(filterArtwork),
+    [moments, filterArtwork]
+  );
+  const filteredEvents = React.useMemo(
+    () => events.filter(filterEvent),
+    [events, filterEvent]
   );
 
   const renderContent = () => {
@@ -121,9 +261,9 @@ export default function DiscoverScreen() {
 
     switch (tab) {
       case "topPicks":
-        return <DiscoverArtworksTab data={topPicks} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={() => {}} isFetchingNextPage={false} />;
+        return <DiscoverArtworksTab data={filteredTopPicks} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={() => { }} isFetchingNextPage={false} />;
       case "artworks":
-        return <DiscoverArtworksTab data={artworks} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreArtworks} isFetchingNextPage={isMoreArtworksLoading} />;
+        return <DiscoverArtworksTab data={filteredArtworks} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreArtworks} isFetchingNextPage={isMoreArtworksLoading} />;
       case "profiles":
         return (
           <DiscoverProfilesTab
@@ -137,15 +277,25 @@ export default function DiscoverScreen() {
           />
         );
       case "events":
-        return <DiscoverEventsTab data={events} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreEvents} isFetchingNextPage={isMoreEventsLoading} />;
+        return <DiscoverEventsTab
+          data={filteredEvents}
+          onCardPress={isGuest ? handleRequireSignUp : (item) => navigation.navigate("EventDetail", {
+            event: item,
+            onRsvpChange: (status) => handleRsvpChange(item.id, status)
+          })}
+          onRsvpChange={(item, status) => handleRsvpChange(item.id, status)}
+          onScroll={handleScroll}
+          onEndReached={loadMoreEvents}
+          isFetchingNextPage={isMoreEventsLoading}
+        />;
       case "moments":
-        return <DiscoverMomentsTab data={moments} onCardPress={onMomentPress} onScroll={handleScroll} onEndReached={loadMoreMoments} isFetchingNextPage={isMoreMomentsLoading} />;
+        return <DiscoverMomentsTab data={filteredMoments} onCardPress={onMomentPress} onScroll={handleScroll} onEndReached={loadMoreMoments} isFetchingNextPage={isMoreMomentsLoading} />;
       case "nearby":
         return (
           <DiscoverNearbyTab
-            artworks={artworks}
+            artworks={filteredArtworks}
             profiles={filteredProfiles}
-            events={events}
+            events={filteredEvents}
             locationText={locationText}
             radius={radius}
             onOpenLocationSheet={() => setShowLocationSheet(true)}
@@ -164,8 +314,10 @@ export default function DiscoverScreen() {
       <ScreenHeader
         title="Discover"
         badgeLabel="Blog"
-        actionType="search"
-        onPressAction={() => {}}
+        actionType="menu"
+        isMenuOpen={sidebarOpen}
+        onPressAction={() => setSidebarOpen((prev) => !prev)}
+        onHeightChange={(h) => setHeaderHeight(h)}
         underlineSource={UnderlineHome}
       />
 
@@ -184,6 +336,26 @@ export default function DiscoverScreen() {
             />
           ))}
         </ScrollView>
+        <View className="px-4 mt-3">
+          <View className="flex-row items-center rounded-full border border-slate-200 bg-slate-50 px-3">
+            <Ionicons name="search" size={18} color="#94A3B8" />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search artworks, profiles, events"
+              placeholderTextColor="#94A3B8"
+              className="flex-1 px-2 py-2 text-[12px] text-slate-900"
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+            />
+            {searchQuery ? (
+              <Pressable onPress={() => setSearchQuery("")} hitSlop={8}>
+                <Ionicons name="close-circle" size={18} color="#94A3B8" />
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
       </View>
 
       {renderContent()}
@@ -210,6 +382,15 @@ export default function DiscoverScreen() {
           </Pressable>
         </View>
       )}
+
+      <Sidebar
+        visible={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onSelect={handleSidebarSelect}
+        topOffset={headerHeight}
+        activeKey={activeKey}
+        items={sidebarItems}
+      />
     </View>
   );
 }

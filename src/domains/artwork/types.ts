@@ -55,4 +55,5 @@ export type ArtworkDetail = {
   };
 
   status?: string;
+  liked?: boolean;
 };

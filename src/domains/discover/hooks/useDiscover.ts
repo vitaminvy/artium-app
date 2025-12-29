@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { collection, getDocs, query, orderBy, limit, where, startAfter, QueryDocumentSnapshot, DocumentData, Timestamp } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 import { getArtworks, getTrendingArtworks } from "../../artwork/services/artworkService";
@@ -13,7 +13,8 @@ import type { MomentCardItem } from "../../user/components/profile/MomentCard";
 import type { FeedPost, FeedMedia, FeedMetrics, FeedAuthor } from "../../feed/types";
 import { defaultDiscoverTab, discoverMockData } from "../mockData";
 
-import { getEvents } from "../services/eventService";
+import { getEvents, fetchUserRsvps } from "../services/eventService";
+import { useAuth } from "@/domains/auth/contexts/AuthContext";
 
 const ARTWORK_PAGE_SIZE = 6;
 const MOMENT_PAGE_SIZE = 3;
@@ -116,11 +117,13 @@ type UseDiscoverResult = {
   loadMoreEvents: () => void;
   isMoreEventsLoading: boolean;
   hasMoreEvents: boolean;
+  updateEventRsvp: (eventId: string, rsvpStatus: "none" | "going" | "maybe" | "notGoing") => void;
 };
 
 export function useDiscover(): UseDiscoverResult {
+  const { currentUser } = useAuth();
   const [tab, setTab] = useState<DiscoverTab>(defaultDiscoverTab);
-  
+
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [topPicks, setTopPicks] = useState<Artwork[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,6 +146,10 @@ export function useDiscover(): UseDiscoverResult {
   const [lastEventDoc, setLastEventDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMoreEvents, setHasMoreEvents] = useState(true);
   const [isMoreEventsLoading, setIsMoreEventsLoading] = useState(false);
+
+  // Store RSVP status map
+  const [rsvpMap, setRsvpMap] = useState<Record<string, "going" | "maybe" | "notGoing">>({});
+  const rsvpMapRef = useRef(rsvpMap);
 
   const fetchInitialArtworks = useCallback(async () => {
     try {
@@ -253,11 +260,21 @@ export function useDiscover(): UseDiscoverResult {
 
   const fetchEvents = useCallback(async (lastDoc: QueryDocumentSnapshot<DocumentData> | null = null) => {
     try {
+      // console.log("[useDiscover] Fetching events from Firestore...");
       const { events: newEvents, lastVisible } = await getEvents(EVENT_PAGE_SIZE, lastDoc);
+      // console.log("[useDiscover] Fetched events count:", newEvents.length);
       const mapped = newEvents.map(adaptEvent);
+      const rsvpSnapshot = rsvpMapRef.current;
+
+      // Merge with RSVP status
+      const eventsWithRsvp = mapped.map(event => ({
+        ...event,
+        rsvpStatus: rsvpSnapshot[event.id] ?? "none"
+      }));
+
       setHasMoreEvents(mapped.length === EVENT_PAGE_SIZE);
       setLastEventDoc(lastVisible);
-      return mapped;
+      return eventsWithRsvp;
     } catch (e: any) {
       console.error("Failed to fetch events:", e);
       setError(e);
@@ -272,6 +289,50 @@ export function useDiscover(): UseDiscoverResult {
     setEvents(prev => [...prev, ...newEvents]);
     setIsMoreEventsLoading(false);
   }, [isMoreEventsLoading, hasMoreEvents, lastEventDoc, fetchEvents]);
+
+  const updateEventRsvp = useCallback((eventId: string, rsvpStatus: "none" | "going" | "maybe" | "notGoing") => {
+    // Update rsvpMap
+    setRsvpMap(prev => ({
+      ...prev,
+      [eventId]: rsvpStatus as "going" | "maybe" | "notGoing"
+    }));
+
+    // Update events list
+    setEvents(prev =>
+      prev.map(event =>
+        event.id === eventId
+          ? { ...event, rsvpStatus }
+          : event
+      )
+    );
+  }, []);
+
+  // Fetch user RSVPs when user is authenticated
+  useEffect(() => {
+    const loadUserRsvps = async () => {
+      if (currentUser?.uid) {
+        // console.log("[useDiscover] Fetching user RSVPs...");
+        const { rsvpMap: userRsvps } = await fetchUserRsvps(currentUser.uid);
+        // console.log("[useDiscover] User RSVPs count:", Object.keys(userRsvps).length);
+        setRsvpMap(userRsvps);
+      } else {
+        setRsvpMap({});
+      }
+    };
+
+    loadUserRsvps();
+  }, [currentUser?.uid]);
+
+  // Re-apply RSVP status to events when rsvpMap changes
+  useEffect(() => {
+    rsvpMapRef.current = rsvpMap;
+    setEvents(prev =>
+      prev.map(event => ({
+        ...event,
+        rsvpStatus: rsvpMap[event.id] ?? "none"
+      }))
+    );
+  }, [rsvpMap]);
 
   useEffect(() => {
     fetchInitialArtworks();
@@ -302,5 +363,6 @@ export function useDiscover(): UseDiscoverResult {
     loadMoreEvents,
     isMoreEventsLoading,
     hasMoreEvents,
+    updateEventRsvp,
   };
 }

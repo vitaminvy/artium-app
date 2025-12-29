@@ -8,7 +8,7 @@ import UserProfileScreen from "../../../screens/UserProfileScreen";
 import { FeedPost } from "../../../domains/feed/types";
 
 export type FeedStackParamList = {
-  FeedMain: undefined;
+  FeedMain: { refreshKey?: number } | undefined;
   FeedDetail: { post: FeedPost };
   UserProfile: { userId: string };
 };

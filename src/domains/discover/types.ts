@@ -72,6 +72,7 @@ export type EventItem = {
   };
   status?: "ongoing" | "upcoming";
   rsvpLabel?: string;
+  rsvpStatus?: "none" | "going" | "maybe" | "notGoing";
 };
 
 export type InspirationArticle = {

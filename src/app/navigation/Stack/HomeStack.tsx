@@ -17,6 +17,7 @@ import BlogScreen from "../../../screens/BlogScreen";
 import UserProfileScreen from "../../../screens/UserProfileScreen";
 import FeedDetailScreen from "../../../screens/FeedDetailScreen";
 import type { FeedPost } from "../../../domains/feed/types";
+import MoodboardDetailScreen from "../../../screens/MoodboardDetailScreen";
 
 export type HomeStackParamList = {
   HomeMain: undefined;
@@ -38,6 +39,7 @@ export type HomeStackParamList = {
     event?: EventItem;
   };
   Blog: undefined;
+  MoodboardDetail: { id: string };
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -56,6 +58,7 @@ export default function HomeStack() {
       <Stack.Screen name="BlogDetail" component={BlogDetailScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Blog" component={BlogScreen} />
       <Stack.Screen name="FeedDetail" component={FeedDetailScreen} />
+      <Stack.Screen name="MoodboardDetail" component={MoodboardDetailScreen} />
       <Stack.Screen
         name="EditProfile"
         component={EditProfileScreen}

@@ -168,6 +168,10 @@ export default function ProfileScreen() {
     setTab("moments");
   };
 
+  const openMoodboardDetail = (id: string) => {
+    navigation.navigate("MoodboardDetail" as never, { id } as never);
+  };
+
   const handleSidebarSelect = (key: SidebarActionKey) => {
     setSidebarOpen(false);
 
@@ -284,7 +288,12 @@ export default function ProfileScreen() {
                   onPressMoment={handlePressMoment}
                 />
               )}
-              {tab === "moodboards" && <ProfileMoodboardsTab profile={profile} />}
+              {tab === "moodboards" && (
+                <ProfileMoodboardsTab
+                  profile={profile}
+                  onPressMoodboard={openMoodboardDetail}
+                />
+              )}
             </View>
           </>
         )}

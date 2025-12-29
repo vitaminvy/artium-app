@@ -2,7 +2,7 @@
 // src/screens/FeedScreen.tsx
 import React from "react";
 import { View, Text, Keyboard } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import FeedTabs from "../domains/feed/components/ui/FeedTabs";
 import FeedExploreTab from "../domains/feed/components/tabs/FeedExploreTab";
 import FeedFollowingTab from "../domains/feed/components/tabs/FeedFollowingTab";
@@ -29,10 +29,13 @@ import ImageViewing from "react-native-image-viewing";
 import { useRef, useEffect } from "react";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import { useAuth } from "../domains/auth/contexts/AuthContext";
+import { getArtworkById } from "../domains/artwork/services/artworkService";
+import { navigate as rootNavigate } from "../app/navigation/navigationRef";
 
 export default function FeedScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<FeedStackParamList>>();
+  const route = useRoute<RouteProp<FeedStackParamList, "FeedMain">>();
   const { currentUser: user } = useAuth();
   const {
     tab,
@@ -63,6 +66,7 @@ export default function FeedScreen() {
 
   const [selectedPost, setSelectedPost] = React.useState<FeedPost | undefined>();
   const [commentTarget, setCommentTarget] = React.useState<FeedPost | undefined>();
+  const lastRefreshKey = useRef<number | undefined>(undefined);
   const viewerKeyRef = useRef(0);
   const [viewerState, setViewerState] = React.useState<{
     visible: boolean;
@@ -74,6 +78,13 @@ export default function FeedScreen() {
   const tabsAnim = useSharedValue(1);
   const lastOffset = useSharedValue(0);
   const { setHidden } = useTabBarVisibility();
+  const refreshKey = route.params?.refreshKey;
+
+  useEffect(() => {
+    if (!refreshKey || refreshKey === lastRefreshKey.current) return;
+    lastRefreshKey.current = refreshKey;
+    onRefresh();
+  }, [onRefresh, refreshKey]);
 
   const openReshare = React.useCallback((post: FeedPost) => {
     setSelectedPost(post);
@@ -101,19 +112,28 @@ export default function FeedScreen() {
       navigation.navigate("FeedDetail", { post: target });
       return;
     }
-    // Fallback: if not found locally, fetch from Firestore then open
-    // Lazy-load to avoid pulling every time
+    // Fallback: try fetch post, then artwork detail (do not abort on post fetch errors)
     import("../domains/feed/services/feedService")
       .then(({ getPostById }) => getPostById(quoteId))
-      .then((post) => {
+      .catch((err) => {
+        console.warn("Failed to fetch quoted post, will try artwork:", err);
+        return null;
+      })
+      .then(async (post) => {
         if (post) {
           navigation.navigate("FeedDetail", { post });
+          return;
         }
-      })
-      .catch((err) => {
-        console.warn("Failed to fetch quoted post:", err);
+        try {
+          const artwork = await getArtworkById(quoteId, user?.uid);
+          if (artwork) {
+            rootNavigate("ArtworkDetail", { id: quoteId });
+          }
+        } catch (err) {
+          console.warn("Failed to fetch artwork for quote:", err);
+        }
       });
-  }, [explorePosts, followingPosts, myPosts, navigation]);
+  }, [explorePosts, followingPosts, myPosts, navigation, user?.uid]);
 
   const openComments = React.useCallback((post: FeedPost) => {
     setCommentTarget(post);
