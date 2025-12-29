@@ -11,6 +11,7 @@ import ProfileArtworksTab from "../domains/user/components/profile/tabs/ProfileA
 import ProfileMomentsTab from "../domains/user/components/profile/tabs/ProfileMomentsTab";
 import ProfileMoodboardsTab from "../domains/user/components/profile/tabs/ProfileMoodboardsTab";
 import { useProfile } from "../domains/user/hooks/useProfile";
+import { useOwnerMoments } from "../domains/user/hooks/useOwnerMoments";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
 import Sidebar from "../shared/components/Sidebar";
 import {
@@ -103,6 +104,9 @@ export default function ProfileScreen() {
   } = useLogout();
   const [avatarLoaded, setAvatarLoaded] = React.useState(false);
 
+  // Fetch owner moments to get data for navigation
+  const { moments } = useOwnerMoments();
+
   const handleBack = () => {
     if (navigation.canGoBack()) {
       navigation.goBack();
@@ -123,6 +127,35 @@ export default function ProfileScreen() {
 
   const handleUploadInventory = () => {
     rootNavigate("Upload");
+  };
+
+  const handlePressArtwork = (artworkId: string) => {
+    console.log("Navigate to artwork:", artworkId);
+    navigation.navigate("ArtworkDetail" as any, { artworkId });
+  };
+
+  const handlePressMoment = (momentId: string) => {
+    console.log("Navigate to moment:", momentId);
+    // Find the full moment object from the moments array
+    const moment = moments.find((m) => m.id === momentId);
+    if (!moment) {
+      console.warn("Moment not found:", momentId);
+      return;
+    }
+
+    // Convert MomentCardItem to FeedPost
+    const feedPost = {
+      id: moment.id,
+      author: moment.author,
+      content: moment.content,
+      createdAt: moment.createdAt || Date.now(),
+      relativeTime: moment.relativeTime,
+      media: moment.media,
+      metrics: moment.metrics || { likes: 0, comments: 0, shares: 0 },
+      liked: moment.liked,
+    };
+
+    navigation.navigate("FeedDetail", { post: feedPost });
   };
 
   const handleSidebarSelect = (key: SidebarActionKey) => {
@@ -219,11 +252,17 @@ export default function ProfileScreen() {
                   onPressShare={handlePostMoment}
                 />
               )}
-              {tab === "artworks" && <ProfileArtworksTab profile={profile} />}
+              {tab === "artworks" && (
+                <ProfileArtworksTab
+                  profile={profile}
+                  onPressArtwork={handlePressArtwork}
+                />
+              )}
               {tab === "moments" && (
                 <ProfileMomentsTab
                   profile={profile}
                   onPressUpload={handlePostMoment}
+                  onPressMoment={handlePressMoment}
                 />
               )}
               {tab === "moodboards" && <ProfileMoodboardsTab profile={profile} />}

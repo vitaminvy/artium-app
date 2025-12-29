@@ -1,7 +1,10 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, Image, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { doc, onSnapshot } from "firebase/firestore";
+import { firestore } from "@/configs/firebase";
 import { FeedAuthor, FeedMedia, FeedMetrics } from "../../../feed/types";
+import { usePostLike } from "../../../feed/hooks/usePostLike";
 
 export type MasonryMomentItem = {
   id: string;
@@ -95,6 +98,25 @@ export default function MasonryMomentCard({ item, onPress, onPressAuthor }: Prop
   const cardType = getCardType(item);
   const mediaInfo = getMediaInfo(item.media);
 
+  // Real-time metrics subscription
+  const [metrics, setMetrics] = useState<FeedMetrics>(item.metrics || { likes: 0, comments: 0, shares: 0 });
+  const { isLiked } = usePostLike(item.id, item.liked);
+
+  useEffect(() => {
+    // Subscribe to real-time metrics updates
+    const postRef = doc(firestore, "posts", item.id);
+    const unsubscribe = onSnapshot(postRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data.metrics) {
+          setMetrics(data.metrics);
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [item.id]);
+
   // Text-only card: Small, compact, just text
   if (cardType === "text-only") {
     return (
@@ -103,22 +125,20 @@ export default function MasonryMomentCard({ item, onPress, onPressAuthor }: Prop
           <Text className="text-sm text-slate-700 leading-5" numberOfLines={6}>
             {item.content}
           </Text>
-          {item.metrics && (
-            <View className="flex-row items-center gap-3 mt-3 pt-3 border-t border-slate-100">
-              <View className="flex-row items-center gap-1">
-                <Ionicons
-                  name={item.liked ? "heart" : "heart-outline"}
-                  size={14}
-                  color={item.liked ? "#EF4444" : "#94A3B8"}
-                />
-                <Text className="text-xs text-slate-500">{item.metrics.likes || 0}</Text>
-              </View>
-              <View className="flex-row items-center gap-1">
-                <Ionicons name="chatbubble-outline" size={14} color="#94A3B8" />
-                <Text className="text-xs text-slate-500">{item.metrics.comments || 0}</Text>
-              </View>
+          <View className="flex-row items-center gap-3 mt-3 pt-3 border-t border-slate-100">
+            <View className="flex-row items-center gap-1">
+              <Ionicons
+                name={isLiked ? "heart" : "heart-outline"}
+                size={14}
+                color={isLiked ? "#EF4444" : "#94A3B8"}
+              />
+              <Text className="text-xs text-slate-500">{metrics.likes || 0}</Text>
             </View>
-          )}
+            <View className="flex-row items-center gap-1">
+              <Ionicons name="chatbubble-outline" size={14} color="#94A3B8" />
+              <Text className="text-xs text-slate-500">{metrics.comments || 0}</Text>
+            </View>
+          </View>
         </View>
       </Pressable>
     );
@@ -153,22 +173,20 @@ export default function MasonryMomentCard({ item, onPress, onPressAuthor }: Prop
               </View>
             )}
           </View>
-          {item.metrics && (
-            <View className="flex-row items-center gap-3 px-3 py-2">
-              <View className="flex-row items-center gap-1">
-                <Ionicons
-                  name={item.liked ? "heart" : "heart-outline"}
-                  size={14}
-                  color={item.liked ? "#EF4444" : "#94A3B8"}
-                />
-                <Text className="text-xs text-slate-500">{item.metrics.likes || 0}</Text>
-              </View>
-              <View className="flex-row items-center gap-1">
-                <Ionicons name="chatbubble-outline" size={14} color="#94A3B8" />
-                <Text className="text-xs text-slate-500">{item.metrics.comments || 0}</Text>
-              </View>
+          <View className="flex-row items-center gap-3 px-3 py-2">
+            <View className="flex-row items-center gap-1">
+              <Ionicons
+                name={isLiked ? "heart" : "heart-outline"}
+                size={14}
+                color={isLiked ? "#EF4444" : "#94A3B8"}
+              />
+              <Text className="text-xs text-slate-500">{metrics.likes || 0}</Text>
             </View>
-          )}
+            <View className="flex-row items-center gap-1">
+              <Ionicons name="chatbubble-outline" size={14} color="#94A3B8" />
+              <Text className="text-xs text-slate-500">{metrics.comments || 0}</Text>
+            </View>
+          </View>
         </View>
       </Pressable>
     );
@@ -206,22 +224,20 @@ export default function MasonryMomentCard({ item, onPress, onPressAuthor }: Prop
                 {item.content}
               </Text>
             )}
-            {item.metrics && (
-              <View className="flex-row items-center gap-3 mt-2 pt-2 border-t border-slate-100">
-                <View className="flex-row items-center gap-1">
-                  <Ionicons
-                    name={item.liked ? "heart" : "heart-outline"}
-                    size={14}
-                    color={item.liked ? "#EF4444" : "#94A3B8"}
-                  />
-                  <Text className="text-xs text-slate-500">{item.metrics.likes || 0}</Text>
-                </View>
-                <View className="flex-row items-center gap-1">
-                  <Ionicons name="chatbubble-outline" size={14} color="#94A3B8" />
-                  <Text className="text-xs text-slate-500">{item.metrics.comments || 0}</Text>
-                </View>
+            <View className="flex-row items-center gap-3 mt-2 pt-2 border-t border-slate-100">
+              <View className="flex-row items-center gap-1">
+                <Ionicons
+                  name={isLiked ? "heart" : "heart-outline"}
+                  size={14}
+                  color={isLiked ? "#EF4444" : "#94A3B8"}
+                />
+                <Text className="text-xs text-slate-500">{metrics.likes || 0}</Text>
               </View>
-            )}
+              <View className="flex-row items-center gap-1">
+                <Ionicons name="chatbubble-outline" size={14} color="#94A3B8" />
+                <Text className="text-xs text-slate-500">{metrics.comments || 0}</Text>
+              </View>
+            </View>
           </View>
         </View>
       </Pressable>
@@ -240,22 +256,20 @@ export default function MasonryMomentCard({ item, onPress, onPressAuthor }: Prop
         <Text className="text-sm text-slate-700 leading-5" numberOfLines={8}>
           {item.content}
         </Text>
-        {item.metrics && (
-          <View className="flex-row items-center gap-3 mt-3 pt-3 border-t border-slate-100">
-            <View className="flex-row items-center gap-1">
-              <Ionicons
-                name={item.liked ? "heart" : "heart-outline"}
-                size={14}
-                color={item.liked ? "#EF4444" : "#94A3B8"}
-              />
-              <Text className="text-xs text-slate-500">{item.metrics.likes || 0}</Text>
-            </View>
-            <View className="flex-row items-center gap-1">
-              <Ionicons name="chatbubble-outline" size={14} color="#94A3B8" />
-              <Text className="text-xs text-slate-500">{item.metrics.comments || 0}</Text>
-            </View>
+        <View className="flex-row items-center gap-3 mt-3 pt-3 border-t border-slate-100">
+          <View className="flex-row items-center gap-1">
+            <Ionicons
+              name={isLiked ? "heart" : "heart-outline"}
+              size={14}
+              color={isLiked ? "#EF4444" : "#94A3B8"}
+            />
+            <Text className="text-xs text-slate-500">{metrics.likes || 0}</Text>
           </View>
-        )}
+          <View className="flex-row items-center gap-1">
+            <Ionicons name="chatbubble-outline" size={14} color="#94A3B8" />
+            <Text className="text-xs text-slate-500">{metrics.comments || 0}</Text>
+          </View>
+        </View>
       </View>
     </Pressable>
   );
