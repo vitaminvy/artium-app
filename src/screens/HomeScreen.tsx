@@ -31,6 +31,7 @@ import {
 } from "../domains/home/types";
 import ArtworkCard from "../domains/discover/components/cards/ArtworkCard";
 import type { Artwork } from "../domains/discover/types";
+import { navigateToUserProfile } from "../shared/utils/navigateToUserProfile";
 import Loader from "../shared/components/Loader";
 
 type HomeScreenNavigationProp = CompositeNavigationProp<
@@ -228,6 +229,7 @@ export default function HomeScreen() {
                   item={item}
                   isFollowing={isFollowing(item.id)}
                   onToggleFollow={toggleFollow}
+                  onPress={() => navigateToUserProfile(item.id)}
                 />
               </View>
             )}

@@ -125,12 +125,31 @@ export default function UserProfileScreen() {
 
   const handlePressArtwork = (artworkId: string) => {
     console.log("Navigate to artwork:", artworkId);
-    // TODO: Navigate to artwork detail
+    navigation.navigate("ArtworkDetail" as any, { artworkId });
   };
 
   const handlePressMoment = (momentId: string) => {
     console.log("Navigate to moment:", momentId);
-    // TODO: Navigate to moment detail
+    // Find the full moment object from the moments array
+    const moment = moments.find((m) => m.id === momentId);
+    if (!moment) {
+      console.warn("Moment not found:", momentId);
+      return;
+    }
+
+    // Convert MomentCardItem to FeedPost
+    const feedPost = {
+      id: moment.id,
+      author: moment.author,
+      content: moment.content,
+      createdAt: moment.createdAt || Date.now(),
+      relativeTime: moment.relativeTime,
+      media: moment.media,
+      metrics: moment.metrics || { likes: 0, comments: 0, shares: 0 },
+      liked: moment.liked,
+    };
+
+    navigation.navigate("FeedDetail", { post: feedPost });
   };
 
   if (error) {

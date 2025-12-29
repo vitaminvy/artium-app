@@ -65,6 +65,7 @@ export function useUserMoments(userId: string, limitCount: number = 20) {
             metrics,
             liked: data.liked ?? false,
             relativeTime: formatTimeAgo(createdAtMs),
+            createdAt: createdAtMs, // Include createdAt for navigation to FeedDetail
           };
         });
 

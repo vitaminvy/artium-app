@@ -12,6 +12,7 @@ export type MomentCardItem = {
   metrics?: FeedMetrics;
   liked?: boolean;
   relativeTime?: string;
+  createdAt?: number; // Timestamp in milliseconds for navigation to FeedDetail
 };
 
 type Props = {

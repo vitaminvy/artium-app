@@ -15,6 +15,8 @@ import type { EventItem } from "../../../domains/discover/types";
 import BlogDetailScreen from "../../../screens/BlogDetailScreen"; // Renamed import
 import BlogScreen from "../../../screens/BlogScreen";
 import UserProfileScreen from "../../../screens/UserProfileScreen";
+import FeedDetailScreen from "../../../screens/FeedDetailScreen";
+import type { FeedPost } from "../../../domains/feed/types";
 
 export type HomeStackParamList = {
   HomeMain: undefined;
@@ -28,6 +30,7 @@ export type HomeStackParamList = {
   PopularArtists: undefined;
   SimilarSaved: undefined;
   BlogDetail: { blogId: string };
+  FeedDetail: { post: FeedPost };
   EventDetail: {
     id?: string;
     initialRsvp?: "none" | "going" | "maybe" | "notGoing";
@@ -52,6 +55,7 @@ export default function HomeStack() {
       <Stack.Screen name="SimilarSaved" component={SimilarSavedScreen} />
       <Stack.Screen name="BlogDetail" component={BlogDetailScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Blog" component={BlogScreen} />
+      <Stack.Screen name="FeedDetail" component={FeedDetailScreen} />
       <Stack.Screen
         name="EditProfile"
         component={EditProfileScreen}

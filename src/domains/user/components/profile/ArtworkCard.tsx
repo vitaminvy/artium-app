@@ -30,10 +30,10 @@ const cardShadow = {
 export default function ArtworkCard({ item, onPress }: Props) {
   const initials = item.artist.name
     ?.split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+    ?.map((part) => part[0])
+    ?.join("")
+    ?.slice(0, 2)
+    ?.toUpperCase() ?? "AR";
 
   return (
     <Pressable

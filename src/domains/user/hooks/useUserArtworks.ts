@@ -48,13 +48,45 @@ export function useUserArtworks(userId: string, limitCount: number = 20) {
             }
           }
 
+          // Ensure artist name is always a string
+          // Handle case where data.artist might be string, object, or missing
+          let artistName = "Unknown Artist";
+          if (data.artistSnapshot?.name) {
+            artistName = data.artistSnapshot.name;
+          } else if (typeof data.artist === "string") {
+            artistName = data.artist;
+          } else if (data.artist && typeof data.artist === "object" && data.artist.name) {
+            // Handle case where artist is an object with a name property
+            artistName = data.artist.name;
+          }
+
+          const artistAvatar =
+            data.artistSnapshot?.avatar ||
+            data.artistAvatar ||
+            (data.artist && typeof data.artist === "object" ? data.artist.avatar : undefined);
+
+          const artistVerified =
+            data.artistSnapshot?.verified ??
+            (data.artist && typeof data.artist === "object" ? data.artist.verified : false) ??
+            false;
+
+          // Debug: Log if artist name is missing
+          if (!data.artistSnapshot?.name && !data.artist) {
+            console.warn("⚠️ Artwork missing artist name:", {
+              artworkId: doc.id,
+              title: data.title,
+              artistSnapshot: data.artistSnapshot,
+              artist: data.artist,
+            });
+          }
+
           return {
             id: doc.id,
             title: data.title || "Untitled",
             artist: {
-              name: data.artistSnapshot?.name || data.artist || "Unknown Artist",
-              avatar: data.artistSnapshot?.avatar || data.artistAvatar,
-              verified: data.artistSnapshot?.verified ?? false,
+              name: artistName, // Already guaranteed to be string
+              avatar: artistAvatar,
+              verified: artistVerified,
             },
             image: data.images?.[0] || data.image || "",
             price: priceString,

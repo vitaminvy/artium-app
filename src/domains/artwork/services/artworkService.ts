@@ -149,6 +149,7 @@ export const getArtworkById = async (id: string): Promise<ArtworkDetail | null> 
       id: artworkSnap.id,
       title: data.title,
       artist: {
+        id: data.artistId, // User ID for navigation
         name: data.artistSnapshot?.name || "Unknown",
         avatar: data.artistSnapshot?.avatar || "",
         verified: data.artistSnapshot?.verified || false,
