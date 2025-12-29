@@ -74,6 +74,7 @@ export default function EventScreen() {
     error,
     addHostedEvent,
     deleteHostedEvent,
+    setHostingEvents,
     getRsvpStatus,
     setRsvpStatus,
     hostingSortOptions,
@@ -222,6 +223,37 @@ export default function EventScreen() {
     [deleteHostedEvent, showToast]
   );
 
+  const handleInviteSent = useCallback(
+    async (eventId: string, invitedCount: number) => {
+      try {
+        // Hiển thị toast thông báo thành công
+        showToast(`Invited ${invitedCount} ${invitedCount === 1 ? 'person' : 'people'} successfully`);
+
+        // Cập nhật lại số lượng attendees cho event
+        // Fetch lại event để lấy organizerId và cập nhật số lượng chính xác (excluding organizer)
+        const { fetchEventGuestCounts, getEventById } = await import("../domains/discover/services/eventService");
+
+        // Fetch event để lấy organizerId
+        const eventResult = await getEventById(eventId);
+        const organizerId = eventResult?.raw?.organizerId || eventResult?.event?.organizerSnapshot?.id;
+
+        // Fetch guest counts (excluding organizer)
+        const counts = await fetchEventGuestCounts(eventId, organizerId);
+        const totalAttendees = counts.going + counts.invited;
+
+        // Cập nhật hosting events với số lượng mới - dùng functional update
+        setHostingEvents((prevEvents) =>
+          prevEvents.map((event) =>
+            event.id === eventId ? { ...event, attendees: totalAttendees } : event
+          )
+        );
+      } catch (error) {
+        console.error("Failed to update event attendees:", error);
+      }
+    },
+    [showToast, setHostingEvents]
+  );
+
   const handleYourLayout = useCallback(
     (layout: { x: number; y: number; width: number; height: number }) => {
       const prev = yourLayoutRef.current;
@@ -312,6 +344,7 @@ export default function EventScreen() {
           onCreateEvent={handleCreateEvent}
           onDeleteEvent={handleDeleteEvent}
           onPressEvent={handleOpenEvent}
+          onInviteSent={handleInviteSent}
           isLoading={isHostingLoading}
         />
 
@@ -373,6 +406,19 @@ export default function EventScreen() {
             try {
               const saved = await createEvent(event);
               addHostedEvent(saved);
+
+              // Delete organizer's RSVP for this event if it exists
+              try {
+                const { deleteOrganizerRsvp } = await import("../domains/discover/services/eventService");
+                const organizerId = (event as any).organizerId;
+                if (organizerId && saved.id) {
+                  await deleteOrganizerRsvp(organizerId, saved.id);
+                }
+              } catch (error) {
+                console.error("Failed to delete organizer RSVP:", error);
+                // Non-blocking error, continue anyway
+              }
+
               showToast("Event created");
               return true;
             } catch (e) {

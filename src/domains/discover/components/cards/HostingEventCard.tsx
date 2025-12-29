@@ -18,12 +18,14 @@ type Props = {
   item: EventItem;
   onPress?: () => void;
   onDelete?: (eventId: string) => void;
+  onInviteSent?: (eventId: string, invitedCount: number) => void;
 };
 
 export default function HostingEventCard({
   item,
   onPress,
   onDelete,
+  onInviteSent,
 }: Props) {
   const date = useMemo(
     () => new Date(item.datetime ?? item.startDate ?? 0),
@@ -232,7 +234,12 @@ export default function HostingEventCard({
         </View>
       ) : null}
 
-      <EventEmailModal visible={showEmail} onClose={() => setShowEmail(false)} event={item} />
+      <EventEmailModal
+        visible={showEmail}
+        onClose={() => setShowEmail(false)}
+        event={item}
+        onInviteSent={onInviteSent}
+      />
     </Container>
   );
 }

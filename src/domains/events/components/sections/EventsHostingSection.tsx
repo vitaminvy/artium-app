@@ -15,6 +15,7 @@ type Props = {
   onCreateEvent?: () => void;
   onDeleteEvent?: (eventId: string) => void;
   onPressEvent?: (event: EventItem) => void;
+  onInviteSent?: (eventId: string, invitedCount: number) => void;
   isLoading?: boolean;
 };
 
@@ -41,6 +42,7 @@ export default function EventsHostingSection({
   onCreateEvent,
   onDeleteEvent,
   onPressEvent,
+  onInviteSent,
   isLoading = false,
 }: Props) {
   const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT);
@@ -96,6 +98,7 @@ export default function EventsHostingSection({
                 item={event}
                 onDelete={onDeleteEvent}
                 onPress={() => onPressEvent?.(event)}
+                onInviteSent={onInviteSent}
               />
             ))}
           </View>

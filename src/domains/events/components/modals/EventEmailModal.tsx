@@ -38,6 +38,7 @@ type Props = {
   onClose: () => void;
   event: EventItem;
   organizerName?: string;
+  onInviteSent?: (eventId: string, invitedCount: number) => void;
 };
 
 const pillBg = "#0B73FF";
@@ -52,7 +53,7 @@ type UserOption = {
 
 const USERS_PAGE_SIZE = 10;
 
-export default function EventEmailModal({ visible, onClose, event, organizerName }: Props) {
+export default function EventEmailModal({ visible, onClose, event, organizerName, onInviteSent }: Props) {
   const [recipients, setRecipients] = useState<UserOption[]>([]);
   const [userOptions, setUserOptions] = useState<UserOption[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
@@ -196,6 +197,8 @@ export default function EventEmailModal({ visible, onClose, event, organizerName
       }
       setSearchQuery("");
       setUserOptions([]);
+      setRecipients([]);
+      setNote("");
       lastUserDocRef.current = null;
       setHasMoreUsers(true);
       setLoadUsersError(null);
@@ -254,9 +257,13 @@ export default function EventEmailModal({ visible, onClose, event, organizerName
       });
       if (result.status !== MailComposer.MailComposerStatus.CANCELLED) {
         await markInvitedRecipients(recipients);
+        // Gọi callback để thông báo đã mời thành công và đợi nó hoàn thành
+        if (onInviteSent) {
+          await onInviteSent(event.id, recipients.length);
+        }
       }
 
-      // Đóng modal ngay sau khi mở mail app
+      // Đóng modal sau khi tất cả callbacks hoàn thành
       onClose();
 
       // Chỉ reset state sau khi đóng modal
