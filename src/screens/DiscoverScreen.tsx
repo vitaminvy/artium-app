@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, View, Text } from "react-native";
+import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, View, Text, TextInput } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import ScreenHeader from "../shared/components/ScreenHeader";
 import UnderlineHome from "../../assets/headers/underline-home.svg";
@@ -85,12 +86,79 @@ export default function DiscoverScreen() {
   const [locationText, setLocationText] = useState("Albuquerque, NM, USA");
   const [radius, setRadius] = useState("10 miles");
   const [showRadiusOptions, setShowRadiusOptions] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const handleRequireSignUp = useCallback(() => {
     navigation.navigate("SignUp");
   }, [navigation]);
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filterArtwork = useCallback(
+    (item: any) => {
+      if (!normalizedQuery) return true;
+      const haystack = [
+        item.title,
+        item.artist,
+        item.price,
+        item.location,
+        Array.isArray(item.tags) ? item.tags.join(" ") : undefined,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(normalizedQuery);
+    },
+    [normalizedQuery]
+  );
+  const filterProfile = useCallback(
+    (item: any) => {
+      if (!normalizedQuery) return true;
+      const haystack = [item.name, item.title, item.location]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(normalizedQuery);
+    },
+    [normalizedQuery]
+  );
+  const filterEvent = useCallback(
+    (item: any) => {
+      if (!normalizedQuery) return true;
+      const haystack = [
+        item.title,
+        item.location,
+        item.category,
+        item.eventType,
+        item.description,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(normalizedQuery);
+    },
+    [normalizedQuery]
+  );
+
   const filteredProfiles = React.useMemo(
-    () => profiles.filter((p) => p.id !== currentUser?.uid),
-    [profiles, currentUser?.uid]
+    () =>
+      profiles
+        .filter((p) => p.id !== currentUser?.uid)
+        .filter(filterProfile),
+    [profiles, currentUser?.uid, filterProfile]
+  );
+  const filteredTopPicks = React.useMemo(
+    () => topPicks.filter(filterArtwork),
+    [topPicks, filterArtwork]
+  );
+  const filteredArtworks = React.useMemo(
+    () => artworks.filter(filterArtwork),
+    [artworks, filterArtwork]
+  );
+  const filteredMoments = React.useMemo(
+    () => moments.filter(filterArtwork),
+    [moments, filterArtwork]
+  );
+  const filteredEvents = React.useMemo(
+    () => events.filter(filterEvent),
+    [events, filterEvent]
   );
 
   const renderContent = () => {
@@ -116,9 +184,9 @@ export default function DiscoverScreen() {
 
     switch (tab) {
       case "topPicks":
-        return <DiscoverArtworksTab data={topPicks} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={() => {}} isFetchingNextPage={false} />;
+        return <DiscoverArtworksTab data={filteredTopPicks} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={() => {}} isFetchingNextPage={false} />;
       case "artworks":
-        return <DiscoverArtworksTab data={artworks} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreArtworks} isFetchingNextPage={isMoreArtworksLoading} />;
+        return <DiscoverArtworksTab data={filteredArtworks} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreArtworks} isFetchingNextPage={isMoreArtworksLoading} />;
       case "profiles":
         return (
           <DiscoverProfilesTab
@@ -132,15 +200,15 @@ export default function DiscoverScreen() {
           />
         );
       case "events":
-        return <DiscoverEventsTab data={events} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreEvents} isFetchingNextPage={isMoreEventsLoading} />;
+        return <DiscoverEventsTab data={filteredEvents} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreEvents} isFetchingNextPage={isMoreEventsLoading} />;
       case "moments":
-        return <DiscoverMomentsTab data={moments} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreMoments} isFetchingNextPage={isMoreMomentsLoading} />;
+        return <DiscoverMomentsTab data={filteredMoments} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreMoments} isFetchingNextPage={isMoreMomentsLoading} />;
       case "nearby":
         return (
           <DiscoverNearbyTab
-            artworks={artworks}
+            artworks={filteredArtworks}
             profiles={filteredProfiles}
-            events={events}
+            events={filteredEvents}
             locationText={locationText}
             radius={radius}
             onOpenLocationSheet={() => setShowLocationSheet(true)}
@@ -179,6 +247,26 @@ export default function DiscoverScreen() {
             />
           ))}
         </ScrollView>
+        <View className="px-4 mt-3">
+          <View className="flex-row items-center rounded-full border border-slate-200 bg-slate-50 px-3">
+            <Ionicons name="search" size={18} color="#94A3B8" />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search artworks, profiles, events"
+              placeholderTextColor="#94A3B8"
+              className="flex-1 px-2 py-2 text-sm text-slate-900"
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+            />
+            {searchQuery ? (
+              <Pressable onPress={() => setSearchQuery("")} hitSlop={8}>
+                <Ionicons name="close-circle" size={18} color="#94A3B8" />
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
       </View>
 
       {renderContent()}
