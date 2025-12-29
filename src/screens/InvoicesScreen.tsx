@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
 import { useInvoices } from "../domains/invoices/hooks/useInvoices";
 import type { Invoice } from "../domains/invoices/types";
+import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 
 type NavigationProp = NativeStackNavigationProp<HomeStackParamList, "Invoices">;
 
@@ -23,24 +25,38 @@ const formatCurrency = (amount: number, currency: string) => {
   return `${prefix}${amount.toFixed(2)}`;
 };
 
-const formatDate = (timestamp?: number) => {
+const formatLongDate = (timestamp?: number) => {
   if (!timestamp) return "-";
-  return new Date(timestamp).toLocaleDateString();
+  return new Date(timestamp).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+};
+
+const formatInvoiceNumber = (id: string) => {
+  const prefix = id.slice(0, 4).toUpperCase();
+  const suffix = id.slice(-8).toUpperCase();
+  return `#IV-${prefix}-${suffix}`;
 };
 
 export default function InvoicesScreen() {
   const navigation = useNavigation<NavigationProp>();
   const insets = useSafeAreaInsets();
+  const { setHidden } = useTabBarVisibility();
   const { invoices, loading, error, refresh, sendInvoice } = useInvoices();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
   const sortedInvoices = useMemo(() => invoices, [invoices]);
 
   useFocusEffect(
     useCallback(() => {
       refresh();
-    }, [refresh])
+      setHidden(true);
+      return () => setHidden(false);
+    }, [refresh, setHidden])
   );
 
   const handleRefresh = useCallback(async () => {
@@ -71,75 +87,158 @@ export default function InvoicesScreen() {
 
   const renderItem = ({ item }: { item: Invoice }) => {
     const total = item.totals?.total ?? 0;
-    const statusLabel = item.status === "draft" ? "Draft" : "Sent";
-    const actionLabel = item.status === "draft" ? "Send Email" : "Resend";
+    const actionLabel = item.status === "draft" ? "Send Invoice" : "Resend";
     const actionDisabled = sendingId === item.id;
-    const badgeStyles =
-      item.status === "draft"
-        ? "bg-amber-100 text-amber-700"
-        : "bg-emerald-100 text-emerald-700";
+    const primaryItem = item.items?.[0];
+    const orderStatusLabel = "OPEN";
+    const sentTo = item.buyer?.email || "-";
+    const lastSent = formatLongDate(item.lastSentAt);
+    const createdOn = formatLongDate(item.createdAt);
 
     return (
-      <View className="mb-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-        <View className="flex-row items-start justify-between">
-          <View className="flex-1 pr-3">
-            <Text className="text-base font-semibold text-slate-900">
-              {item.buyer?.email || "Buyer"}
-            </Text>
-            <Text className="text-xs text-slate-500 mt-1">
-              Created {formatDate(item.createdAt)}
-            </Text>
+      <View className="mb-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm relative">
+        <Pressable
+          onPress={() =>
+            navigation.navigate("InvoiceDetail", {
+              invoiceId: item.id,
+            })
+          }
+        >
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center gap-4">
+              <View className="h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
+                <Ionicons name="receipt-outline" size={22} color="#94A3B8" />
+              </View>
+              <View>
+                <Text className="text-base font-semibold text-slate-900">
+                  Invoice
+                </Text>
+                <Text className="text-sm font-semibold text-slate-900 mt-0.5">
+                  {formatInvoiceNumber(item.id)}
+                </Text>
+              </View>
+            </View>
+            <Pressable
+              onPress={() =>
+                setActiveMenuId((prev) => (prev === item.id ? null : item.id))
+              }
+              hitSlop={8}
+            >
+              <Ionicons name="ellipsis-horizontal" size={18} color="#94A3B8" />
+            </Pressable>
           </View>
-          <View className={`px-3 py-1 rounded-full ${badgeStyles}`}>
-            <Text className="text-xs font-semibold">{statusLabel}</Text>
-          </View>
-        </View>
 
-        <View className="mt-4 flex-row items-center justify-between">
-          <View>
-            <Text className="text-xs uppercase text-slate-400">Total</Text>
-            <Text className="text-lg font-semibold text-slate-900">
-              {formatCurrency(total, item.currency)}
-            </Text>
-          </View>
           <Pressable
             onPress={() => handleSend(item.id)}
             disabled={actionDisabled}
-            className={`px-4 py-2 rounded-full border ${
-              actionDisabled ? "border-slate-200" : "border-blue-500"
+            className={`mt-4 self-start rounded-full px-5 py-2 ${
+              item.status === "draft"
+                ? "bg-[#0B73FF]"
+                : "border border-slate-200"
             }`}
           >
-            <Text
-              className={`text-xs font-semibold ${
-                actionDisabled ? "text-slate-400" : "text-blue-600"
-              }`}
-            >
-              {actionLabel}
-            </Text>
+            <View className="flex-row items-center gap-2">
+              {item.status === "draft" ? (
+                <Ionicons name="mail-outline" size={14} color="#ffffff" />
+              ) : null}
+              <Text
+                className={`text-sm font-semibold ${
+                  item.status === "draft" ? "text-white" : "text-slate-700"
+                }`}
+              >
+                {actionLabel}
+              </Text>
+            </View>
           </Pressable>
-        </View>
+
+          <View className="mt-4 gap-3">
+            <DetailRow label="Items" value={primaryItem?.title || "-"} />
+            <DetailRow
+              label="Total Order"
+              value={formatCurrency(total, item.currency)}
+              strong
+            />
+            <View className="flex-row items-center justify-between">
+              <Text className="text-sm text-slate-400">Order status</Text>
+              <View className="rounded-full bg-slate-500 px-4 py-1">
+                <Text className="text-xs font-semibold text-white">
+                  {orderStatusLabel}
+                </Text>
+              </View>
+            </View>
+            <DetailRow label="Created On" value={createdOn} />
+            <DetailRow label="Sent to" value={sentTo} />
+            <DetailRow label="Last sent" value={lastSent} />
+          </View>
+        </Pressable>
+
+        {activeMenuId === item.id ? (
+          <View className="absolute right-6 top-[70px] z-20 w-[190px] rounded-2xl border border-slate-200 bg-white shadow-lg">
+            <MenuItem
+              icon="eye-outline"
+              label="View"
+              onPress={() => {
+                setActiveMenuId(null);
+                navigation.navigate("InvoiceDetail", {
+                  invoiceId: item.id,
+                });
+              }}
+              withDivider
+            />
+            <MenuItem
+              icon="create-outline"
+              label="Edit"
+              onPress={() => {
+                setActiveMenuId(null);
+                navigation.navigate("PreviewInvoice", { invoiceId: item.id });
+              }}
+              withDivider
+            />
+            <MenuItem
+              icon="link-outline"
+              label="Copy link"
+              onPress={async () => {
+                await Clipboard.setStringAsync(item.id);
+                setActiveMenuId(null);
+                Alert.alert("Copied", "Invoice ID copied to clipboard.");
+              }}
+              withDivider
+            />
+            <MenuItem
+              icon="trash-outline"
+              label="Delete"
+              destructive
+              onPress={() => {
+                setActiveMenuId(null);
+                Alert.alert("Coming soon", "Delete is not available yet.");
+              }}
+            />
+          </View>
+        ) : null}
       </View>
     );
   };
 
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-[#F8FAFC]">
       <View
-        className="flex-row items-center justify-between px-4 py-3 border-b border-slate-100"
-        style={{ paddingTop: insets.top }}
+        className="border-b border-slate-200 bg-white"
+        style={{ paddingTop: insets.top + 8, paddingBottom: 12 }}
       >
-        <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
-          <Ionicons name="arrow-back-outline" size={22} color="#0F172A" />
-        </Pressable>
-        <Text className="text-base font-semibold text-slate-900">
-          Invoices
-        </Text>
+        <View className="flex-row items-center justify-between px-5">
+          <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
+            <Ionicons name="arrow-back" size={22} color="#0F172A" />
+          </Pressable>
+          <Text className="text-base font-semibold text-slate-900">
+            Invoices
+          </Text>
         <Pressable
           onPress={() => navigation.navigate("CreateInvoice")}
-          hitSlop={8}
+          className="h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white"
         >
-          <Ionicons name="add-circle-outline" size={24} color="#2563EB" />
+          <Ionicons name="add" size={20} color="#0B73FF" />
         </Pressable>
+      </View>
       </View>
 
       {error ? (
@@ -179,7 +278,7 @@ export default function InvoicesScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={{
-            paddingHorizontal: 16,
+            paddingHorizontal: 20,
             paddingTop: 16,
             paddingBottom: Math.max(insets.bottom + 24, 40),
           }}
@@ -190,5 +289,60 @@ export default function InvoicesScreen() {
         />
       )}
     </View>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <View className="flex-row items-center justify-between">
+      <Text className="text-sm text-slate-400">{label}</Text>
+      <Text className={strong ? "text-base font-semibold text-slate-900" : "text-sm text-slate-900"}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function MenuItem({
+  icon,
+  label,
+  destructive = false,
+  withDivider = false,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  destructive?: boolean;
+  withDivider?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className={`flex-row items-center gap-3 px-4 py-3 ${
+        withDivider ? "border-b border-slate-100" : ""
+      }`}
+    >
+      <Ionicons
+        name={icon}
+        size={18}
+        color={destructive ? "#DC2626" : "#0F172A"}
+      />
+      <Text
+        className={`text-sm font-semibold ${
+          destructive ? "text-rose-600" : "text-slate-900"
+        }`}
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 }

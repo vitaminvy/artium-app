@@ -256,7 +256,7 @@ export default function CreateInvoiceScreen() {
         },
       });
 
-      navigation.navigate("InvoiceDetail", { invoiceId });
+      navigation.navigate("PreviewInvoice", { invoiceId });
     } catch (err) {
       console.error("Failed to create invoice:", err);
       Alert.alert("Create failed", "Please try again.");
