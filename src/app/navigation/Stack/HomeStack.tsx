@@ -16,6 +16,9 @@ import BlogDetailScreen from "../../../screens/BlogDetailScreen"; // Renamed imp
 import BlogScreen from "../../../screens/BlogScreen";
 import MoodboardDetailScreen from "../../../screens/MoodboardDetailScreen";
 import FollowsScreen from "../../../screens/FollowsScreen";
+import InvoicesScreen from "../../../screens/InvoicesScreen";
+import CreateInvoiceScreen from "../../../screens/CreateInvoiceScreen";
+import InvoiceDetailScreen from "../../../screens/InvoiceDetailScreen";
 
 export type HomeStackParamList = {
   HomeMain: undefined;
@@ -30,6 +33,9 @@ export type HomeStackParamList = {
   BlogDetail: { blogId: string };
   MoodboardDetail: { id: string };
   Follows: { type: "followers" | "following" };
+  Invoices: undefined;
+  CreateInvoice: undefined;
+  InvoiceDetail: { invoiceId: string };
   EventDetail: {
     id?: string;
     initialRsvp?: "none" | "going" | "maybe" | "notGoing";
@@ -55,6 +61,9 @@ export default function HomeStack() {
       <Stack.Screen name="Blog" component={BlogScreen} />
       <Stack.Screen name="MoodboardDetail" component={MoodboardDetailScreen} />
       <Stack.Screen name="Follows" component={FollowsScreen} />
+      <Stack.Screen name="Invoices" component={InvoicesScreen} />
+      <Stack.Screen name="CreateInvoice" component={CreateInvoiceScreen} />
+      <Stack.Screen name="InvoiceDetail" component={InvoiceDetailScreen} />
       <Stack.Screen
         name="EditProfile"
         component={EditProfileScreen}

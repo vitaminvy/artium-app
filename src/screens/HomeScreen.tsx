@@ -138,6 +138,11 @@ export default function HomeScreen() {
       return;
     }
 
+    if (key === "invoices") {
+      navigation.navigate("Invoices");
+      return;
+    }
+
     console.log("Sidebar selected:", key);
   };
 

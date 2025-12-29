@@ -84,6 +84,11 @@
         }
       }
 
+      match /invoices/{invoiceId} {
+        allow read, update, delete: if isOwner(resource.data.sellerId);
+        allow create: if isOwner(request.resource.data.sellerId);
+      }
+
       // Users can read their own data, and public profiles can be read by anyone
       match /users/{userId} {
         allow read: if true;
@@ -115,6 +120,12 @@
           match /items/{itemId} {
             allow read, create, update, delete: if isOwner(userId);
           }
+        }
+
+        // Notifications - allow users to read/manage their own notifications
+        match /notifications/{notificationId} {
+          allow read: if isSignedIn() && request.auth.uid == userId;
+          allow create, update, delete: if isSignedIn() && request.auth.uid == userId;
         }
       }
 
