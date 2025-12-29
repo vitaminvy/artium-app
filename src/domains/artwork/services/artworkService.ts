@@ -1,4 +1,4 @@
-import { doc, getDoc, collection, getDocs, query, where, DocumentData, updateDoc, increment, orderBy, limit, startAfter, QueryDocumentSnapshot, runTransaction, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, query, where, DocumentData, updateDoc, increment, orderBy, limit, startAfter, QueryDocumentSnapshot, runTransaction, serverTimestamp, deleteDoc } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 import { ArtworkDetail } from "../types";
 import { Artwork as DiscoverArtwork } from "../../discover/types";
@@ -325,12 +325,49 @@ export const getArtworkById = async (id: string, userId?: string): Promise<Artwo
       metrics: data.metrics,
       status: data.status,
       priceSnapshot: typeof data.price === "object" ? data.price : undefined,
+      artistId: data.artistId,
       liked,
     };
 
     return artworkDetail;
   } catch (error) {
     console.error("Error getting artwork by ID:", error);
+    throw error;
+  }
+};
+
+/**
+ * Delete an artwork and all its subcollections (likes)
+ */
+export const deleteArtwork = async (artworkId: string, userId: string) => {
+  try {
+    const artworkRef = doc(firestore, ARTWORKS_COLLECTION, artworkId);
+    const artworkSnap = await getDoc(artworkRef);
+
+    if (!artworkSnap.exists()) {
+      throw new Error("Artwork not found");
+    }
+
+    const artworkData = artworkSnap.data();
+    const artistId = artworkData.artistId;
+
+    // Check permission: must be artist owner
+    if (artistId !== userId) {
+      throw new Error("You don't have permission to delete this artwork");
+    }
+
+    // Delete all likes
+    const likesRef = collection(firestore, ARTWORKS_COLLECTION, artworkId, "likes");
+    const likesSnap = await getDocs(likesRef);
+    const likesDeletePromises = likesSnap.docs.map((likeDoc) => deleteDoc(likeDoc.ref));
+    await Promise.all(likesDeletePromises);
+
+    // Delete the artwork itself
+    await deleteDoc(artworkRef);
+
+    return true;
+  } catch (error) {
+    console.error("Error deleting artwork:", error);
     throw error;
   }
 };

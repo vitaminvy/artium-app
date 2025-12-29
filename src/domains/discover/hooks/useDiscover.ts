@@ -40,6 +40,7 @@ type UseDiscoverResult = {
   loadMoreArtworks: () => void;
   isMoreArtworksLoading: boolean;
   hasMoreArtworks: boolean;
+  refreshArtworks: () => Promise<void>;
   moments: Artwork[];
   loadMoreMoments: () => void;
   isMoreMomentsLoading: boolean;
@@ -118,6 +119,21 @@ export function useDiscover(): UseDiscoverResult {
       setIsMoreArtworksLoading(false);
     }
   }, [isMoreArtworksLoading, hasMoreArtworks, lastArtworkDoc]);
+
+  const refreshArtworks = useCallback(async () => {
+    try {
+      const [trendingArtworks, initialArtworksResult] = await Promise.all([
+        getTrendingArtworks(),
+        getArtworks(ARTWORK_PAGE_SIZE, null),
+      ]);
+      setTopPicks(trendingArtworks);
+      setArtworks(initialArtworksResult.artworks);
+      setLastArtworkDoc(initialArtworksResult.lastVisible);
+      setHasMoreArtworks(initialArtworksResult.artworks.length === ARTWORK_PAGE_SIZE);
+    } catch (e: any) {
+      setError(e);
+    }
+  }, []);
 
   const fetchMoments = useCallback(async (lastDoc: QueryDocumentSnapshot<DocumentData> | null = null) => {
     try {
@@ -283,6 +299,7 @@ export function useDiscover(): UseDiscoverResult {
     loadMoreArtworks,
     isMoreArtworksLoading,
     hasMoreArtworks,
+    refreshArtworks,
     moments,
     loadMoreMoments,
     isMoreMomentsLoading,

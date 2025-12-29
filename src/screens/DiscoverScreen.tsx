@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, View, Text, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { CompositeNavigationProp } from "@react-navigation/native";
 import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
@@ -62,6 +62,7 @@ export default function DiscoverScreen() {
     loadMoreArtworks,
     isMoreArtworksLoading,
     hasMoreArtworks,
+    refreshArtworks,
     moments,
     loadMoreMoments,
     isMoreMomentsLoading,
@@ -128,6 +129,13 @@ export default function DiscoverScreen() {
       setHidden(false);
     };
   }, [setHidden]);
+
+  // Refresh artworks when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      refreshArtworks();
+    }, [refreshArtworks])
+  );
 
   const [showLocationSheet, setShowLocationSheet] = useState(false);
   const [locationText, setLocationText] = useState("Albuquerque, NM, USA");
