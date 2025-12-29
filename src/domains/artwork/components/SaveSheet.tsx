@@ -8,6 +8,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { createMoodboard, fetchMoodboards, type Moodboard } from "../services/moodboardService";
 
+const logoLight = require("../../../../assets/logos/logo-light-mode.png");
+
 type SaveSheetProps = {
   visible: boolean;
   onClose: () => void;
@@ -154,9 +156,9 @@ export default function SaveSheet({
             >
               <View className="h-14 w-14 rounded-2xl overflow-hidden bg-slate-200 mr-3">
                 <Image
-                  source={{ uri: mb.cover }}
+                  source={mb.cover ? { uri: mb.cover } : logoLight}
                   className="h-full w-full"
-                  contentFit="cover"
+                  contentFit={mb.cover ? "cover" : "contain"}
                   cachePolicy="memory-disk"
                   transition={0}
                 />
