@@ -6,6 +6,7 @@ import {
   createPost,
   getFeedPosts,
   togglePostLike,
+  deletePost,
 } from "../services/feedService";
 import { QueryDocumentSnapshot, DocumentData, collection, onSnapshot } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
@@ -30,6 +31,7 @@ type UseFeedResult = {
   createReshare: (targetPost: FeedPost, note: string) => void;
   addComment: (postId: string, content: string) => void;
   addMomentPost: (post: Omit<FeedPost, 'id' | 'author' | 'createdAt' | 'metrics' | 'relativeTime'>) => Promise<void>;
+  handleDeletePost: (post: FeedPost) => Promise<void>;
 };
 
 const formatTimeAgo = (createdAt: number) => {
@@ -346,6 +348,22 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
     onRefresh();
   }, [currentUser, authorSnapshot, onRefresh]);
 
+  const handleDeletePost = useCallback(async (post: FeedPost) => {
+    if (!currentUser) return;
+
+    try {
+      // Optimistic update - remove post immediately from UI
+      setPosts(prevPosts => prevPosts.filter(p => p.id !== post.id));
+
+      // Delete from Firestore
+      await deletePost(post.id, currentUser.uid, false); // TODO: check if user is admin
+    } catch (error) {
+      console.error("Failed to delete post:", error);
+      // Revert optimistic update on error - refresh to restore
+      onRefresh();
+    }
+  }, [currentUser, onRefresh]);
+
   return {
     tab,
     setTab,
@@ -363,5 +381,6 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
     createReshare,
     addComment,
     addMomentPost,
+    handleDeletePost,
   };
 }

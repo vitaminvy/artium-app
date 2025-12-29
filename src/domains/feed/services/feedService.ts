@@ -339,3 +339,45 @@ export const getPostById = async (id: string): Promise<FeedPost | null> => {
     return null;
   }
 };
+
+/**
+ * Delete a post and all its subcollections (likes, comments)
+ */
+export const deletePost = async (postId: string, userId: string, isAdmin: boolean = false) => {
+  try {
+    const postRef = doc(firestore, POSTS_COLLECTION, postId);
+    const postSnap = await getDoc(postRef);
+
+    if (!postSnap.exists()) {
+      throw new Error("Post not found");
+    }
+
+    const postData = postSnap.data();
+    const authorId = postData.authorId ?? postData.authorSnapshot?.id;
+
+    // Check permission: must be author or admin
+    if (authorId !== userId && !isAdmin) {
+      throw new Error("You don't have permission to delete this post");
+    }
+
+    // Delete all likes
+    const likesRef = collection(firestore, POSTS_COLLECTION, postId, "likes");
+    const likesSnap = await getDocs(likesRef);
+    const likesDeletePromises = likesSnap.docs.map((likeDoc) => deleteDoc(likeDoc.ref));
+    await Promise.all(likesDeletePromises);
+
+    // Delete all comments
+    const commentsRef = collection(firestore, POSTS_COLLECTION, postId, "comments");
+    const commentsSnap = await getDocs(commentsRef);
+    const commentsDeletePromises = commentsSnap.docs.map((commentDoc) => deleteDoc(commentDoc.ref));
+    await Promise.all(commentsDeletePromises);
+
+    // Delete the post itself
+    await deleteDoc(postRef);
+
+    return true;
+  } catch (error) {
+    console.error("Error deleting post:", error);
+    throw error;
+  }
+};

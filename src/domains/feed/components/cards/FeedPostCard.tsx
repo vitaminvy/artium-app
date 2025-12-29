@@ -1,5 +1,5 @@
-import React, { useEffect, useCallback, useMemo } from "react";
-import { View, Text, Pressable, StyleSheet, StyleProp, ViewStyle } from "react-native";
+import React, { useEffect, useCallback, useMemo, useState } from "react";
+import { View, Text, Pressable, StyleSheet, StyleProp, ViewStyle, Alert, ActionSheetIOS, Platform } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { Ionicons } from "@expo/vector-icons";
@@ -21,9 +21,12 @@ type Props = {
   onPressCard?: (post: FeedPost) => void;
   onPressQuote?: (quoteId: string) => void;
   onPressImage?: (images: { uri: string }[], index: number) => void;
+  onPressDelete?: (post: FeedPost) => void;
   isVisible?: boolean;
   onAvatarLoad?: (postId: string) => void;
   disableRealtime?: boolean; // Add option to disable real-time for performance in list views
+  currentUserId?: string; // For showing delete button
+  isAdmin?: boolean; // For admin delete permission
 };
 
 function FeedPostCard({
@@ -34,9 +37,12 @@ function FeedPostCard({
   onPressCard,
   onPressQuote,
   onPressImage,
+  onPressDelete,
   isVisible = true,
   onAvatarLoad,
   disableRealtime = true, // Default to true for better performance in lists
+  currentUserId,
+  isAdmin = false,
 }: Props) {
   // Use real-time only when explicitly enabled AND post is visible
   // This provides best performance while maintaining real-time when needed
@@ -144,6 +150,41 @@ function FeedPostCard({
   const quoteMedia = post.quote?.media;
   const quoteImageSource = getLegacyImageSource(quoteMedia);
   const hasQuote = !!post.quote;
+
+  // Check if current user can delete this post
+  const postAuthorId = post.author?.id || post.authorId;
+  const canDelete = currentUserId && (postAuthorId === currentUserId || isAdmin);
+
+  const handleDeletePress = useCallback(() => {
+    if (!onPressDelete) return;
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Delete moment'],
+          destructiveButtonIndex: 1,
+          cancelButtonIndex: 0,
+          title: 'Delete post?',
+          message: 'If you delete this post, you won\'t be able to restore it.',
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            onPressDelete(post);
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Delete post?',
+        'If you delete this post, you won\'t be able to restore it.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Delete', style: 'destructive', onPress: () => onPressDelete(post) },
+        ]
+      );
+    }
+  }, [onPressDelete, post]);
+
   const CardBody = () => (
     <View
       className="bg-white rounded-[28px] border px-4 py-3"
@@ -193,6 +234,15 @@ function FeedPostCard({
           </View>
           <Text className="text-xs text-slate-500">@{authorHandle}</Text>
         </View>
+        {canDelete && onPressDelete ? (
+          <Pressable
+            onPress={handleDeletePress}
+            hitSlop={8}
+            className="active:opacity-60"
+          >
+            <Ionicons name="ellipsis-horizontal" size={20} color="#64748B" />
+          </Pressable>
+        ) : null}
       </View>
 
       {post.content ? (
