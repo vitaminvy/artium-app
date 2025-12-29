@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState, useEffect } from "react";
 import type { EventItem } from "../../discover/types";
 import type { EventFilterOption, EventSortOption } from "../types";
 import { HOSTING_SORT_OPTIONS, EVENT_STATUS_OPTIONS, EVENT_TYPE_OPTIONS } from "../mockData";
-import { getEvents, fetchUserRsvps, toggleEventRsvp, fetchEventsByIds, getEventsByOrganizer } from "../../discover/services/eventService";
+import { getEvents, fetchUserRsvps, toggleEventRsvp, fetchEventsByIds, getEventsByOrganizer, deleteEvent } from "../../discover/services/eventService";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
 import type { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 
@@ -309,21 +309,47 @@ export function useEvents(): UseEventsResult {
     [rsvpMap]
   );
 
-  const setRsvpStatus = useCallback((id: string, status: RsvpStatus) => {
+  const setRsvpStatus = useCallback(async (id: string, status: RsvpStatus) => {
     // Optimistic Update
     setRsvpMap((prev) => ({ ...prev, [id]: status }));
-    
+
     if (currentUser?.uid && status !== "none") {
-        toggleEventRsvp(currentUser.uid, id, status).catch(err => {
+        try {
+            await toggleEventRsvp(currentUser.uid, id, status);
+        } catch (err) {
             console.error("Failed to sync RSVP", err);
-            // Revert on failure? For now silent fail or toast.
-        });
+            // Revert on failure
+            setRsvpMap((prev) => {
+                const updated = { ...prev };
+                delete updated[id];
+                return updated;
+            });
+            throw err;
+        }
     }
   }, [currentUser?.uid]);
 
   const refreshEvents = useCallback(async () => {
     await Promise.all([loadInitial(), loadRsvps()]);
   }, [loadInitial, loadRsvps]);
+
+  const deleteHostedEvent = useCallback(async (eventId: string) => {
+    if (!currentUser?.uid) {
+      throw new Error("User not authenticated");
+    }
+
+    try {
+      // Delete from Firebase
+      await deleteEvent(eventId, currentUser.uid);
+
+      // Remove from local state
+      setHostingItems((prev) => prev.filter((e) => e.id !== eventId));
+      setDiscoverItems((prev) => prev.filter((e) => e.id !== eventId));
+    } catch (error) {
+      console.error("Failed to delete event:", error);
+      throw error;
+    }
+  }, [currentUser?.uid]);
 
   return {
     hostingEvents,
@@ -340,6 +366,7 @@ export function useEvents(): UseEventsResult {
       setHostingItems((prev) => [event, ...prev]);
       setDiscoverItems((prev) => [event, ...prev]);
     },
+    deleteHostedEvent,
     setHostingEvents: (events: EventItem[]) => {
       setHostingItems(events);
     },
