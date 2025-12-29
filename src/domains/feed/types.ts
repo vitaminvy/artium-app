@@ -55,8 +55,11 @@ export type FeedComment = {
 };
 
 export type FeedQuote = {
+  id?: string;
+  authorId?: string;
   authorName: string;
   handle: string;
+  avatar?: string;
   content: string;
   createdAt: number;
   relativeTime: string;
@@ -71,6 +74,7 @@ export type FeedMetrics = {
 
 export type FeedPost = {
   id: string;
+  authorId?: string;
   author: FeedAuthor;
   content: string;
   createdAt: number;
