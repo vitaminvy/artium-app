@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, View, Text } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { DiscoverStackParamList } from "../app/navigation/Stack/DiscoverStack";
 import ScreenHeader from "../shared/components/ScreenHeader";
 import UnderlineHome from "../../assets/headers/underline-home.svg";
 
@@ -12,6 +14,7 @@ import Loader from "../shared/components/Loader";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import { useProfileContext } from "../domains/user/contexts/ProfileContext";
+import { toggleEventRsvp } from "../domains/discover/services/eventService";
 
 // Import Tabs
 import DiscoverArtworksTab from "../domains/discover/components/tabs/DiscoverArtworksTab";
@@ -29,8 +32,10 @@ const TABS: { key: DiscoverTab; label: string }[] = [
   { key: "events", label: "EVENTS" },
 ];
 
+type NavigationProp = NativeStackNavigationProp<DiscoverStackParamList>;
+
 export default function DiscoverScreen() {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NavigationProp>();
   const { status, currentUser } = useAuth();
   const { isFollowing, toggleFollow } = useProfileContext();
   const {
@@ -55,6 +60,7 @@ export default function DiscoverScreen() {
     loadMoreEvents,
     isMoreEventsLoading,
     hasMoreEvents,
+    updateEventRsvp,
   } = useDiscover();
 
   const isGuest = status !== "authenticated";
@@ -92,6 +98,22 @@ export default function DiscoverScreen() {
     () => profiles.filter((p) => p.id !== currentUser?.uid),
     [profiles, currentUser?.uid]
   );
+
+  const handleRsvpChange = useCallback(async (eventId: string, status: "none" | "going" | "maybe" | "notGoing") => {
+    // Update local state immediately
+    updateEventRsvp(eventId, status);
+
+    // Persist to Firestore if user is authenticated
+    if (currentUser?.uid && status !== "none") {
+      try {
+        await toggleEventRsvp(currentUser.uid, eventId, status);
+        console.log("[DiscoverScreen] RSVP persisted to Firestore:", eventId, status);
+      } catch (error) {
+        console.error("[DiscoverScreen] Failed to persist RSVP:", error);
+        // Optionally: revert local state on error
+      }
+    }
+  }, [currentUser?.uid, updateEventRsvp]);
 
   const renderContent = () => {
     if (loading) {
@@ -132,7 +154,17 @@ export default function DiscoverScreen() {
           />
         );
       case "events":
-        return <DiscoverEventsTab data={events} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreEvents} isFetchingNextPage={isMoreEventsLoading} />;
+        return <DiscoverEventsTab
+          data={events}
+          onCardPress={isGuest ? handleRequireSignUp : (item) => navigation.navigate("EventDetail", {
+            event: item,
+            onRsvpChange: (status) => handleRsvpChange(item.id, status)
+          })}
+          onRsvpChange={(item, status) => handleRsvpChange(item.id, status)}
+          onScroll={handleScroll}
+          onEndReached={loadMoreEvents}
+          isFetchingNextPage={isMoreEventsLoading}
+        />;
       case "moments":
         return <DiscoverMomentsTab data={moments} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreMoments} isFetchingNextPage={isMoreMomentsLoading} />;
       case "nearby":
