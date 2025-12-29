@@ -222,25 +222,11 @@ export default function InvoicesScreen() {
 
   return (
     <View className="flex-1 bg-[#F8FAFC]">
-      <View
-        className="border-b border-slate-200 bg-white"
-        style={{ paddingTop: insets.top + 8, paddingBottom: 12 }}
-      >
-        <View className="flex-row items-center justify-between px-5">
-          <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
-            <Ionicons name="arrow-back" size={22} color="#0F172A" />
-          </Pressable>
-          <Text className="text-base font-semibold text-slate-900">
-            Invoices
-          </Text>
-        <Pressable
-          onPress={() => navigation.navigate("CreateInvoice")}
-          className="h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white"
-        >
-          <Ionicons name="add" size={20} color="#0B73FF" />
-        </Pressable>
-      </View>
-      </View>
+      <InvoicesHeader
+        topInset={insets.top}
+        onPressBack={() => navigation.goBack()}
+        onPressCreate={() => navigation.navigate("CreateInvoice")}
+      />
 
       {error ? (
         <View className="px-4 py-3">
@@ -290,6 +276,64 @@ export default function InvoicesScreen() {
         />
       )}
     </View>
+  );
+}
+
+function InvoicesHeader({
+  topInset,
+  onPressBack,
+  onPressCreate,
+}: {
+  topInset: number;
+  onPressBack: () => void;
+  onPressCreate: () => void;
+}) {
+  return (
+    <View className="bg-white border-b border-slate-100">
+      <View
+        className="flex-row items-center justify-between px-4"
+        style={{ paddingTop: topInset + 8, paddingBottom: 12 }}
+      >
+        <Pressable
+          onPress={onPressBack}
+          hitSlop={10}
+          className="h-10 w-10 items-center justify-center"
+        >
+          <Ionicons name="arrow-back" size={22} color="#0F172A" />
+        </Pressable>
+
+        <View className="items-center">
+          <Text className="text-xl font-extrabold tracking-[1px] text-slate-900">
+            INVOICES
+          </Text>
+          <View className="flex-row items-center mt-1" style={{ gap: 4 }}>
+            <HeaderAccent />
+            <HeaderAccent delay />
+            <HeaderAccent />
+          </View>
+        </View>
+
+        <Pressable
+          onPress={onPressCreate}
+          hitSlop={10}
+          className="h-10 w-10 items-center justify-center"
+        >
+          <Ionicons name="add" size={22} color="#0B73FF" />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function HeaderAccent({ delay }: { delay?: boolean }) {
+  return (
+    <View
+      className="h-2 w-4 rounded-full"
+      style={{
+        backgroundColor: "#9BE163",
+        transform: [{ rotate: delay ? "-10deg" : "10deg" }],
+      }}
+    />
   );
 }
 

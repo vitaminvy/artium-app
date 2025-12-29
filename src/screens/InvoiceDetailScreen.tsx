@@ -70,8 +70,13 @@ export default function InvoiceDetailScreen() {
   useFocusEffect(
     React.useCallback(() => {
       setHidden(true);
-      return () => setHidden(false);
-    }, [setHidden])
+      const parent = navigation.getParent();
+      parent?.setOptions({ tabBarStyle: { display: "none" } });
+      return () => {
+        setHidden(false);
+        parent?.setOptions({ tabBarStyle: undefined });
+      };
+    }, [navigation, setHidden])
   );
 
   const invoiceNumber = useMemo(() => {
@@ -204,6 +209,27 @@ export default function InvoiceDetailScreen() {
               </Text>
             </View>
           </InvoiceCardSection>
+
+          <View style={styles.trustCard}>
+            <View style={styles.trustIcon}>
+              <Ionicons name="lock-closed-outline" size={18} color="#0B73FF" />
+            </View>
+            <View style={styles.trustCopy}>
+              <Text style={styles.trustTitle}>
+                Your Trust is Our Priority
+              </Text>
+              <Text style={styles.trustText}>
+                Orders shipped with Artium are eligible for 100% money-back
+                guarantee, easy returns within a 48 hour window. Learn more in our{" "}
+                <Text style={styles.trustLink}>terms of service</Text>.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.powered}>
+            <Text style={styles.poweredLabel}>Powered by</Text>
+            <Text style={styles.poweredBrand}>ARTIUM</Text>
+          </View>
         </ScrollView>
       </ImageBackground>
     </View>
@@ -430,7 +456,7 @@ const styles = StyleSheet.create({
   segment: {
     paddingVertical: 10,
     paddingHorizontal: 14,
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
   },
   segmentActive: {
@@ -478,5 +504,54 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "700",
     color: "#0F172A",
+  },
+  trustCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(15, 23, 42, 0.08)",
+    backgroundColor: "rgba(255, 255, 255, 0.92)",
+    padding: 16,
+    flexDirection: "row",
+    gap: 12,
+  },
+  trustIcon: {
+    height: 36,
+    width: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#EFF6FF",
+  },
+  trustCopy: {
+    flex: 1,
+  },
+  trustTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#0F172A",
+  },
+  trustText: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 6,
+    lineHeight: 16,
+  },
+  trustLink: {
+    textDecorationLine: "underline",
+  },
+  powered: {
+    alignItems: "center",
+    paddingBottom: 8,
+  },
+  poweredLabel: {
+    fontSize: 12,
+    color: "#94A3B8",
+  },
+  poweredBrand: {
+    marginTop: 6,
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#CBD5E1",
+    letterSpacing: 2,
   },
 });

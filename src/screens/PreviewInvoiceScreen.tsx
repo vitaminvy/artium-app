@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Modal,
   Pressable,
   ScrollView,
   Text,
@@ -69,7 +68,6 @@ export default function PreviewInvoiceScreen() {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyAction, setBusyAction] = useState<"save" | "send" | null>(null);
-  const [showPayment, setShowPayment] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeKey, setActiveKey] = useState<SidebarKey>("invoices");
   const [headerHeight, setHeaderHeight] = useState(96);
@@ -78,8 +76,13 @@ export default function PreviewInvoiceScreen() {
     useCallback(() => {
       setHidden(true);
       setActiveKey("invoices");
-      return () => setHidden(false);
-    }, [setHidden, setActiveKey])
+      const parent = navigation.getParent();
+      parent?.setOptions({ tabBarStyle: { display: "none" } });
+      return () => {
+        setHidden(false);
+        parent?.setOptions({ tabBarStyle: undefined });
+      };
+    }, [navigation, setHidden, setActiveKey])
   );
 
   useEffect(() => {
@@ -283,18 +286,46 @@ export default function PreviewInvoiceScreen() {
                 </View>
               </View>
             </View>
-            {invoice.buyer?.message ? (
-              <View className="rounded-2xl border border-slate-200 bg-white p-4">
-                <Text className="text-xs font-semibold text-slate-500 uppercase">
-                  Note
-                </Text>
-                <Text className="mt-2 text-sm text-slate-600">
-                  {invoice.buyer.message}
-                </Text>
-              </View>
-            ) : null}
+              {invoice.buyer?.message ? (
+                <View className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <Text className="text-xs font-semibold text-slate-500 uppercase">
+                    Note
+                  </Text>
+                  <Text className="mt-2 text-sm text-slate-600">
+                    {invoice.buyer.message}
+                  </Text>
+                </View>
+              ) : null}
           </View>
         </SectionCard>
+
+        <View className="rounded-2xl border border-slate-200 bg-white p-4">
+          <View className="flex-row items-center gap-3">
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-[#EFF6FF]">
+              <Ionicons name="lock-closed-outline" size={18} color="#0B73FF" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-sm font-semibold text-slate-900">
+                Your Trust is Our Priority
+              </Text>
+              <Text className="text-xs text-slate-500 mt-1">
+                Orders shipped with Artium are eligible for 100% money-back
+                guarantee, easy returns within a 48 hour window. Learn more in our{" "}
+                <Text className="text-xs text-slate-500 underline">
+                  terms of service
+                </Text>
+                .
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View className="items-center">
+          <Text className="text-xs text-slate-400">Powered by</Text>
+          <Text className="mt-2 text-3xl font-bold text-slate-300">
+            ARTIUM
+          </Text>
+        </View>
       </ScrollView>
 
       <View
@@ -307,56 +338,27 @@ export default function PreviewInvoiceScreen() {
             disabled={busyAction !== null}
             className="flex-1 rounded-full border border-slate-200 py-3 items-center"
           >
-            <Text className="text-sm font-semibold text-slate-700">Save</Text>
+            {busyAction === "save" ? (
+              <ActivityIndicator color="#0F172A" />
+            ) : (
+              <Text className="text-sm font-semibold text-slate-700">Save</Text>
+            )}
           </Pressable>
           <Pressable
-            onPress={() => setShowPayment(true)}
-            className="flex-1 rounded-full bg-[#0B73FF] py-3 items-center"
+            onPress={handleSend}
+            disabled={busyAction !== null}
+            className={`flex-1 rounded-full py-3 items-center ${
+              busyAction === "send" ? "bg-slate-200" : "bg-[#0B73FF]"
+            }`}
           >
-            <Text className="text-sm font-semibold text-white">
-              Collect Payment
-            </Text>
+            {busyAction === "send" ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text className="text-sm font-semibold text-white">Send</Text>
+            )}
           </Pressable>
         </View>
-        <Pressable
-          onPress={handleSend}
-          disabled={busyAction !== null}
-          className={`mt-3 rounded-full py-3 items-center ${
-            busyAction === "send" ? "bg-slate-200" : "bg-[#0B73FF]"
-          }`}
-        >
-          <Text className="text-sm font-semibold text-white">Send</Text>
-        </Pressable>
       </View>
-
-      <Modal
-        visible={showPayment}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowPayment(false)}
-      >
-        <View className="flex-1 justify-end bg-black/30">
-          <View className="rounded-t-3xl bg-white p-6">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-base font-semibold text-slate-900">
-                Coming soon
-              </Text>
-              <Pressable onPress={() => setShowPayment(false)}>
-                <Ionicons name="close" size={20} color="#0F172A" />
-              </Pressable>
-            </View>
-            <Text className="mt-3 text-sm text-slate-600">
-              Payment collection will be available in a future update.
-            </Text>
-            <Pressable
-              onPress={() => setShowPayment(false)}
-              className="mt-5 h-[44px] items-center justify-center rounded-full bg-slate-900"
-            >
-              <Text className="text-sm font-semibold text-white">Got it</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
 
       <Sidebar
         visible={sidebarOpen}
