@@ -146,7 +146,7 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
         // Document ID is the userId of the followed user
         ids.add(doc.id);
       });
-      console.log('[useFeed] Following IDs:', Array.from(ids));
+      // console.log("[useFeed] Following IDs:", Array.from(ids));
       setFollowingIds(ids);
     });
     return () => {
@@ -181,16 +181,18 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
       const isFollowing = followingIds.has(authorId);
       return isFollowing;
     });
-    console.log('[useFeed] Following posts filter:', {
-      totalPosts: posts.length,
-      followingIds: Array.from(followingIds),
-      filteredCount: filtered.length,
-      samplePost: posts[0] ? {
-        id: posts[0].id,
-        authorId: posts[0].author?.id || posts[0].authorId,
-        isFollowing: followingIds.has(posts[0].author?.id || posts[0].authorId || '')
-      } : null
-    });
+    // console.log("[useFeed] Following posts filter:", {
+    //   totalPosts: posts.length,
+    //   followingIds: Array.from(followingIds),
+    //   filteredCount: filtered.length,
+    //   samplePost: posts[0]
+    //     ? {
+    //         id: posts[0].id,
+    //         authorId: posts[0].author?.id || posts[0].authorId,
+    //         isFollowing: followingIds.has(posts[0].author?.id || posts[0].authorId || ""),
+    //       }
+    //     : null,
+    // });
     return filtered;
   }, [posts, currentUser, followingIds]);
 

@@ -1,12 +1,15 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
+  getCountFromServer,
   serverTimestamp,
   setDoc,
   query,
   increment,
   updateDoc,
+  runTransaction,
 } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 
@@ -28,16 +31,35 @@ export type MoodboardItem = {
 export const fetchMoodboards = async (userId: string): Promise<Moodboard[]> => {
   const boardsCol = collection(firestore, "users", userId, "moodboards");
   const snapshot = await getDocs(query(boardsCol));
-  return snapshot.docs.map((docSnap) => {
-    const data = docSnap.data();
-    return {
-      id: docSnap.id,
-      name: data.name ?? "Untitled",
-      count: data.count ?? 0,
-      cover: data.cover,
-      isPrivate: data.isPrivate ?? false,
-    };
-  });
+  const boards = await Promise.all(
+    snapshot.docs.map(async (docSnap) => {
+      const data = docSnap.data();
+      const boardRef = doc(boardsCol, docSnap.id);
+      let count = data.count ?? 0;
+      try {
+        const itemsCol = collection(boardRef, "items");
+        const countSnap = await getCountFromServer(itemsCol);
+        const actualCount = countSnap.data().count;
+        if (actualCount !== count) {
+          await updateDoc(boardRef, {
+            count: actualCount,
+            updatedAt: serverTimestamp(),
+          });
+          count = actualCount;
+        }
+      } catch (err) {
+        console.warn("Failed to sync moodboard count:", err);
+      }
+      return {
+        id: docSnap.id,
+        name: data.name ?? "Untitled",
+        count,
+        cover: data.cover,
+        isPrivate: data.isPrivate ?? false,
+      };
+    })
+  );
+  return boards;
 };
 
 export const createMoodboard = async (
@@ -78,22 +100,52 @@ export const addArtworkToMoodboard = async (
   const boardRef = doc(firestore, "users", userId, "moodboards", moodboardId);
   const itemRef = doc(collection(boardRef, "items"), artwork.id);
 
-  await setDoc(
-    itemRef,
-    {
-      artworkId: artwork.id,
-      title: artwork.title,
-      image: artwork.image ?? null,
-      price: artwork.price ?? null,
-      createdAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  await runTransaction(firestore, async (tx) => {
+    const itemSnap = await tx.get(itemRef);
+    if (itemSnap.exists()) {
+      tx.update(boardRef, { updatedAt: serverTimestamp() });
+      return;
+    }
 
-  await updateDoc(boardRef, {
-    updatedAt: serverTimestamp(),
-    count: increment(1),
+    tx.set(
+      itemRef,
+      {
+        artworkId: artwork.id,
+        title: artwork.title,
+        image: artwork.image ?? null,
+        price: artwork.price ?? null,
+        createdAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    tx.update(boardRef, {
+      updatedAt: serverTimestamp(),
+      count: increment(1),
+    });
   });
+};
+
+export const findMoodboardForArtwork = async (
+  userId: string,
+  artworkId: string
+): Promise<string | null> => {
+  if (!userId || !artworkId) return null;
+  const boards = await fetchMoodboards(userId);
+  for (const board of boards) {
+    const itemRef = doc(
+      firestore,
+      "users",
+      userId,
+      "moodboards",
+      board.id,
+      "items",
+      artworkId
+    );
+    const itemSnap = await getDoc(itemRef);
+    if (itemSnap.exists()) return board.id;
+  }
+  return null;
 };
 
 export const fetchMoodboardItems = async (

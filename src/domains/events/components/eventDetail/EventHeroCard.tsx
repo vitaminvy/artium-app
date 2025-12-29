@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Image, Pressable, Text, View } from "react-native";
+import { Alert, Image, Pressable, Text, View, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { EventItem } from "../../../discover/types";
 import EventEmailModal from "../modals/EventEmailModal";
@@ -11,6 +11,9 @@ type Props = {
   initialRsvp?: RsvpStatus;
   rsvp?: RsvpStatus;
   onChangeRsvp?: (status: RsvpStatus) => void;
+  isHosting?: boolean;
+  onDelete?: () => void | Promise<void>;
+  onInviteSent?: (eventId: string, invitedCount: number) => void;
 };
 
 const RSVP_META: Record<
@@ -30,10 +33,14 @@ export default function EventHeroCard({
   initialRsvp = "none",
   rsvp,
   onChangeRsvp,
+  isHosting = false,
+  onDelete,
+  onInviteSent,
 }: Props) {
   const [localRsvp, setLocalRsvp] = useState<RsvpStatus>(initialRsvp);
   const [openMenu, setOpenMenu] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const hasImage = typeof event.image === "string" && event.image.trim().length > 0;
   const [imageLoaded, setImageLoaded] = useState(!hasImage);
 
@@ -72,6 +79,31 @@ export default function EventHeroCard({
     setLocalRsvp(status);
     onChangeRsvp?.(status);
     setOpenMenu(false);
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      "Delete Event",
+      "Are you sure you want to delete this event? This action cannot be undone.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              await onDelete?.();
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -114,46 +146,76 @@ export default function EventHeroCard({
 
         <Text className="text-lg font-semibold text-slate-900">{event.title}</Text>
 
-        <View className="flex-row items-center gap-2">
-          <Pressable
-            className="flex-1 flex-row items-center justify-center gap-2 px-4 py-3 rounded-full border"
-            style={{
-              backgroundColor: RSVP_META[displayedRsvp].bg,
-              borderColor:
-                displayedRsvp === "none" ? "#E2E8F0" : RSVP_META[displayedRsvp].bg,
-            }}
-            onPress={() => setOpenMenu((prev) => !prev)}
-          >
-            {displayedRsvp !== "none" ? (
+        {isHosting ? (
+          <View className="flex-row items-center gap-2">
+            <Pressable
+              className="flex-1 flex-row items-center justify-center gap-2 px-4 py-3 rounded-full border border-[#E2E8F0] bg-white active:opacity-90"
+              onPress={() => setShowEmail(true)}
+            >
+              <Ionicons name="mail-outline" size={16} color="#0F172A" />
+              <Text className="text-xs font-semibold text-slate-900">
+                Invite
+              </Text>
+            </Pressable>
+            <Pressable
+              className="h-11 w-11 rounded-full border border-slate-200 items-center justify-center active:opacity-90"
+            >
+              <Ionicons name="share-outline" size={18} color="#0F172A" />
+            </Pressable>
+            <Pressable
+              className="h-11 w-11 rounded-full border border-slate-200 items-center justify-center active:opacity-90"
+              onPress={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <ActivityIndicator size="small" color="#DC2626" />
+              ) : (
+                <Ionicons name="trash-outline" size={18} color="#DC2626" />
+              )}
+            </Pressable>
+          </View>
+        ) : (
+          <View className="flex-row items-center gap-2">
+            <Pressable
+              className="flex-1 flex-row items-center justify-center gap-2 px-4 py-3 rounded-full border"
+              style={{
+                backgroundColor: RSVP_META[displayedRsvp].bg,
+                borderColor:
+                  displayedRsvp === "none" ? "#E2E8F0" : RSVP_META[displayedRsvp].bg,
+              }}
+              onPress={() => setOpenMenu((prev) => !prev)}
+            >
+              {displayedRsvp !== "none" ? (
+                <Ionicons
+                  name={RSVP_META[displayedRsvp].icon}
+                  size={16}
+                  color={RSVP_META[displayedRsvp].color}
+                />
+              ) : null}
+              <Text
+                className="text-xs font-semibold"
+                style={{ color: RSVP_META[displayedRsvp].color }}
+              >
+                {RSVP_META[displayedRsvp].label}
+              </Text>
               <Ionicons
-                name={RSVP_META[displayedRsvp].icon}
-                size={16}
+                name="chevron-down-outline"
+                size={14}
                 color={RSVP_META[displayedRsvp].color}
               />
-            ) : null}
-            <Text
-              className="text-xs font-semibold"
-              style={{ color: RSVP_META[displayedRsvp].color }}
-            >
-              {RSVP_META[displayedRsvp].label}
-            </Text>
-            <Ionicons
-              name="chevron-down-outline"
-              size={14}
-              color={RSVP_META[displayedRsvp].color}
-            />
-          </Pressable>
+            </Pressable>
 
-          <Pressable
-            className="h-11 w-11 rounded-full border border-slate-200 items-center justify-center active:opacity-90"
-            onPress={() => setShowEmail(true)}
-          >
-            <Ionicons name="mail-outline" size={18} color="#0F172A" />
-          </Pressable>
-          <Pressable className="h-11 w-11 rounded-full border border-slate-200 items-center justify-center active:opacity-90">
-            <Ionicons name="share-outline" size={18} color="#0F172A" />
-          </Pressable>
-        </View>
+            <Pressable
+              className="h-11 w-11 rounded-full border border-slate-200 items-center justify-center active:opacity-90"
+              onPress={() => setShowEmail(true)}
+            >
+              <Ionicons name="mail-outline" size={18} color="#0F172A" />
+            </Pressable>
+            <Pressable className="h-11 w-11 rounded-full border border-slate-200 items-center justify-center active:opacity-90">
+              <Ionicons name="share-outline" size={18} color="#0F172A" />
+            </Pressable>
+          </View>
+        )}
 
         {openMenu ? (
           <View className="bg-white rounded-2xl border border-slate-200 shadow-lg">
@@ -183,6 +245,7 @@ export default function EventHeroCard({
         visible={showEmail}
         onClose={() => setShowEmail(false)}
         event={event}
+        onInviteSent={onInviteSent}
       />
     </View>
   );
