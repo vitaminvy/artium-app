@@ -6,20 +6,14 @@ import type { BottomSheetBackdropProps, BottomSheetFooterProps } from "@gorhom/b
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-
-type Moodboard = {
-  id: string;
-  name: string;
-  count: number;
-  cover: string;
-  isPrivate?: boolean;
-};
+import { createMoodboard, fetchMoodboards, type Moodboard } from "../services/moodboardService";
 
 type SaveSheetProps = {
   visible: boolean;
   onClose: () => void;
   onSelect: (moodboardId: string | null) => void;
   initialSelectedId?: string | null;
+  userId?: string | null;
 };
 
 export default function SaveSheet({
@@ -27,26 +21,13 @@ export default function SaveSheet({
   onClose,
   onSelect,
   initialSelectedId,
+  userId,
 }: SaveSheetProps) {
   const insets = useSafeAreaInsets();
   const sheetRef = useRef<BottomSheetModal>(null);
   const createRef = useRef<BottomSheetModal>(null);
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null);
-  const [moodboards, setMoodboards] = useState<Moodboard[]>([
-    {
-      id: "mb-1",
-      name: "Private Moodboard",
-      count: 2,
-      cover: "https://images.unsplash.com/photo-1523419400524-fc1e1cc2d6c5?auto=format&fit=crop&w=300&q=80",
-      isPrivate: true,
-    },
-    {
-      id: "mb-2",
-      name: "Favorites",
-      count: 5,
-      cover: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=300&q=80",
-    },
-  ]);
+  const [moodboards, setMoodboards] = useState<Moodboard[]>([]);
   const [newBoardName, setNewBoardName] = useState("");
   const snapPoints = useMemo(() => ["75%"], []);
   const createSnap = useMemo(() => ["45%"], []);
@@ -55,6 +36,13 @@ export default function SaveSheet({
     if (visible) {
       sheetRef.current?.present();
       setSelectedId(initialSelectedId ?? null);
+      if (userId) {
+        fetchMoodboards(userId)
+          .then(setMoodboards)
+          .catch((err) => console.warn("Failed to load moodboards", err));
+      } else {
+        setMoodboards([]);
+      }
     } else {
       Keyboard.dismiss();
       sheetRef.current?.dismiss();
@@ -85,17 +73,17 @@ export default function SaveSheet({
 
   const handleCreate = () => {
     if (!newBoardName.trim()) return;
-    const id = `mb-${Date.now()}`;
-    const next: Moodboard = {
-      id,
-      name: newBoardName.trim(),
-      count: 0,
-      cover: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=300&q=80",
-    };
-    setMoodboards((prev) => [next, ...prev]);
-    setSelectedId(id);
-    setNewBoardName("");
-    createRef.current?.dismiss();
+    if (!userId) return;
+    const name = newBoardName.trim();
+    if (!name) return;
+    createMoodboard(userId, name)
+      .then((board) => {
+        setMoodboards((prev) => [board, ...prev]);
+        setSelectedId(board.id);
+        setNewBoardName("");
+        createRef.current?.dismiss();
+      })
+      .catch((err) => console.warn("Failed to create moodboard", err));
   };
 
   const handleSelect = (id: string) => {

@@ -41,12 +41,15 @@ import ArtworkHeader from "../domains/artwork/components/ArtworkHeader";
 import ArtworkInfo from "../domains/artwork/components/ArtworkInfo";
 import ArtworkDetails from "../domains/artwork/components/ArtworkDetails";
 import ArtworkActionBar from "../domains/artwork/components/ArtworkActionBar";
+import { addArtworkToMoodboard } from "../domains/artwork/services/moodboardService";
+import { useAuth } from "../domains/auth/contexts/AuthContext";
 
 export default function ArtworkDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const insets = useSafeAreaInsets();
   const { hidden, setHidden, height: tabHeight } = useTabBarVisibility();
+  const { currentUser } = useAuth();
   const scrollY = useRef(0);
   const initialHeaderHeight = Math.max(insets.top + 56, 56);
 
@@ -358,10 +361,33 @@ export default function ArtworkDetailScreen() {
             handleCloseSheet();
           }}
           initialSelectedId={savedBoardId}
-          onSelect={(id) => {
-            setSavedBoardId(id);
-            setShowSaveSheet(false);
-            handleCloseSheet();
+          userId={currentUser?.uid}
+          onSelect={async (id) => {
+            if (!id || !artwork) {
+              setSavedBoardId(null);
+              setShowSaveSheet(false);
+              handleCloseSheet();
+              return;
+            }
+            if (!currentUser) {
+              Alert.alert("Sign in required", "Please sign in to save to a moodboard.");
+              return;
+            }
+            try {
+              await addArtworkToMoodboard(currentUser.uid, id, {
+                id: artwork.id,
+                title: artwork.title,
+                image: artwork.images?.[0],
+                price: artwork.price,
+              });
+              setSavedBoardId(id);
+            } catch (err) {
+              console.error("Failed to save to moodboard:", err);
+              Alert.alert("Error", "Could not save to moodboard. Please try again.");
+            } finally {
+              setShowSaveSheet(false);
+              handleCloseSheet();
+            }
           }}
         />
 
