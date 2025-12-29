@@ -30,6 +30,7 @@ import { useRef, useEffect } from "react";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import { useAuth } from "../domains/auth/contexts/AuthContext";
 import { getArtworkById } from "../domains/artwork/services/artworkService";
+import { navigate as rootNavigate } from "../app/navigation/navigationRef";
 
 export default function FeedScreen() {
   const navigation =
@@ -117,7 +118,7 @@ export default function FeedScreen() {
         try {
           const artwork = await getArtworkById(quoteId, user?.uid);
           if (artwork) {
-            navigation.navigate("ArtworkDetail" as never, { id: quoteId } as never);
+            rootNavigate("ArtworkDetail", { id: quoteId });
           }
         } catch (err) {
           console.warn("Failed to fetch artwork for quote:", err);
