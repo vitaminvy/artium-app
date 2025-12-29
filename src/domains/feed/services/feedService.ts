@@ -68,6 +68,7 @@ export const getFeedPosts = async (
       return {
         id: docSnapshot.id,
         ...data,
+        authorId: data.authorId ?? data.authorSnapshot?.id,
         author: data.authorSnapshot,
         createdAt: (data.createdAt as Timestamp)?.toMillis() || Date.now(),
         quote: mapQuote(data.quote),
@@ -120,6 +121,7 @@ export const subscribeToFeedPosts = (
       return {
         id: docSnapshot.id,
         ...data,
+        authorId: data.authorId ?? data.authorSnapshot?.id,
         author: data.authorSnapshot,
         createdAt: (data.createdAt as Timestamp)?.toMillis() || Date.now(),
         quote: mapQuote(data.quote),
@@ -265,6 +267,7 @@ export const getPostById = async (id: string): Promise<FeedPost | null> => {
     return {
       id: snap.id,
       ...data,
+      authorId: data.authorId ?? data.authorSnapshot?.id,
       author: data.authorSnapshot,
       createdAt: (data.createdAt as Timestamp)?.toMillis?.() || Date.now(),
       quote: mapQuote(data.quote),

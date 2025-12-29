@@ -142,7 +142,11 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
     );
     const unsubFollowing = onSnapshot(followingCol, (snap) => {
       const ids = new Set<string>();
-      snap.forEach((doc) => ids.add(doc.id));
+      snap.forEach((doc) => {
+        // Document ID is the userId of the followed user
+        ids.add(doc.id);
+      });
+      console.log('[useFeed] Following IDs:', Array.from(ids));
       setFollowingIds(ids);
     });
     return () => {
@@ -170,17 +174,29 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
 
   const followingPosts = useMemo(() => {
     if (!currentUser) return [];
-    return posts.filter((p) => {
-      const authorId = p.author?.id;
+    const filtered = posts.filter((p) => {
+      const authorId = p.author?.id || p.authorId;
       if (!authorId) return false;
       // Only show people currentUser follow (exclude self)
-      return followingIds.has(authorId);
+      const isFollowing = followingIds.has(authorId);
+      return isFollowing;
     });
+    console.log('[useFeed] Following posts filter:', {
+      totalPosts: posts.length,
+      followingIds: Array.from(followingIds),
+      filteredCount: filtered.length,
+      samplePost: posts[0] ? {
+        id: posts[0].id,
+        authorId: posts[0].author?.id || posts[0].authorId,
+        isFollowing: followingIds.has(posts[0].author?.id || posts[0].authorId || '')
+      } : null
+    });
+    return filtered;
   }, [posts, currentUser, followingIds]);
 
   const myPosts = useMemo(() => {
     if (!currentUser) return [];
-    return posts.filter(p => p.author?.id === currentUser.uid);
+    return posts.filter((p) => (p.author?.id || p.authorId) === currentUser.uid);
   }, [posts, currentUser]);
 
   const toggleLike = useCallback(async (id: string, currentLikedStatus: boolean) => {

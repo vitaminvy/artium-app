@@ -73,6 +73,7 @@ export type FeedMetrics = {
 
 export type FeedPost = {
   id: string;
+  authorId?: string;
   author: FeedAuthor;
   content: string;
   createdAt: number;
