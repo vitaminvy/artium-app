@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { View, Text, Pressable, FlatList } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   collection,
@@ -13,6 +13,7 @@ import {
 
 import { useAuth } from "../domains/auth/contexts/AuthContext";
 import { firestore } from "@/configs/firebase";
+import { markAllNotificationsAsRead } from "../domains/notifications/services/notificationService";
 
 type NotificationItem = {
   id: string;
@@ -81,6 +82,22 @@ export default function NotificationsScreen() {
     );
     return () => unsub();
   }, [currentUser]);
+
+  // Mark all notifications as read when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      if (!currentUser) return;
+
+      // Wait a bit for user to see the notifications before marking as read
+      const timer = setTimeout(() => {
+        markAllNotificationsAsRead(currentUser.uid).catch((error) => {
+          console.error("Failed to mark notifications as read:", error);
+        });
+      }, 1000); // 1 second delay
+
+      return () => clearTimeout(timer);
+    }, [currentUser])
+  );
 
   return (
     <View className="flex-1 bg-white">
