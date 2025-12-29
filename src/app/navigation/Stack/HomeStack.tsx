@@ -14,6 +14,7 @@ import type { ArtworkDetail } from "../../../domains/artwork/types";
 import type { EventItem } from "../../../domains/discover/types";
 import BlogDetailScreen from "../../../screens/BlogDetailScreen"; // Renamed import
 import BlogScreen from "../../../screens/BlogScreen";
+import MoodboardDetailScreen from "../../../screens/MoodboardDetailScreen";
 
 export type HomeStackParamList = {
   HomeMain: undefined;
@@ -33,6 +34,7 @@ export type HomeStackParamList = {
     event?: EventItem;
   };
   Blog: undefined;
+  MoodboardDetail: { id: string };
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -49,6 +51,7 @@ export default function HomeStack() {
       <Stack.Screen name="SimilarSaved" component={SimilarSavedScreen} />
       <Stack.Screen name="BlogDetail" component={BlogDetailScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Blog" component={BlogScreen} />
+      <Stack.Screen name="MoodboardDetail" component={MoodboardDetailScreen} />
       <Stack.Screen
         name="EditProfile"
         component={EditProfileScreen}

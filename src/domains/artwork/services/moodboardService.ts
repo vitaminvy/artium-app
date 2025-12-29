@@ -18,6 +18,13 @@ export type Moodboard = {
   isPrivate?: boolean;
 };
 
+export type MoodboardItem = {
+  artworkId: string;
+  title: string;
+  image?: string | null;
+  price?: string | null;
+};
+
 export const fetchMoodboards = async (userId: string): Promise<Moodboard[]> => {
   const boardsCol = collection(firestore, "users", userId, "moodboards");
   const snapshot = await getDocs(query(boardsCol));
@@ -87,5 +94,23 @@ export const addArtworkToMoodboard = async (
   await updateDoc(boardRef, {
     updatedAt: serverTimestamp(),
     count: increment(1),
+  });
+};
+
+export const fetchMoodboardItems = async (
+  userId: string,
+  moodboardId: string
+): Promise<MoodboardItem[]> => {
+  const boardRef = doc(firestore, "users", userId, "moodboards", moodboardId);
+  const itemsCol = collection(boardRef, "items");
+  const snapshot = await getDocs(itemsCol);
+  return snapshot.docs.map((docSnap) => {
+    const data = docSnap.data();
+    return {
+      artworkId: data.artworkId ?? docSnap.id,
+      title: data.title ?? "Untitled",
+      image: data.image ?? null,
+      price: data.price ?? null,
+    } as MoodboardItem;
   });
 };
