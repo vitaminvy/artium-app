@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -22,8 +22,11 @@ import { useFocusEffect } from "@react-navigation/native";
 import ReshareSheet from "../domains/feed/components/sheets/ReshareSheet";
 import ImageViewing from "react-native-image-viewing";
 import { usePostComments } from "../domains/feed/hooks/usePostComments";
-import { addCommentToPost } from "../domains/feed/services/feedService";
+import { addCommentToPost, togglePostLike, createPost } from "../domains/feed/services/feedService";
 import { useAuth } from "../domains/auth/contexts/AuthContext";
+import { useProfileContext } from "@/domains/user/contexts/ProfileContext";
+import { usePostLike } from "../domains/feed/hooks/usePostLike";
+import { usePostMetrics } from "../domains/feed/hooks/usePostMetrics";
 
 type RouteProps = { key: string; name: "FeedDetail"; params: { post: FeedPost } };
 
@@ -34,12 +37,49 @@ export default function FeedDetailScreen() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const { currentUser } = useAuth();
+  const { profile } = useProfileContext();
   const originalPost = route.params?.post;
 
-  const [post, setPost] = useState<FeedPost>(originalPost);
   const [input, setInput] = useState("");
   const [showReshare, setShowReshare] = useState(false);
-  const { comments, loading } = usePostComments(post?.id);
+  const { comments, loading } = usePostComments(originalPost?.id);
+  const { isLiked, toggleOptimistic } = usePostLike(originalPost?.id, originalPost?.liked);
+  const metrics = usePostMetrics(originalPost?.id, originalPost?.metrics);
+
+  // Create post with real-time data
+  const postWithRealTimeData = useMemo(() => {
+    if (!originalPost) return originalPost;
+    return {
+      ...originalPost,
+      liked: isLiked,
+      metrics: metrics,
+    };
+  }, [originalPost, isLiked, metrics]);
+
+  const authorSnapshot = useMemo(() => {
+    if (!currentUser) return null;
+    const rawHandle =
+      profile.user.handle ||
+      (currentUser.email ? currentUser.email.split("@")[0] : "user");
+    const handle = rawHandle.startsWith("@") ? rawHandle.slice(1) : rawHandle;
+    const name =
+      profile.user.name ||
+      currentUser.displayName ||
+      currentUser.email ||
+      "User";
+    const avatar = profile.user.avatarUri || currentUser.photoURL || undefined;
+    return {
+      id: currentUser.uid,
+      name,
+      handle,
+      avatar,
+    };
+  }, [
+    currentUser,
+    profile.user.avatarUri,
+    profile.user.handle,
+    profile.user.name,
+  ]);
 
   // Image viewer state
   const viewerKeyRef = useRef(0);
@@ -55,57 +95,65 @@ export default function FeedDetailScreen() {
     key: "viewer-0",
   });
 
-  const toggleLike = () => {
-    setPost((prev) => ({
-      ...prev,
-      liked: !prev.liked,
-      metrics: {
-        ...prev.metrics,
-        likes: prev.metrics.likes + (prev.liked ? -1 : 1),
-      },
-    }));
+  const toggleLike = async () => {
+    if (!currentUser || !originalPost) return;
+
+    try {
+      toggleOptimistic();
+      await togglePostLike(originalPost.id, currentUser.uid, isLiked);
+    } catch (error) {
+      console.error("Failed to toggle like:", error);
+    }
   };
 
   const openReshare = () => {
     setShowReshare(true);
   };
 
-  const submitReshare = (_note: string) => {
-    setPost((prev) => ({
-      ...prev,
-      reshared: true,
-      metrics: {
-        ...prev.metrics,
-        shares: prev.metrics.shares + 1,
-      },
-    }));
-    setShowReshare(false);
+  const submitReshare = async (note: string) => {
+    if (!currentUser || !authorSnapshot || !originalPost) return;
+
+    try {
+      const quote = {
+        id: originalPost.id,
+        authorId: originalPost.author.id,
+        authorName: originalPost.author.name,
+        handle: originalPost.author.handle,
+        avatar: originalPost.author.avatar,
+        content: originalPost.content,
+        createdAt: originalPost.createdAt,
+        media: originalPost.media,
+      };
+
+      await createPost({
+        authorId: currentUser.uid,
+        authorSnapshot,
+        content: note,
+        media: null,
+        quote: quote,
+        isReshare: true,
+        resharedFrom: originalPost.author,
+      } as any);
+
+      setShowReshare(false);
+    } catch (error) {
+      console.error("Failed to reshare:", error);
+    }
   };
 
   const addComment = async () => {
     const trimmed = input.trim();
-    if (!trimmed || !post?.id) return;
-    if (!currentUser) {
+    if (!trimmed || !originalPost?.id) return;
+    if (!currentUser || !authorSnapshot) {
       console.warn("User not logged in; cannot add comment.");
       return;
     }
 
-    const authorSnapshot = {
-      id: currentUser.uid,
-      name: currentUser.displayName || "User",
-      handle: (currentUser.email || "user").split("@")[0],
-      avatar: currentUser.photoURL || undefined,
-    };
-
     try {
-      await addCommentToPost(post.id, {
+      await addCommentToPost(originalPost.id, {
         authorSnapshot,
         content: trimmed,
       });
-      setPost((prev) => ({
-        ...prev,
-        metrics: { ...prev.metrics, comments: prev.metrics.comments + 1 },
-      }));
       setInput("");
       Keyboard.dismiss();
     } catch (error) {
@@ -159,7 +207,7 @@ export default function FeedDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         <FeedPostCard
-          post={post}
+          post={postWithRealTimeData}
           onPressLike={() => toggleLike()}
           onPressReshare={() => openReshare()}
           onPressComment={() => { }}
@@ -228,7 +276,7 @@ export default function FeedDetailScreen() {
       </View>
       <ReshareSheet
         visible={showReshare}
-        target={post}
+        target={originalPost}
         onClose={() => setShowReshare(false)}
         onSubmit={submitReshare}
       />

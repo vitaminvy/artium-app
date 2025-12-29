@@ -205,42 +205,11 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
     if (!currentUser) return;
     if (likeInFlight.current.has(id)) return;
     likeInFlight.current.add(id);
-    
-    // Optimistic update
-    setPosts(prevPosts => prevPosts.map(p => {
-      if (p.id === id) {
-        const newLikedState = !currentLikedStatus;
-        const newLikesCount = currentLikedStatus 
-          ? Math.max(0, p.metrics.likes - 1) // Unliking
-          : p.metrics.likes + 1;             // Liking
-
-        return {
-          ...p,
-          liked: newLikedState,
-          metrics: { ...p.metrics, likes: newLikesCount }
-        }
-      }
-      return p;
-    }));
 
     try {
       await togglePostLike(id, currentUser.uid, currentLikedStatus);
     } catch (error) {
       console.error("Failed to toggle like:", error);
-      // Revert optimistic update
-      setPosts(prevPosts => prevPosts.map(p => {
-        if (p.id === id) {
-          return {
-            ...p,
-            liked: currentLikedStatus,
-            metrics: { 
-              ...p.metrics, 
-              likes: currentLikedStatus ? p.metrics.likes + 1 : Math.max(0, p.metrics.likes - 1)
-            }
-          }
-        }
-        return p;
-      }));
     } finally {
       likeInFlight.current.delete(id);
     }
