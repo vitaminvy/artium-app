@@ -104,7 +104,9 @@ export default function EventScreen() {
   useFocusEffect(
     useCallback(() => {
       setActiveKey("events");
-    }, [setActiveKey])
+      // Refresh events when screen is focused (e.g., after deleting an event)
+      refreshEvents();
+    }, [setActiveKey, refreshEvents])
   );
 
   useEffect(

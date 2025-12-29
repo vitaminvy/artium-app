@@ -12,7 +12,7 @@ type Props = {
   rsvp?: RsvpStatus;
   onChangeRsvp?: (status: RsvpStatus) => void;
   isHosting?: boolean;
-  onDelete?: (eventId: string) => void;
+  onDelete?: () => void | Promise<void>;
   onInviteSent?: (eventId: string, invitedCount: number) => void;
 };
 
@@ -96,7 +96,7 @@ export default function EventHeroCard({
           onPress: async () => {
             setIsDeleting(true);
             try {
-              await onDelete?.(event.id);
+              await onDelete?.();
             } finally {
               setIsDeleting(false);
             }

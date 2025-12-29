@@ -267,11 +267,26 @@ export default function EventDetailScreen() {
   }, [fetchDetail, isRefreshing]);
 
   const handleDeleteEvent = useCallback(async () => {
-    if (!eventItem?.id) return;
+    if (!eventItem?.id) {
+      console.error("[EventDetailScreen] No event ID");
+      return;
+    }
+
+    if (!currentUser?.uid) {
+      console.error("[EventDetailScreen] No current user");
+      showToast("You must be logged in to delete this event");
+      return;
+    }
+
+    console.log("[EventDetailScreen] Deleting event:", {
+      eventId: eventItem.id,
+      currentUserId: currentUser.uid,
+      organizerId,
+    });
 
     try {
       const { deleteEvent } = await import("../domains/discover/services/eventService");
-      await deleteEvent(eventItem.id, currentUser?.uid || "");
+      await deleteEvent(eventItem.id, currentUser.uid);
 
       showToast("Event deleted successfully");
 
@@ -283,11 +298,12 @@ export default function EventDetailScreen() {
           navigation.navigate("HomeMain");
         }
       }, 500);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to delete event:", error);
-      showToast("Failed to delete event");
+      const errorMessage = error?.message || "Failed to delete event";
+      showToast(errorMessage);
     }
-  }, [eventItem?.id, currentUser?.uid, navigation, showToast]);
+  }, [eventItem?.id, currentUser?.uid, organizerId, navigation, showToast]);
 
   const handleInviteSent = useCallback(
     async (eventId: string, invitedCount: number) => {
