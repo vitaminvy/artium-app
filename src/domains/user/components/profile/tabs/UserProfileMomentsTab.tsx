@@ -1,9 +1,10 @@
 import React from "react";
-import { View, Text, ScrollView } from "react-native";
-import MomentCard, { MomentCardItem } from "../MomentCard";
+import { View, Text } from "react-native";
+import MasonryLayout from "../../../../../shared/components/MasonryLayout";
+import MasonryMomentCard, { MasonryMomentItem } from "../MasonryMomentCard";
 
 type Props = {
-  moments?: MomentCardItem[];
+  moments?: MasonryMomentItem[];
   onPressMoment?: (momentId: string) => void;
 };
 
@@ -20,26 +21,20 @@ export default function UserProfileMomentsTab({
   }
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-      <View
-        style={{
-          flexDirection: "row",
-          flexWrap: "wrap",
-          justifyContent: "space-between",
-          paddingHorizontal: 6,
-        }}
-      >
-        {moments.map((moment) => (
-          <MomentCard
-            key={moment.id}
-            item={moment}
-            variant="compact"
-            style={{ width: "48%", marginBottom: 12 }}
-            onPress={() => onPressMoment?.(moment.id)}
-            onPressAuthor={() => {}}
-          />
-        ))}
-      </View>
-    </ScrollView>
+    <MasonryLayout
+      data={moments}
+      numColumns={2}
+      columnGap={8}
+      keyExtractor={(item) => item.id}
+      renderItem={(moment) => (
+        <MasonryMomentCard
+          item={moment}
+          onPress={() => onPressMoment?.(moment.id)}
+          onPressAuthor={() => {}}
+        />
+      )}
+      contentContainerStyle={{ paddingBottom: 20 }}
+      showsVerticalScrollIndicator={false}
+    />
   );
 }
