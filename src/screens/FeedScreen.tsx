@@ -29,6 +29,7 @@ import ImageViewing from "react-native-image-viewing";
 import { useRef, useEffect } from "react";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import { useAuth } from "../domains/auth/contexts/AuthContext";
+import { getArtworkById } from "../domains/artwork/services/artworkService";
 
 export default function FeedScreen() {
   const navigation =
@@ -92,6 +93,37 @@ export default function FeedScreen() {
   const openDetail = React.useCallback((post: FeedPost) => {
     navigation.navigate("FeedDetail", { post });
   }, [navigation]);
+
+  const openQuote = React.useCallback((quoteId: string) => {
+    if (!quoteId) return;
+    const allPosts = [...explorePosts, ...followingPosts, ...myPosts];
+    const target = allPosts.find((p) => p.id === quoteId);
+    if (target) {
+      navigation.navigate("FeedDetail", { post: target });
+      return;
+    }
+    // Fallback: try fetch post, then artwork detail (do not abort on post fetch errors)
+    import("../domains/feed/services/feedService")
+      .then(({ getPostById }) => getPostById(quoteId))
+      .catch((err) => {
+        console.warn("Failed to fetch quoted post, will try artwork:", err);
+        return null;
+      })
+      .then(async (post) => {
+        if (post) {
+          navigation.navigate("FeedDetail", { post });
+          return;
+        }
+        try {
+          const artwork = await getArtworkById(quoteId, user?.uid);
+          if (artwork) {
+            navigation.navigate("ArtworkDetail" as never, { id: quoteId } as never);
+          }
+        } catch (err) {
+          console.warn("Failed to fetch artwork for quote:", err);
+        }
+      });
+  }, [explorePosts, followingPosts, myPosts, navigation, user?.uid]);
 
   const openComments = React.useCallback((post: FeedPost) => {
     setCommentTarget(post);
@@ -166,6 +198,7 @@ export default function FeedScreen() {
             onToggleReshare={openReshare}
             onPressComment={openComments}
             onPressCard={openDetail}
+            onPressQuote={openQuote}
             onPressImage={handleOpenViewer}
             scrollHandler={scrollHandler}
             isTabActive={tab === "explore"}
@@ -183,6 +216,7 @@ export default function FeedScreen() {
             onToggleReshare={openReshare}
             onPressComment={openComments}
             onPressCard={openDetail}
+            onPressQuote={openQuote}
             onPressImage={handleOpenViewer}
             scrollHandler={scrollHandler}
             isTabActive={tab === "following"}
@@ -198,6 +232,7 @@ export default function FeedScreen() {
             onToggleReshare={openReshare}
             onPressComment={openComments}
             onPressCard={openDetail}
+            onPressQuote={openQuote}
             onPressImage={handleOpenViewer}
             scrollHandler={scrollHandler}
             isTabActive={tab === "myFeed"}
