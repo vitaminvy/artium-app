@@ -6,16 +6,18 @@ import EventCard from "../cards/EventCard";
 type Props = {
   data: EventItem[];
   onCardPress?: (item: EventItem) => void;
+  onRsvpChange?: (item: EventItem, status: "none" | "going" | "maybe" | "notGoing") => void;
   onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
   onEndReached: () => void;
   isFetchingNextPage: boolean;
 };
 
-export default function DiscoverEventsTab({ data, onCardPress, onScroll, onEndReached, isFetchingNextPage }: Props) {
+export default function DiscoverEventsTab({ data, onCardPress, onRsvpChange, onScroll, onEndReached, isFetchingNextPage }: Props) {
   const renderItem = ({ item }: ListRenderItemInfo<EventItem>) => (
     <EventCard
       item={item}
       onPress={onCardPress ? () => onCardPress(item) : undefined}
+      onRsvpChange={onRsvpChange ? (status) => onRsvpChange(item, status) : undefined}
     />
   );
 

@@ -43,6 +43,7 @@ import ArtworkDetails from "../domains/artwork/components/ArtworkDetails";
 import ArtworkActionBar from "../domains/artwork/components/ArtworkActionBar";
 import { addArtworkToMoodboard } from "../domains/artwork/services/moodboardService";
 import { useAuth } from "../domains/auth/contexts/AuthContext";
+import { createPost } from "../domains/feed/services/feedService";
 
 export default function ArtworkDetailScreen() {
   const navigation = useNavigation<any>();
@@ -65,6 +66,7 @@ export default function ArtworkDetailScreen() {
   const [showReshareSheet, setShowReshareSheet] = useState(false);
   const [showSaveSheet, setShowSaveSheet] = useState(false);
   const [showReportSheet, setShowReportSheet] = useState(false);
+  const [isResharing, setIsResharing] = useState(false);
   const [heroImageLoaded, setHeroImageLoaded] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(initialHeaderHeight);
 
@@ -84,8 +86,9 @@ export default function ArtworkDetailScreen() {
       try {
         setLoading(true);
         setHeroImageLoaded(false);
-        const artworkData: any = await getArtworkById(artworkId);
+        const artworkData: any = await getArtworkById(artworkId, currentUser?.uid);
         setArtwork(artworkData);
+        setLiked(Boolean(artworkData?.liked));
         if (!artworkData?.images?.length) {
           setHeroImageLoaded(true);
         }
@@ -101,11 +104,19 @@ export default function ArtworkDetailScreen() {
     };
 
     fetchArtwork();
-  }, [route.params?.id]);
+  }, [route.params?.id, currentUser?.uid]);
 
 
   const reshareTarget: FeedPost | null = useMemo(() => {
     if (!artwork) return null;
+    const quoteMedia =
+      artwork.images?.length > 0
+        ? {
+            url: artwork.images[0],
+            placeholderColor: "#CBD5E1",
+            aspectRatio: 3 / 3,
+          }
+        : undefined;
     return {
       id: artwork.id,
       author: {
@@ -118,10 +129,20 @@ export default function ArtworkDetailScreen() {
       content: `${artwork.title} · ${artwork.price}`,
       createdAt: Date.now(),
       relativeTime: "Just now",
-      media: {
-        url: artwork.images[0],
-        aspectRatio: 3 / 3,
-        placeholderColor: "#CBD5E1",
+      media: quoteMedia,
+      quote: {
+        id: artwork.id,
+        authorId: artwork.artist.name,
+        authorName: artwork.artist.name,
+        handle: artwork.artist.name.replace(/\s+/g, "").toLowerCase(),
+        avatar: artwork.artist.avatar,
+        title: artwork.title,
+        subtitle: artwork.artist.name,
+        priceLabel: artwork.price,
+        content: artwork.description || artwork.title,
+        createdAt: Date.now(),
+        media: quoteMedia,
+        relativeTime: "Just now",
       },
       metrics: { likes: 0, comments: 0, shares: 0 },
     };
@@ -177,6 +198,10 @@ export default function ArtworkDetailScreen() {
   // --- LIKE HANDLER ---
   const handleLike = async () => {
     if (!artwork) return;
+    if (!currentUser) {
+      Alert.alert("Sign in required", "Please sign in to like this artwork.");
+      return;
+    }
     
     // Immediately update UI for better UX
     const newLikedState = !liked;
@@ -184,7 +209,7 @@ export default function ArtworkDetailScreen() {
 
     try {
       // Call the service to update Firestore
-      await toggleArtworkLike(artwork.id, !newLikedState); // Pass the original state
+      await toggleArtworkLike(artwork.id, currentUser.uid, liked); // send previous state
     } catch (err) {
       // If the update fails, revert the UI and show an error
       console.error("Failed to update like status:", err);
@@ -341,14 +366,75 @@ export default function ArtworkDetailScreen() {
           <ReshareSheet
             visible={showReshareSheet}
             target={reshareTarget}
+            isSubmitting={isResharing}
             onClose={() => {
               setShowReshareSheet(false);
               handleCloseSheet();
             }}
-            onSubmit={() => {
-              setShowReshareSheet(false);
-              handleCloseSheet();
-              setReshared(true);
+            onSubmit={async (note: string) => {
+              if (isResharing) return;
+              if (!currentUser || !reshareTarget) {
+                Alert.alert("Sign in required", "Please log in to reshare.");
+                return;
+              }
+              try {
+                setIsResharing(true);
+                await createPost({
+                  authorId: currentUser.uid,
+                  authorSnapshot: {
+                    id: currentUser.uid,
+                    name:
+                      currentUser.displayName ||
+                      currentUser.email?.split("@")[0] ||
+                      "User",
+                    handle:
+                      currentUser.email?.split("@")[0] ||
+                      currentUser.displayName ||
+                      "user",
+                    avatar: currentUser.photoURL,
+                  },
+                  content: note,
+                  media: null,
+                  quote: reshareTarget.quote || {
+                    id: reshareTarget.id,
+                    authorId: reshareTarget.author?.id,
+                    authorName: reshareTarget.author?.name || "",
+                    handle: reshareTarget.author?.handle || "",
+                    avatar: reshareTarget.author?.avatar,
+                    title: artwork?.title,
+                    subtitle: reshareTarget.author?.name,
+                    priceLabel: artwork?.price,
+                    content: reshareTarget.content,
+                    createdAt: reshareTarget.createdAt,
+                    media: reshareTarget.media,
+                    relativeTime: "Just now",
+                  },
+                  isReshare: true,
+                  resharedFrom: reshareTarget.author,
+                } as any);
+                setReshared(true);
+                setShowReshareSheet(false);
+                handleCloseSheet();
+                const refreshKey = Date.now();
+                const parent = navigation.getParent?.();
+                const parentRoutes = parent?.getState?.()?.routeNames;
+                if (parent && parentRoutes?.includes("Feed")) {
+                  parent.navigate("Feed", {
+                    screen: "FeedMain",
+                    params: { refreshKey },
+                  });
+                } else {
+                  navigation.navigate("Tabs", {
+                    screen: "Feed",
+                    params: { screen: "FeedMain", params: { refreshKey } },
+                  });
+                }
+              } catch (err) {
+                console.error("Failed to reshare artwork:", err);
+                Alert.alert("Error", "Could not reshare. Please try again.");
+              } finally {
+                setIsResharing(false);
+              }
             }}
           />
         )}

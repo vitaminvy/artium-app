@@ -273,22 +273,31 @@ function FeedPostCard({
               )}
             </View>
             <View className="flex-1">
-              <Text
-                className="text-[13px] font-semibold text-slate-800"
-                style={{ flexShrink: 1 }}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {post.quote?.authorName}
-              </Text>
-              <Text className="text-[11px] text-slate-500">
+              <View className="flex-row items-center justify-between gap-2">
+                <Text
+                  className="text-[13px] font-semibold text-slate-800"
+                  style={{ flexShrink: 1 }}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {post.quote?.title ?? post.quote?.authorName}
+                </Text>
+                {post.quote?.priceLabel ? (
+                  <Text className="text-[12px] font-semibold text-slate-900">
+                    {post.quote.priceLabel}
+                  </Text>
+                ) : null}
+              </View>
+              <Text className="text-[11px] text-slate-500" numberOfLines={1}>
                 @{normalizeHandle(post.quote?.handle, post.quote?.authorName)} · {post.quote?.relativeTime}
               </Text>
             </View>
           </View>
-          <Text className="text-[13px] text-slate-800 leading-5 mb-2">
-            {post.quote?.content}
-          </Text>
+          {post.quote?.content ? (
+            <Text className="text-[13px] text-slate-800 leading-5 mb-2">
+              {post.quote?.content}
+            </Text>
+          ) : null}
           {quoteMedia && quoteImageSource ? (
             <View
               className="rounded-xl overflow-hidden"
