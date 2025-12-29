@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, Image, Pressable, Modal, GestureResponderEvent, Alert } from "react-native";
+import { View, Text, Image, Pressable, Modal, GestureResponderEvent, Alert, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { EventItem } from "../../types";
@@ -54,6 +54,7 @@ export default function HostingEventCard({
   const [showShare, setShowShare] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const stopPropagation =
     (fn?: (event?: GestureResponderEvent) => void) => (event: GestureResponderEvent) => {
@@ -73,8 +74,13 @@ export default function HostingEventCard({
         {
           text: "Delete",
           style: "destructive",
-          onPress: () => {
-            onDelete?.(item.id);
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              await onDelete?.(item.id);
+            } finally {
+              setIsDeleting(false);
+            }
           },
         },
       ]
@@ -158,8 +164,13 @@ export default function HostingEventCard({
             <Pressable
               className="h-11 w-11 rounded-full border border-slate-200 items-center justify-center active:opacity-90"
               onPress={stopPropagation(handleDelete)}
+              disabled={isDeleting}
             >
-              <Ionicons name="trash-outline" size={18} color="#DC2626" />
+              {isDeleting ? (
+                <ActivityIndicator size="small" color="#DC2626" />
+              ) : (
+                <Ionicons name="trash-outline" size={18} color="#DC2626" />
+              )}
             </Pressable>
           </View>
 

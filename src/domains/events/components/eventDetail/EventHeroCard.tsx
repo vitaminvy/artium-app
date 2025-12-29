@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Image, Pressable, Text, View } from "react-native";
+import { Alert, Image, Pressable, Text, View, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { EventItem } from "../../../discover/types";
 import EventEmailModal from "../modals/EventEmailModal";
@@ -40,6 +40,7 @@ export default function EventHeroCard({
   const [localRsvp, setLocalRsvp] = useState<RsvpStatus>(initialRsvp);
   const [openMenu, setOpenMenu] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const hasImage = typeof event.image === "string" && event.image.trim().length > 0;
   const [imageLoaded, setImageLoaded] = useState(!hasImage);
 
@@ -92,8 +93,13 @@ export default function EventHeroCard({
         {
           text: "Delete",
           style: "destructive",
-          onPress: () => {
-            onDelete?.(event.id);
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              await onDelete?.(event.id);
+            } finally {
+              setIsDeleting(false);
+            }
           },
         },
       ]
@@ -159,8 +165,13 @@ export default function EventHeroCard({
             <Pressable
               className="h-11 w-11 rounded-full border border-slate-200 items-center justify-center active:opacity-90"
               onPress={handleDelete}
+              disabled={isDeleting}
             >
-              <Ionicons name="trash-outline" size={18} color="#DC2626" />
+              {isDeleting ? (
+                <ActivityIndicator size="small" color="#DC2626" />
+              ) : (
+                <Ionicons name="trash-outline" size={18} color="#DC2626" />
+              )}
             </Pressable>
           </View>
         ) : (
