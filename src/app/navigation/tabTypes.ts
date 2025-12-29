@@ -1,13 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { NavigatorScreenParams } from "@react-navigation/native";
 import type { HomeStackParamList } from "./Stack/HomeStack";
+import type { FeedStackParamList } from "./Stack/FeedStack";
 
 // --- Types ---
 
 export type TabParamList = {
   Home: NavigatorScreenParams<HomeStackParamList>;
   Discover: undefined;
-  Feed: undefined;
+  Feed: NavigatorScreenParams<FeedStackParamList> | undefined;
   Upload: undefined;
   UploadOptions: undefined;
 };

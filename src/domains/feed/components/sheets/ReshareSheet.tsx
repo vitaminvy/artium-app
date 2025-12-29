@@ -1,5 +1,13 @@
 import React, { useEffect, useMemo, useRef, useCallback, useState } from "react";
-import { View, Pressable, Text, TextInput, useColorScheme, Keyboard } from "react-native";
+import {
+  ActivityIndicator,
+  Keyboard,
+  Pressable,
+  Text,
+  TextInput,
+  useColorScheme,
+  View,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
@@ -17,7 +25,8 @@ type Props = {
   visible: boolean;
   target?: FeedPost;
   onClose: () => void;
-  onSubmit: (text: string) => void;
+  onSubmit: (text: string) => void | Promise<void>;
+  isSubmitting?: boolean;
 };
 
 export default function ReshareSheet({
@@ -25,6 +34,7 @@ export default function ReshareSheet({
   target,
   onClose,
   onSubmit,
+  isSubmitting = false,
 }: Props) {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -54,10 +64,11 @@ export default function ReshareSheet({
   }, []);
 
   const handleSubmit = useCallback(() => {
+    if (isSubmitting) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onSubmit(note.trim());
     setNote("");
-  }, [note, onSubmit]);
+  }, [isSubmitting, note, onSubmit]);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -198,11 +209,19 @@ export default function ReshareSheet({
         {/* Submit Button */}
         <Pressable
           onPress={handleSubmit}
-          className="rounded-full bg-[#0B73FF] py-4 items-center active:opacity-90"
+          disabled={isSubmitting}
+          className={`rounded-full py-4 items-center ${
+            isSubmitting ? "bg-blue-400" : "bg-[#0B73FF] active:opacity-90"
+          }`}
         >
-          <Text className="text-base font-semibold text-white">
-            {FEED_STRINGS.RESHARE_BUTTON}
-          </Text>
+          <View className="flex-row items-center gap-2">
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : null}
+            <Text className="text-base font-semibold text-white">
+              {isSubmitting ? "Sharing..." : FEED_STRINGS.RESHARE_BUTTON}
+            </Text>
+          </View>
         </Pressable>
       </BottomSheetScrollView>
     </BottomSheetModal>

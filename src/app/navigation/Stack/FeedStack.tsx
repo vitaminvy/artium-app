@@ -7,7 +7,7 @@ import FeedDetailScreen from "../../../screens/FeedDetailScreen";
 import { FeedPost } from "../../../domains/feed/types";
 
 export type FeedStackParamList = {
-  FeedMain: undefined;
+  FeedMain: { refreshKey?: number } | undefined;
   FeedDetail: { post: FeedPost };
 };
 
