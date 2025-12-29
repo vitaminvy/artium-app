@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { View, ScrollView } from "react-native";
+import { View, ScrollView, RefreshControl } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import ProfileHeader from "../domains/user/components/profile/ProfileHeader";
@@ -13,6 +13,7 @@ import ProfileMoodboardsTab from "../domains/user/components/profile/tabs/Profil
 import { useProfile } from "../domains/user/hooks/useProfile";
 import { useOwnerMoments } from "../domains/user/hooks/useOwnerMoments";
 import { useOwnerArtworks } from "../domains/user/hooks/useOwnerArtworks";
+import { ProfileMoodboard } from "../domains/user/types";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
 import Sidebar from "../shared/components/Sidebar";
 import {
@@ -89,7 +90,7 @@ const ProfileSkeleton = () => (
 
 export default function ProfileScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const { profile, tab, setTab, isLoading } = useProfile();
+  const { profile, tab, setTab, isLoading, refreshProfile } = useProfile();
   const { loading: profileStatusLoading, profileCompleted, promptDismissed } =
     useProfileCompletion();
   const sidebarItems = useSidebarItems();
@@ -108,6 +109,7 @@ export default function ProfileScreen() {
   // Fetch owner data for navigation and display
   const { moments, refresh: refreshMoments } = useOwnerMoments();
   const { artworks, refresh: refreshArtworks } = useOwnerArtworks();
+  const [refreshing, setRefreshing] = React.useState(false);
 
   const handleBack = () => {
     if (navigation.canGoBack()) {
@@ -168,8 +170,17 @@ export default function ProfileScreen() {
     setTab("moments");
   };
 
-  const openMoodboardDetail = (id: string) => {
-    navigation.navigate("MoodboardDetail" as never, { id } as never);
+  const openMoodboardDetail = (moodboard: ProfileMoodboard) => {
+    navigation.navigate(
+      "MoodboardDetail" as never,
+      {
+        id: moodboard.id,
+        ownerId: profile.user.id,
+        title: moodboard.title,
+        cover: moodboard.coverImage ?? undefined,
+        ownerName: moodboard.ownerName,
+      } as never
+    );
   };
 
   const handleSidebarSelect = (key: SidebarActionKey) => {
@@ -233,6 +244,17 @@ export default function ProfileScreen() {
     setAvatarLoaded(false);
   }, [isLoading, profile.user.avatarUri]);
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([refreshProfile(), refreshMoments(), refreshArtworks()]);
+    } catch (err) {
+      console.warn("Failed to refresh profile", err);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshArtworks, refreshMoments, refreshProfile]);
+
   return (
     <View className="flex-1 bg-white">
       <ProfileHeader
@@ -245,6 +267,9 @@ export default function ProfileScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 120 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
       >
         {isLoading ? (
           <ProfileSkeleton />
@@ -271,8 +296,10 @@ export default function ProfileScreen() {
                   onPressShare={handlePostMoment}
                   onPressSeeAllArtworks={handleSeeAllArtworks}
                   onPressSeeAllMoments={handleSeeAllMoments}
+                  onPressSeeAllMoodboards={() => setTab("moodboards")}
                   onPressArtwork={handlePressArtwork}
                   onPressMoment={handlePressMoment}
+                  onPressMoodboard={openMoodboardDetail}
                 />
               )}
               {tab === "artworks" && (

@@ -10,6 +10,7 @@ import {
   increment,
   updateDoc,
   runTransaction,
+  limit,
 } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 
@@ -36,6 +37,7 @@ export const fetchMoodboards = async (userId: string): Promise<Moodboard[]> => {
       const data = docSnap.data();
       const boardRef = doc(boardsCol, docSnap.id);
       let count = data.count ?? 0;
+      let cover: string | null | undefined = data.cover ?? null;
       try {
         const itemsCol = collection(boardRef, "items");
         const countSnap = await getCountFromServer(itemsCol);
@@ -47,6 +49,10 @@ export const fetchMoodboards = async (userId: string): Promise<Moodboard[]> => {
           });
           count = actualCount;
         }
+        if (!cover) {
+          const firstItemSnap = await getDocs(query(itemsCol, limit(1)));
+          cover = firstItemSnap.docs[0]?.data()?.image ?? null;
+        }
       } catch (err) {
         console.warn("Failed to sync moodboard count:", err);
       }
@@ -54,7 +60,7 @@ export const fetchMoodboards = async (userId: string): Promise<Moodboard[]> => {
         id: docSnap.id,
         name: data.name ?? "Untitled",
         count,
-        cover: data.cover,
+        cover: cover ?? undefined,
         isPrivate: data.isPrivate ?? false,
       };
     })

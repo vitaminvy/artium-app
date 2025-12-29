@@ -9,6 +9,7 @@ type MasonryLayoutProps<T> = {
   contentContainerStyle?: ScrollViewProps["contentContainerStyle"];
   columnGap?: number;
   showsVerticalScrollIndicator?: boolean;
+  refreshControl?: ScrollViewProps["refreshControl"];
 };
 
 /**
@@ -24,6 +25,7 @@ export default function MasonryLayout<T>({
   contentContainerStyle,
   columnGap = 8,
   showsVerticalScrollIndicator = false,
+  refreshControl,
 }: MasonryLayoutProps<T>) {
   // Distribute items across columns
   const columns = useMemo(() => {
@@ -43,6 +45,7 @@ export default function MasonryLayout<T>({
     <ScrollView
       showsVerticalScrollIndicator={showsVerticalScrollIndicator}
       contentContainerStyle={contentContainerStyle}
+      refreshControl={refreshControl}
     >
       <View
         style={{

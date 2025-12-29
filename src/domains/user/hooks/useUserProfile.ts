@@ -4,6 +4,7 @@ import { firestore } from "@/configs/firebase";
 import { ProfileViewModel, ProfileTabKey } from "../types";
 import { PROFILE_ACCENT } from "../constants/profile";
 import { profileMockData } from "../mockData";
+import { fetchMoodboards } from "@/domains/artwork/services/moodboardService";
 
 type UserDoc = {
   uid?: string;
@@ -107,7 +108,10 @@ export function useUserProfile(userId: string): UseUserProfileResult {
 
     try {
       const userRef = doc(firestore, "users", userId);
-      const userSnap = await getDoc(userRef);
+      const [userSnap, moodboards] = await Promise.all([
+        getDoc(userRef),
+        fetchMoodboards(userId).catch(() => []),
+      ]);
 
       if (!userSnap.exists()) {
         throw new Error("User not found");
@@ -115,6 +119,15 @@ export function useUserProfile(userId: string): UseUserProfileResult {
 
       const data = userSnap.data() as UserDoc;
       const userProfile = buildUserProfile(data, userId);
+      userProfile.moodboards = moodboards.map((mb) => ({
+        id: mb.id,
+        title: mb.name,
+        visibility: mb.isPrivate ? "private" : "public",
+        ownerName: userProfile.user.name,
+        ownerAvatar: userProfile.user.avatarUri ?? null,
+        coverImage: mb.cover ?? null,
+        itemsCount: mb.count,
+      }));
       setProfile(userProfile);
     } catch (err) {
       console.error("Failed to load user profile:", err);

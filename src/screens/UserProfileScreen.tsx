@@ -11,14 +11,13 @@ import UserProfileOverviewTab from "../domains/user/components/profile/tabs/User
 import UserProfileArtworksTab from "../domains/user/components/profile/tabs/UserProfileArtworksTab";
 import UserProfileMomentsTab from "../domains/user/components/profile/tabs/UserProfileMomentsTab";
 import ProfileMoodboardsTab from "../domains/user/components/profile/tabs/ProfileMoodboardsTab";
-import type { ArtworkCardItem } from "../domains/user/components/profile/ArtworkCard";
-import type { MomentCardItem } from "../domains/user/components/profile/MomentCard";
 import { useUserProfile } from "../domains/user/hooks/useUserProfile";
 import { useUserArtworks } from "../domains/user/hooks/useUserArtworks";
 import { useUserMoments } from "../domains/user/hooks/useUserMoments";
 import { useProfileContext } from "../domains/user/contexts/ProfileContext";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
 import { shareProfile } from "../shared/utils/shareProfile";
+import { ProfileMoodboard } from "../domains/user/types";
 
 type UserProfileRouteProp = RouteProp<HomeStackParamList, "UserProfile">;
 type NavigationProp = NativeStackNavigationProp<HomeStackParamList, "UserProfile">;
@@ -92,7 +91,7 @@ export default function UserProfileScreen() {
 
   // Debug: Log fetched data
   React.useEffect(() => {
-    console.log("📊 UserProfile Data:", {
+    console.log("UserProfile Data:", {
       userId,
       artworksCount: artworks.length,
       momentsCount: moments.length,
@@ -123,6 +122,10 @@ export default function UserProfileScreen() {
     setTab("moments");
   };
 
+  const handleSeeAllMoodboards = () => {
+    setTab("moodboards");
+  };
+
   const handlePressArtwork = (artworkId: string) => {
     console.log("Navigate to artwork:", artworkId);
     navigation.navigate("ArtworkDetail" as any, { artworkId });
@@ -150,6 +153,19 @@ export default function UserProfileScreen() {
     };
 
     navigation.navigate("FeedDetail", { post: feedPost });
+  };
+
+  const handlePressMoodboard = (moodboard: ProfileMoodboard) => {
+    navigation.navigate(
+      "MoodboardDetail" as never,
+      {
+        id: moodboard.id,
+        ownerId: userId,
+        title: moodboard.title,
+        cover: moodboard.coverImage ?? undefined,
+        ownerName: moodboard.ownerName,
+      } as never
+    );
   };
 
   if (error) {
@@ -202,8 +218,10 @@ export default function UserProfileScreen() {
                   moments={moments}
                   onPressSeeAllArtworks={handleSeeAllArtworks}
                   onPressSeeAllMoments={handleSeeAllMoments}
+                  onPressSeeAllMoodboards={handleSeeAllMoodboards}
                   onPressArtwork={handlePressArtwork}
                   onPressMoment={handlePressMoment}
+                  onPressMoodboard={handlePressMoodboard}
                 />
               )}
               {tab === "artworks" && (
@@ -218,7 +236,12 @@ export default function UserProfileScreen() {
                   onPressMoment={handlePressMoment}
                 />
               )}
-              {tab === "moodboards" && <ProfileMoodboardsTab profile={profile} />}
+              {tab === "moodboards" && (
+                <ProfileMoodboardsTab
+                  profile={profile}
+                  onPressMoodboard={handlePressMoodboard}
+                />
+              )}
             </View>
           </>
         )}

@@ -39,7 +39,7 @@ export type HomeStackParamList = {
     event?: EventItem;
   };
   Blog: undefined;
-  MoodboardDetail: { id: string };
+  MoodboardDetail: { id: string; ownerId?: string; title?: string; cover?: string | null; ownerName?: string };
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
