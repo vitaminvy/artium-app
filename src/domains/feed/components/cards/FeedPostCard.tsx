@@ -18,6 +18,7 @@ type Props = {
   onPressReshare: (post: FeedPost) => void;
   onPressComment?: (post: FeedPost) => void;
   onPressCard?: (post: FeedPost) => void;
+  onPressQuote?: (quoteId: string) => void;
   onPressImage?: (images: { uri: string }[], index: number) => void;
   isVisible?: boolean;
   onAvatarLoad?: (postId: string) => void;
@@ -29,6 +30,7 @@ function FeedPostCard({
   onPressReshare,
   onPressComment,
   onPressCard,
+  onPressQuote,
   onPressImage,
   isVisible = true,
   onAvatarLoad,
@@ -246,7 +248,14 @@ function FeedPostCard({
       ) : null}
 
       {hasQuote ? (
-        <View className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 mb-3">
+        <Pressable
+          className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 mb-3 active:opacity-90"
+          onPress={() => {
+            if (post.quote?.id && onPressQuote) {
+              onPressQuote(post.quote.id);
+            }
+          }}
+        >
           <View className="flex-row items-center gap-2 mb-1">
             <View className="h-8 w-8 rounded-full overflow-hidden bg-slate-200 items-center justify-center">
               {post.quote?.avatar ? (
@@ -306,7 +315,7 @@ function FeedPostCard({
               />
             </View>
           ) : null}
-        </View>
+        </Pressable>
       ) : null}
 
       <View className="flex-row items-center gap-6 pt-1">
