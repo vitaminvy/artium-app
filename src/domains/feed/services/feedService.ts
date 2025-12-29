@@ -108,6 +108,25 @@ export const subscribeToPostLike = (
 };
 
 /**
+ * Subscribes to a specific post's metrics (likes count, comments count, etc.)
+ */
+export const subscribeToPostMetrics = (
+  postId: string,
+  onUpdate: (metrics: { likes: number; comments: number; shares: number }) => void
+) => {
+  const postRef = doc(firestore, POSTS_COLLECTION, postId);
+  return onSnapshot(postRef, (docSnapshot) => {
+    if (docSnapshot.exists()) {
+      const data = docSnapshot.data();
+      const metrics = data.metrics || { likes: 0, comments: 0, shares: 0 };
+      onUpdate(metrics);
+    }
+  }, (error) => {
+    console.error(`Error subscribing to metrics for post ${postId}:`, error);
+  });
+};
+
+/**
  * Subscribes to the feed posts in real-time.
  */
 export const subscribeToFeedPosts = (
@@ -225,6 +244,13 @@ export const createPost = async (params: CreatePostInput) => {
       collection(firestore, POSTS_COLLECTION),
       payload
     );
+
+    // If this is a reshare, increment the shares count on the original post
+    if (params.isReshare && params.quote?.id) {
+      const originalPostRef = doc(firestore, POSTS_COLLECTION, params.quote.id);
+      await updateDoc(originalPostRef, { "metrics.shares": increment(1) });
+    }
+
     return docRef.id;
   } catch (error) {
     console.error("Error creating post:", error);

@@ -205,12 +205,12 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
     if (!currentUser) return;
     if (likeInFlight.current.has(id)) return;
     likeInFlight.current.add(id);
-    
-    // Optimistic update
+
+    // Optimistic update - update UI immediately
     setPosts(prevPosts => prevPosts.map(p => {
       if (p.id === id) {
         const newLikedState = !currentLikedStatus;
-        const newLikesCount = currentLikedStatus 
+        const newLikesCount = currentLikedStatus
           ? Math.max(0, p.metrics.likes - 1) // Unliking
           : p.metrics.likes + 1;             // Liking
 
@@ -227,14 +227,14 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
       await togglePostLike(id, currentUser.uid, currentLikedStatus);
     } catch (error) {
       console.error("Failed to toggle like:", error);
-      // Revert optimistic update
+      // Revert optimistic update on error
       setPosts(prevPosts => prevPosts.map(p => {
         if (p.id === id) {
           return {
             ...p,
             liked: currentLikedStatus,
-            metrics: { 
-              ...p.metrics, 
+            metrics: {
+              ...p.metrics,
               likes: currentLikedStatus ? p.metrics.likes + 1 : Math.max(0, p.metrics.likes - 1)
             }
           }
@@ -249,6 +249,17 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
   const addComment = useCallback(async (postId: string, content: string) => {
     if (!content.trim() || !currentUser || !authorSnapshot) return;
 
+    // Optimistic update - increment comment count immediately
+    setPosts(prevPosts => prevPosts.map(p => {
+      if (p.id === postId) {
+        return {
+          ...p,
+          metrics: { ...p.metrics, comments: p.metrics.comments + 1 }
+        };
+      }
+      return p;
+    }));
+
     try {
       await addCommentToPost(postId, {
         authorSnapshot,
@@ -256,11 +267,33 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
       });
     } catch (error) {
       console.error("Failed to add comment:", error);
+      // Revert optimistic update on error
+      setPosts(prevPosts => prevPosts.map(p => {
+        if (p.id === postId) {
+          return {
+            ...p,
+            metrics: { ...p.metrics, comments: Math.max(0, p.metrics.comments - 1) }
+          };
+        }
+        return p;
+      }));
     }
   }, [currentUser, authorSnapshot]);
 
   const createReshare = useCallback(async (targetPost: FeedPost, note: string) => {
     if (!currentUser || !authorSnapshot) return;
+
+    // Optimistic update - increment share count immediately
+    setPosts(prevPosts => prevPosts.map(p => {
+      if (p.id === targetPost.id) {
+        return {
+          ...p,
+          reshared: true,
+          metrics: { ...p.metrics, shares: p.metrics.shares + 1 }
+        };
+      }
+      return p;
+    }));
 
     const quote = {
       id: targetPost.id,
@@ -273,17 +306,32 @@ export function useFeed(currentUser: AuthUser | null): UseFeedResult {
       media: targetPost.media,
     };
 
-    await createPost({
-      authorId: currentUser.uid,
-      authorSnapshot,
-      content: note,
-      media: null,
-      quote: quote,
-      isReshare: true,
-      resharedFrom: targetPost.author,
-    } as any);
+    try {
+      await createPost({
+        authorId: currentUser.uid,
+        authorSnapshot,
+        content: note,
+        media: null,
+        quote: quote,
+        isReshare: true,
+        resharedFrom: targetPost.author,
+      } as any);
 
-    onRefresh();
+      onRefresh(); // Refresh to show new reshare post
+    } catch (error) {
+      console.error("Failed to create reshare:", error);
+      // Revert optimistic update on error
+      setPosts(prevPosts => prevPosts.map(p => {
+        if (p.id === targetPost.id) {
+          return {
+            ...p,
+            reshared: false,
+            metrics: { ...p.metrics, shares: Math.max(0, p.metrics.shares - 1) }
+          };
+        }
+        return p;
+      }));
+    }
   }, [currentUser, authorSnapshot, onRefresh]);
 
   const addMomentPost = useCallback(async (post: any) => {

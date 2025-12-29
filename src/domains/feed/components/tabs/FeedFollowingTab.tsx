@@ -40,6 +40,7 @@ export default function FeedFollowingTab({
   const [avatarLoaded, setAvatarLoaded] = useState(0);
   const loadedAvatarIds = useRef<Set<string>>(new Set());
   const avatarsReady = avatarExpected === 0 || avatarLoaded >= avatarExpected;
+  const [viewablePostIds, setViewablePostIds] = useState<Set<string>>(new Set());
 
   // Clear active video when tab becomes inactive
   React.useEffect(() => {
@@ -72,6 +73,14 @@ export default function FeedFollowingTab({
 
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      // Track viewable post IDs for selective real-time
+      const viewableIds = new Set(
+        viewableItems
+          .filter((token) => token.isViewable && token.item)
+          .map((token) => (token.item as FeedPost).id)
+      );
+      setViewablePostIds(viewableIds);
+
       // Filter viewable items with video only
       const videoItems = viewableItems.filter((token) => {
         if (!token.isViewable || !token.item) return false;
@@ -109,6 +118,7 @@ export default function FeedFollowingTab({
     ({ item }: ListRenderItemInfo<FeedPost>) => {
       const isActive = item.id === activeVideoId;
       const hasVideo = item.media?.type === "video";
+      const isViewable = viewablePostIds.has(item.id);
 
       return (
         <FeedPostCard
@@ -126,6 +136,7 @@ export default function FeedFollowingTab({
             loadedAvatarIds.current.add(postId);
             setAvatarLoaded((prev) => Math.min(prev + 1, avatarExpected));
           }}
+          disableRealtime={!isViewable} // Enable real-time only for viewable posts
         />
       );
     },
@@ -138,6 +149,8 @@ export default function FeedFollowingTab({
       activeVideoId,
       avatarExpected,
       isTabActive,
+      onPressQuote,
+      viewablePostIds,
     ]
   );
 

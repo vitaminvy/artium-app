@@ -11,6 +11,7 @@ import { formatDuration } from "../../utils";
 import { ANIMATION_CONFIG, MEDIA_CONFIG } from "../../constants/media";
 import { FEED_MESSAGES } from "../../constants/messages";
 import { usePostLike } from "../../hooks/usePostLike";
+import { usePostMetrics } from "../../hooks/usePostMetrics";
 
 type Props = {
   post: FeedPost;
@@ -37,15 +38,22 @@ function FeedPostCard({
   onAvatarLoad,
   disableRealtime = true, // Default to true for better performance in lists
 }: Props) {
-  // Only use real-time hooks when explicitly enabled (e.g., in detail view)
+  // Use real-time only when explicitly enabled AND post is visible
+  // This provides best performance while maintaining real-time when needed
+  const shouldUseRealtime = !disableRealtime && isVisible;
   const { isLiked, toggleOptimistic } = usePostLike(
-    disableRealtime ? "" : post.id,
+    shouldUseRealtime ? post.id : "",
     post.liked
+  );
+  const realtimeMetrics = usePostMetrics(
+    shouldUseRealtime ? post.id : "",
+    post.metrics
   );
 
   // Use real-time data if enabled, otherwise use post data directly
-  const liked = disableRealtime ? (post.liked ?? false) : isLiked;
-  const metrics = post.metrics;
+  const liked = shouldUseRealtime ? isLiked : (post.liked ?? false);
+  const metrics = shouldUseRealtime ? realtimeMetrics : post.metrics;
+
   const authorName = post.author?.name?.trim() || "User";
   const authorHandle = normalizeHandle(post.author?.handle, authorName);
   const authorAvatar =
