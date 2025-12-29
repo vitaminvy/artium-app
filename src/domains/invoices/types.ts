@@ -1,4 +1,7 @@
+import type { AddressForm } from "../checkout/types";
+
 export type InvoiceStatus = "draft" | "sent";
+export type InvoiceDeliveryMethod = "seller" | "artium" | "invoice";
 
 export type SellerSnapshot = {
   uid: string;
@@ -33,6 +36,8 @@ export type Invoice = {
   id: string;
   invoiceNumber?: string;
   status: InvoiceStatus;
+  deliveryMethod?: InvoiceDeliveryMethod;
+  shippingAddress?: AddressForm;
   sellerId: string;
   sellerSnapshot: SellerSnapshot;
   buyer: InvoiceBuyer;

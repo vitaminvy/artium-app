@@ -44,6 +44,8 @@ const mapInvoice = (id: string, data: any): Invoice => ({
   id,
   invoiceNumber: data.invoiceNumber,
   status: data.status,
+  deliveryMethod: data.deliveryMethod,
+  shippingAddress: data.shippingAddress,
   sellerId: data.sellerId,
   sellerSnapshot: data.sellerSnapshot,
   buyer: data.buyer,

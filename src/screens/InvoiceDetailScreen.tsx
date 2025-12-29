@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -11,18 +11,57 @@ import {
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
+import { BottomSheetModal, BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { Invoice } from "../domains/invoices/types";
-import { getInvoiceById } from "../domains/invoices/services/invoiceService";
+import {
+  getInvoiceById,
+  updateInvoice,
+} from "../domains/invoices/services/invoiceService";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
+import { createEmptyAddress } from "../domains/checkout/constants";
+import { AddressSheet } from "../domains/checkout/components/sheets/AddressSheet";
+import type { AddressForm } from "../domains/checkout/types";
 
-const DELIVERY_OPTIONS = [
-  "Pick up / Ship by seller",
-  "Ship by Cohart",
-  "Invoice Only",
-];
+const DELIVERY_OPTION_SELLER = "Pick up / Ship by seller";
+const DELIVERY_OPTION_ARTIUM = "Ship by Artium";
+const DELIVERY_OPTION_INVOICE = "Invoice Only";
+
+type DeliveryOption =
+  | typeof DELIVERY_OPTION_SELLER
+  | typeof DELIVERY_OPTION_ARTIUM
+  | typeof DELIVERY_OPTION_INVOICE;
+
+const DELIVERY_METHOD_MAP: Record<DeliveryOption, "seller" | "artium" | "invoice"> = {
+  [DELIVERY_OPTION_SELLER]: "seller",
+  [DELIVERY_OPTION_ARTIUM]: "artium",
+  [DELIVERY_OPTION_INVOICE]: "invoice",
+};
+
+const DELIVERY_CONTENT: Record<DeliveryOption, any> = {
+  [DELIVERY_OPTION_SELLER]: {
+    info:
+      "Once your payment is processed, you will receive an email to arrange the pick up, drop off, or coordinate their own shipping method of your artwork.",
+    addressTitle: "Pick up / Ship Address",
+    addressHelper:
+      "Add your contact information and shipping address here for pick up arrangement purpose.",
+  },
+  [DELIVERY_OPTION_ARTIUM]: {
+    title: "Artium handles shipping and insurance",
+    description:
+      "Selecting this option adds on shipping fee, calculated based on order subtotal. Flat fee of 5% for domestic, 8% for international. Oversized artworks will incur a flat fee of 10% for domestic, 15% for international shipping.",
+    addressTitle: "Shipping Address",
+    addressHelper:
+      "Add buyer contact information and shipping address here for delivery purpose.",
+    learnMore: "Learn more",
+  },
+  [DELIVERY_OPTION_INVOICE]: {
+    info:
+      "Select this for commission deposits, custom fees, non-artwork items, or items that don’t require Artium’s shipping or insurance. By choosing this option, you opt out of Artium’s refund policy, and all shipping/insurance must be arranged directly with the seller.",
+  },
+} as const;
 
 const formatCurrency = (amount: number, currency: string) => {
   const prefix = currency === "USD" ? "US$ " : `${currency} `;
@@ -40,10 +79,49 @@ export default function InvoiceDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
-  const [delivery, setDelivery] = useState(DELIVERY_OPTIONS[0]);
+  const [delivery, setDelivery] = useState<DeliveryOption>(
+    DELIVERY_OPTION_SELLER
+  );
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const { setHidden } = useTabBarVisibility();
+  const addressSheetRef = useRef<BottomSheetModal>(null);
+  const [addressByMethod, setAddressByMethod] = useState<
+    Record<"seller" | "artium", AddressForm>
+  >({
+    seller: createEmptyAddress(),
+    artium: createEmptyAddress(),
+  });
+
+  const deliveryMethod = useMemo(
+    () => DELIVERY_METHOD_MAP[delivery],
+    [delivery]
+  );
+  const addressMethod = deliveryMethod === "artium" ? "artium" : "seller";
+  const currentAddress = addressByMethod[addressMethod];
+  const hasAddress = useMemo(
+    () => Object.values(currentAddress).some((value) => value.trim().length > 0),
+    [currentAddress]
+  );
+  const addressTitle =
+    addressMethod === "artium" ? "Shipping Address" : "Pick up / ship address";
+  const openAddressSheet = useCallback(() => {
+    addressSheetRef.current?.present();
+  }, []);
+
+  const addressName = [currentAddress.firstName, currentAddress.lastName]
+    .filter(Boolean)
+    .join(" ");
+  const addressLine = [currentAddress.address1, currentAddress.address2]
+    .filter(Boolean)
+    .join(", ");
+  const addressLocation = [
+    currentAddress.city,
+    currentAddress.state,
+    currentAddress.postalCode,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   const invoiceId = (route.params as any)?.invoiceId as string | undefined;
 
@@ -66,6 +144,78 @@ export default function InvoiceDetailScreen() {
     };
     loadInvoice();
   }, [invoiceId]);
+
+  useEffect(() => {
+    if (!invoice) return;
+    if (invoice.deliveryMethod === "seller") {
+      setDelivery(DELIVERY_OPTION_SELLER);
+    } else if (invoice.deliveryMethod === "artium") {
+      setDelivery(DELIVERY_OPTION_ARTIUM);
+    } else if (invoice.deliveryMethod === "invoice") {
+      setDelivery(DELIVERY_OPTION_INVOICE);
+    }
+    if (invoice.shippingAddress) {
+      const method =
+        invoice.deliveryMethod === "artium" ? "artium" : "seller";
+      setAddressByMethod((prev) => ({
+        ...prev,
+        [method]: invoice.shippingAddress ?? prev[method],
+      }));
+    }
+  }, [invoice]);
+
+  const handleSaveInvoiceAddress = useCallback(
+    async (address: AddressForm) => {
+      if (!invoiceId) return;
+      if (deliveryMethod === "invoice") return;
+      setAddressByMethod((prev) => ({
+        ...prev,
+        [deliveryMethod]: address,
+      }));
+      try {
+        await updateInvoice(invoiceId, {
+          deliveryMethod,
+          shippingAddress: address,
+        });
+        setInvoice((prev) =>
+          prev
+            ? {
+                ...prev,
+                deliveryMethod,
+                shippingAddress: address,
+              }
+            : prev
+        );
+      } catch (err) {
+        console.error("Failed to save address:", err);
+        Alert.alert("Save failed", "Please try again.");
+      }
+    },
+    [deliveryMethod, invoiceId]
+  );
+
+  const handleSelectDelivery = useCallback(
+    async (option: DeliveryOption) => {
+      setDelivery(option);
+      if (!invoiceId) return;
+      const method = DELIVERY_METHOD_MAP[option];
+      try {
+        await updateInvoice(invoiceId, { deliveryMethod: method });
+        setInvoice((prev) =>
+          prev
+            ? {
+                ...prev,
+                deliveryMethod: method,
+              }
+            : prev
+        );
+      } catch (err) {
+        console.error("Failed to update delivery method:", err);
+        Alert.alert("Update failed", "Please try again.");
+      }
+    },
+    [invoiceId]
+  );
 
   useFocusEffect(
     React.useCallback(() => {
@@ -101,91 +251,221 @@ export default function InvoiceDetailScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <ImageBackground
-        source={require("../../assets/auth-decor.jpg")}
-        style={styles.background}
-      >
-        <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFill} />
-        <View style={styles.overlay} />
-
-        <ScrollView
-          contentContainerStyle={[
-            styles.content,
-            { paddingBottom: Math.max(insets.bottom + 24, 32) },
-          ]}
-          showsVerticalScrollIndicator={false}
+    <BottomSheetModalProvider>
+      <View style={styles.container}>
+        <ImageBackground
+          source={require("../../assets/auth-decor.jpg")}
+          style={styles.background}
         >
-          <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-            <Pressable
-              onPress={() => navigation.goBack()}
-              hitSlop={8}
-              style={styles.backButton}
-            >
-              <Ionicons name="arrow-back" size={20} color="#0F172A" />
-            </Pressable>
-          </View>
+          <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFill} />
+          <View style={styles.overlay} />
 
-          <Text style={styles.title}>Invoice{"\n"}#{invoiceNumber}</Text>
-
-          <View style={styles.secureRow}>
-            <Ionicons name="lock-closed-outline" size={16} color="#94A3B8" />
-            <Text style={styles.secureText}>SECURE CHECKOUT</Text>
-          </View>
-
-          <View style={styles.actionsRow}>
-            <Pressable style={styles.primaryPill}>
-              <Ionicons name="mail-outline" size={16} color="#0F172A" />
-              <Text style={styles.primaryPillText}>Send Invoice</Text>
-            </Pressable>
-
-            <View style={styles.iconRow}>
-              <IconButton icon="create-outline" onPress={() => {}} />
-              <IconButton icon="qr-code-outline" onPress={() => {}} />
-              <IconButton icon="link-outline" onPress={() => {}} />
-              <IconButton icon="trash-outline" onPress={() => {}} />
+          <ScrollView
+            contentContainerStyle={[
+              styles.content,
+              { paddingBottom: Math.max(insets.bottom + 24, 32) },
+            ]}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+              <Pressable
+                onPress={() => navigation.goBack()}
+                hitSlop={8}
+                style={styles.backButton}
+              >
+                <Ionicons name="arrow-back" size={20} color="#0F172A" />
+              </Pressable>
             </View>
-          </View>
 
-          <InvoiceCardSection title="FROM">
-            <Text style={styles.cardTitle}>
-              {invoice.sellerSnapshot?.displayName || "Seller"}
-            </Text>
-            {invoice.sellerSnapshot?.uid ? (
-              <Text style={styles.cardSubtitle}>{invoice.sellerSnapshot.uid}</Text>
-            ) : null}
-          </InvoiceCardSection>
+            <Text style={styles.title}>Invoice{"\n"}#{invoiceNumber}</Text>
 
-          <InvoiceCardSection title="TO">
-            <Text style={styles.cardTitle}>
-              {invoice.buyer?.name || "Buyer"}
-            </Text>
-            <Text style={styles.cardSubtitle}>{invoice.buyer?.email}</Text>
-          </InvoiceCardSection>
+            <View style={styles.secureRow}>
+              <Ionicons name="lock-closed-outline" size={16} color="#94A3B8" />
+              <Text style={styles.secureText}>SECURE CHECKOUT</Text>
+            </View>
 
-          <InvoiceCardSection title="ITEMS">
-            {invoice.items.map((item, index) => (
-              <View key={`${item.title}-${index}`} style={styles.itemRow}>
-                <Text style={styles.itemIndex}>#{index + 1}</Text>
-                <View style={styles.itemDetails}>
-                  <Text style={styles.itemName}>{item.title}</Text>
-                  <Text style={styles.itemQty}>
-                    Qty {item.quantity} ·{" "}
-                    {formatCurrency(item.unitPrice, invoice.currency)}
-                  </Text>
+            <View style={styles.actionsRow}>
+              <Pressable style={styles.primaryPill}>
+                <Ionicons name="mail-outline" size={16} color="#0F172A" />
+                <Text style={styles.primaryPillText}>Send Invoice</Text>
+              </Pressable>
+
+              <View style={styles.iconRow}>
+                <IconButton icon="create-outline" onPress={() => {}} />
+                <IconButton icon="qr-code-outline" onPress={() => {}} />
+                <IconButton icon="link-outline" onPress={() => {}} />
+                <IconButton icon="trash-outline" onPress={() => {}} />
+              </View>
+            </View>
+
+            <InvoiceCardSection title="FROM">
+              <Text style={styles.cardTitle}>
+                {invoice.sellerSnapshot?.displayName || "Seller"}
+              </Text>
+              {invoice.sellerSnapshot?.uid ? (
+                <Text style={styles.cardSubtitle}>{invoice.sellerSnapshot.uid}</Text>
+              ) : null}
+            </InvoiceCardSection>
+
+            <InvoiceCardSection title="TO">
+              <Text style={styles.cardTitle}>
+                {invoice.buyer?.name || "Buyer"}
+              </Text>
+              <Text style={styles.cardSubtitle}>{invoice.buyer?.email}</Text>
+            </InvoiceCardSection>
+
+            <InvoiceCardSection title="ITEMS">
+              {invoice.items.map((item, index) => (
+                <View key={`${item.title}-${index}`} style={styles.itemRow}>
+                  <Text style={styles.itemIndex}>#{index + 1}</Text>
+                  <View style={styles.itemDetails}>
+                    <Text style={styles.itemName}>{item.title}</Text>
+                    <Text style={styles.itemQty}>
+                      Qty {item.quantity} ·{" "}
+                      {formatCurrency(item.unitPrice, invoice.currency)}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </InvoiceCardSection>
+
+            <InvoiceCardSection title="DELIVERY METHOD">
+              {/* TODO: Wire delivery method when invoice schema supports it. */}
+              <View style={styles.segmentGroup}>
+                <View style={styles.segmentRow}>
+                  <DeliveryOptionButton
+                    label={DELIVERY_OPTION_SELLER}
+                    selected={delivery === DELIVERY_OPTION_SELLER}
+                    onPress={() => handleSelectDelivery(DELIVERY_OPTION_SELLER)}
+                    fullWidth
+                  />
+                </View>
+                <View style={styles.segmentRow}>
+                  <DeliveryOptionButton
+                    label={DELIVERY_OPTION_ARTIUM}
+                    selected={delivery === DELIVERY_OPTION_ARTIUM}
+                    onPress={() => handleSelectDelivery(DELIVERY_OPTION_ARTIUM)}
+                  />
+                  <DeliveryOptionButton
+                    label={DELIVERY_OPTION_INVOICE}
+                    selected={delivery === DELIVERY_OPTION_INVOICE}
+                    onPress={() => handleSelectDelivery(DELIVERY_OPTION_INVOICE)}
+                  />
                 </View>
               </View>
-            ))}
-          </InvoiceCardSection>
 
-          <InvoiceCardSection title="DELIVERY METHOD">
-            {/* TODO: Wire delivery method when invoice schema supports it. */}
-            <SegmentedControl
-              options={DELIVERY_OPTIONS}
-              selected={delivery}
-              onChange={setDelivery}
-            />
-          </InvoiceCardSection>
+              <View style={styles.deliveryBody}>
+                {delivery === DELIVERY_OPTION_ARTIUM ? (
+                  <>
+                    <Text style={styles.deliveryTitle}>
+                      {DELIVERY_CONTENT[DELIVERY_OPTION_ARTIUM].title}
+                    </Text>
+                    <Text style={styles.deliveryDescription}>
+                      {DELIVERY_CONTENT[DELIVERY_OPTION_ARTIUM].description}{" "}
+                      <Text style={styles.deliveryLink}>
+                        {DELIVERY_CONTENT[DELIVERY_OPTION_ARTIUM].learnMore}
+                      </Text>
+                    </Text>
+                    <Pressable style={styles.addressCard} onPress={openAddressSheet}>
+                      <View style={styles.addressRow}>
+                        <Text style={styles.addressTitle}>
+                          {DELIVERY_CONTENT[DELIVERY_OPTION_ARTIUM].addressTitle}
+                        </Text>
+                        <Text style={styles.addressAction}>
+                          {hasAddress ? "EDIT" : "ADD"}
+                        </Text>
+                      </View>
+                      {hasAddress ? (
+                        <View style={styles.addressDetails}>
+                          {addressName ? (
+                            <Text style={styles.addressName}>{addressName}</Text>
+                          ) : null}
+                          {currentAddress.email ? (
+                            <Text style={styles.addressHelper}>
+                              {currentAddress.email}
+                            </Text>
+                          ) : null}
+                          {addressLine ? (
+                            <Text style={styles.addressHelper}>{addressLine}</Text>
+                          ) : null}
+                          {addressLocation ? (
+                            <Text style={styles.addressHelper}>
+                              {addressLocation}
+                            </Text>
+                          ) : null}
+                        </View>
+                      ) : (
+                        <Text style={styles.addressHelper}>
+                          {DELIVERY_CONTENT[DELIVERY_OPTION_ARTIUM].addressHelper}
+                        </Text>
+                      )}
+                    </Pressable>
+                  </>
+                ) : delivery === DELIVERY_OPTION_SELLER ? (
+                  <>
+                    <View style={styles.infoCard}>
+                      <View style={styles.infoIcon}>
+                        <Ionicons
+                          name="information-circle-outline"
+                          size={18}
+                          color="#64748B"
+                        />
+                      </View>
+                      <Text style={styles.infoText}>
+                        {DELIVERY_CONTENT[DELIVERY_OPTION_SELLER].info}
+                      </Text>
+                    </View>
+                    <Pressable style={styles.addressCard} onPress={openAddressSheet}>
+                      <View style={styles.addressRow}>
+                        <Text style={styles.addressTitle}>
+                          {DELIVERY_CONTENT[DELIVERY_OPTION_SELLER].addressTitle}
+                        </Text>
+                        <Text style={styles.addressAction}>
+                          {hasAddress ? "EDIT" : "ADD"}
+                        </Text>
+                      </View>
+                      {hasAddress ? (
+                        <View style={styles.addressDetails}>
+                          {addressName ? (
+                            <Text style={styles.addressName}>{addressName}</Text>
+                          ) : null}
+                          {currentAddress.email ? (
+                            <Text style={styles.addressHelper}>
+                              {currentAddress.email}
+                            </Text>
+                          ) : null}
+                          {addressLine ? (
+                            <Text style={styles.addressHelper}>{addressLine}</Text>
+                          ) : null}
+                          {addressLocation ? (
+                            <Text style={styles.addressHelper}>
+                              {addressLocation}
+                            </Text>
+                          ) : null}
+                        </View>
+                      ) : (
+                        <Text style={styles.addressHelper}>
+                          {DELIVERY_CONTENT[DELIVERY_OPTION_SELLER].addressHelper}
+                        </Text>
+                      )}
+                    </Pressable>
+                  </>
+                ) : (
+                  <View style={styles.infoCard}>
+                    <View style={styles.infoIcon}>
+                      <Ionicons
+                        name="information-circle-outline"
+                        size={18}
+                        color="#64748B"
+                      />
+                    </View>
+                    <Text style={styles.infoText}>
+                      {DELIVERY_CONTENT[DELIVERY_OPTION_INVOICE].info}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </InvoiceCardSection>
 
           <InvoiceCardSection title="ORDER SUMMARY">
             <View style={styles.summaryRow}>
@@ -210,6 +490,21 @@ export default function InvoiceDetailScreen() {
             </View>
           </InvoiceCardSection>
 
+          <InvoiceCardSection title="IN-PERSON PAYMENT">
+            <Text style={styles.paymentDescription}>
+              To complete an in-person sale, select Tap to Pay for contactless or
+              Pay by Card for other methods.
+            </Text>
+            <View style={styles.paymentRow}>
+              <Pressable style={styles.paymentButton} onPress={() => {}}>
+                <Text style={styles.paymentButtonText}>Tap to Pay</Text>
+              </Pressable>
+              <Pressable style={styles.paymentButton} onPress={() => {}}>
+                <Text style={styles.paymentButtonText}>Pay with Card</Text>
+              </Pressable>
+            </View>
+          </InvoiceCardSection>
+
           <View style={styles.trustCard}>
             <View style={styles.trustIcon}>
               <Ionicons name="lock-closed-outline" size={18} color="#0B73FF" />
@@ -231,8 +526,16 @@ export default function InvoiceDetailScreen() {
             <Text style={styles.poweredBrand}>ARTIUM</Text>
           </View>
         </ScrollView>
-      </ImageBackground>
-    </View>
+        </ImageBackground>
+
+        <AddressSheet
+          sheetRef={addressSheetRef}
+          initialAddress={currentAddress}
+          title={addressTitle}
+          onSave={handleSaveInvoiceAddress}
+        />
+      </View>
+    </BottomSheetModalProvider>
   );
 }
 
@@ -265,35 +568,30 @@ function IconButton({
   );
 }
 
-function SegmentedControl({
-  options,
+function DeliveryOptionButton({
+  label,
   selected,
-  onChange,
+  onPress,
+  fullWidth = false,
 }: {
-  options: string[];
-  selected: string;
-  onChange: (value: string) => void;
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  fullWidth?: boolean;
 }) {
   return (
-    <View style={styles.segmentContainer}>
-      {options.map((option) => {
-        const isActive = option === selected;
-        return (
-          <Pressable
-            key={option}
-            onPress={() => onChange(option)}
-            style={[
-              styles.segment,
-              isActive ? styles.segmentActive : styles.segmentInactive,
-            ]}
-          >
-            <Text style={isActive ? styles.segmentTextActive : styles.segmentText}>
-              {option}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.segment,
+        fullWidth ? styles.segmentFull : styles.segmentHalf,
+        selected ? styles.segmentActive : styles.segmentInactive,
+      ]}
+    >
+      <Text style={selected ? styles.segmentTextActive : styles.segmentText}>
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -448,16 +746,26 @@ const styles = StyleSheet.create({
     color: "#94A3B8",
     marginTop: 6,
   },
-  segmentContainer: {
+  segmentGroup: {
+    gap: 10,
+  },
+  segmentRow: {
     flexDirection: "row",
-    gap: 8,
-    flexWrap: "wrap",
+    gap: 10,
   },
   segment: {
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 12,
     borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  segmentFull: {
+    flex: 1,
+  },
+  segmentHalf: {
+    flex: 1,
   },
   segmentActive: {
     borderColor: "#0B73FF",
@@ -476,6 +784,86 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#0B73FF",
     fontWeight: "700",
+  },
+  deliveryBody: {
+    marginTop: 16,
+    gap: 14,
+  },
+  deliveryTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#0F172A",
+  },
+  deliveryDescription: {
+    fontSize: 12,
+    color: "#94A3B8",
+    lineHeight: 16,
+  },
+  deliveryLink: {
+    color: "#0B73FF",
+    textDecorationLine: "underline",
+  },
+  infoCard: {
+    borderRadius: 16,
+    backgroundColor: "rgba(148, 163, 184, 0.15)",
+    padding: 14,
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "flex-start",
+  },
+  infoIcon: {
+    height: 28,
+    width: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 12,
+    color: "#94A3B8",
+    lineHeight: 16,
+  },
+  addressCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#0B73FF",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: "rgba(255, 255, 255, 0.96)",
+  },
+  addressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  addressTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#94A3B8",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  addressAction: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#0B73FF",
+  },
+  addressHelper: {
+    marginTop: 8,
+    fontSize: 12,
+    color: "#94A3B8",
+    lineHeight: 16,
+  },
+  addressDetails: {
+    marginTop: 8,
+    gap: 4,
+  },
+  addressName: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#0F172A",
   },
   summaryRow: {
     flexDirection: "row",
@@ -504,6 +892,29 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "700",
     color: "#0F172A",
+  },
+  paymentDescription: {
+    fontSize: 12,
+    color: "#94A3B8",
+    lineHeight: 16,
+  },
+  paymentRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 16,
+  },
+  paymentButton: {
+    flex: 1,
+    borderRadius: 999,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0B73FF",
+  },
+  paymentButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
   trustCard: {
     borderRadius: 20,
