@@ -37,7 +37,7 @@ const formatLongDate = (timestamp?: number) => {
 const formatInvoiceNumber = (id: string) => {
   const prefix = id.slice(0, 4).toUpperCase();
   const suffix = id.slice(-8).toUpperCase();
-  return `#IV-${prefix}-${suffix}`;
+  return `IV-${prefix}-${suffix}`;
 };
 
 export default function InvoicesScreen() {
@@ -94,6 +94,7 @@ export default function InvoicesScreen() {
     const sentTo = item.buyer?.email || "-";
     const lastSent = formatLongDate(item.lastSentAt);
     const createdOn = formatLongDate(item.createdAt);
+    const invoiceNumber = item.invoiceNumber || formatInvoiceNumber(item.id);
 
     return (
       <View className="mb-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm relative">
@@ -113,9 +114,9 @@ export default function InvoicesScreen() {
                 <Text className="text-base font-semibold text-slate-900">
                   Invoice
                 </Text>
-                <Text className="text-sm font-semibold text-slate-900 mt-0.5">
-                  {formatInvoiceNumber(item.id)}
-                </Text>
+              <Text className="text-sm font-semibold text-slate-900 mt-0.5">
+                #{invoiceNumber}
+              </Text>
               </View>
             </View>
             <Pressable

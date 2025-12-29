@@ -45,6 +45,12 @@ const formatCurrency = (amount: number, currency: string) => {
   return `${prefix}${amount.toFixed(2)}`;
 };
 
+const formatInvoiceNumber = (id: string) => {
+  const prefix = id.slice(0, 4).toUpperCase();
+  const suffix = id.slice(-8).toUpperCase();
+  return `IV-${prefix}-${suffix}`;
+};
+
 export default function PreviewInvoiceScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute();
@@ -199,7 +205,9 @@ export default function PreviewInvoiceScreen() {
           THIS IS WHAT YOUR BUYER WILL SEE
         </Text>
 
-        <SectionCard title={`Invoice #${invoice.id.slice(-8).toUpperCase()}`}>
+        <SectionCard
+          title={`Invoice #${invoice.invoiceNumber || formatInvoiceNumber(invoice.id)}`}
+        >
           <View className="gap-4">
             <View className="rounded-2xl border border-slate-200 bg-white p-4">
               <Text className="text-xs font-semibold text-slate-500 uppercase">

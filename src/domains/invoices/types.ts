@@ -31,6 +31,7 @@ export type InvoiceTotals = {
 
 export type Invoice = {
   id: string;
+  invoiceNumber?: string;
   status: InvoiceStatus;
   sellerId: string;
   sellerSnapshot: SellerSnapshot;

@@ -1,5 +1,4 @@
 import {
-  addDoc,
   collection,
   doc,
   getDoc,
@@ -8,6 +7,7 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
   Timestamp,
@@ -42,6 +42,7 @@ const toMillis = (value: any) => {
 
 const mapInvoice = (id: string, data: any): Invoice => ({
   id,
+  invoiceNumber: data.invoiceNumber,
   status: data.status,
   sellerId: data.sellerId,
   sellerSnapshot: data.sellerSnapshot,
@@ -55,12 +56,21 @@ const mapInvoice = (id: string, data: any): Invoice => ({
   sentCount: data.sentCount,
 });
 
+const buildInvoiceNumber = (id: string) => {
+  const prefix = id.slice(0, 4).toUpperCase();
+  const suffix = id.slice(-8).toUpperCase();
+  return `IV-${prefix}-${suffix}`;
+};
+
 export const createInvoiceDraft = async (
   params: CreateInvoiceDraftParams
 ): Promise<{ invoiceId: string }> => {
   const { sellerId, sellerSnapshot, buyer, items, currency, totals } = params;
-  const docRef = await addDoc(collection(firestore, INVOICES_COLLECTION), {
+  const docRef = doc(collection(firestore, INVOICES_COLLECTION));
+  const invoiceNumber = buildInvoiceNumber(docRef.id);
+  await setDoc(docRef, {
     status: "draft",
+    invoiceNumber,
     sellerId,
     sellerSnapshot,
     buyer,

@@ -76,8 +76,8 @@ export default function InvoiceDetailScreen() {
 
   const invoiceNumber = useMemo(() => {
     if (!invoice?.id) return "";
-    return formatInvoiceNumber(invoice.id);
-  }, [invoice?.id]);
+    return invoice.invoiceNumber || formatInvoiceNumber(invoice.id);
+  }, [invoice?.id, invoice?.invoiceNumber]);
 
   if (loading) {
     return (
