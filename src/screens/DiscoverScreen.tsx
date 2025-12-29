@@ -2,6 +2,11 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, View, Text, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { CompositeNavigationProp } from "@react-navigation/native";
+import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import type { DiscoverStackParamList } from "../app/navigation/Stack/DiscoverStack";
+import type { TabParamList } from "../app/navigation/tabTypes";
 import ScreenHeader from "../shared/components/ScreenHeader";
 import UnderlineHome from "../../assets/headers/underline-home.svg";
 
@@ -20,6 +25,7 @@ import {
 } from "../shared/hooks/useSidebar";
 import { useLogout } from "../domains/auth/hooks/useLogout";
 import { useProfileContext } from "../domains/user/contexts/ProfileContext";
+import { toggleEventRsvp } from "../domains/discover/services/eventService";
 
 // Import Tabs
 import DiscoverArtworksTab from "../domains/discover/components/tabs/DiscoverArtworksTab";
@@ -37,8 +43,13 @@ const TABS: { key: DiscoverTab; label: string }[] = [
   { key: "events", label: "EVENTS" },
 ];
 
+type NavigationProp = CompositeNavigationProp<
+  NativeStackNavigationProp<DiscoverStackParamList>,
+  BottomTabNavigationProp<TabParamList>
+>;
+
 export default function DiscoverScreen() {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NavigationProp>();
   const { status, currentUser } = useAuth();
   const { isFollowing, toggleFollow } = useProfileContext();
   const {
@@ -63,6 +74,7 @@ export default function DiscoverScreen() {
     loadMoreEvents,
     isMoreEventsLoading,
     hasMoreEvents,
+    updateEventRsvp,
   } = useDiscover();
   const handleSidebarSelect = (key: SidebarActionKey) => {
     setSidebarOpen(false);
@@ -72,19 +84,23 @@ export default function DiscoverScreen() {
       return;
     }
     if (key === "inventory") {
-      navigation.navigate("Inventory");
+      // Navigate to Home tab -> Inventory screen
+      navigation.navigate("Home", { screen: "Inventory" } as any);
       return;
     }
     if (key === "profile") {
-      navigation.navigate("Profile");
+      // Navigate to Home tab -> Profile screen
+      navigation.navigate("Home", { screen: "Profile" } as any);
       return;
     }
     if (key === "events") {
-      navigation.navigate("Events");
+      // Navigate to Home tab -> Events screen
+      navigation.navigate("Home", { screen: "Events" } as any);
       return;
     }
     if (key === "home") {
-      navigation.navigate("Home");
+      // Navigate to Home tab
+      navigation.navigate("Home", {} as any);
       return;
     }
   };
@@ -124,8 +140,28 @@ export default function DiscoverScreen() {
   const [activeKey, setActiveKey] = useState<SidebarKey>("home");
   const { logout, showConfirmModal, onConfirmLogout, onCancelLogout, loading: logoutLoading } = useLogout();
   const handleRequireSignUp = useCallback(() => {
-    navigation.navigate("SignUp");
+    navigation.navigate("SignUp" as any);
   }, [navigation]);
+
+  const handleRsvpChange = useCallback(async (eventId: string, status: "none" | "going" | "maybe" | "notGoing") => {
+    if (isGuest) {
+      handleRequireSignUp();
+      return;
+    }
+
+    try {
+      // Update local state immediately for responsive UI
+      updateEventRsvp(eventId, status);
+
+      // Sync with backend - only if status is not "none"
+      if (currentUser?.uid && status !== "none") {
+        await toggleEventRsvp(currentUser.uid, eventId, status);
+      }
+    } catch (error) {
+      console.error("Failed to update RSVP:", error);
+      // Could add error handling here (e.g., show a toast)
+    }
+  }, [isGuest, currentUser?.uid, updateEventRsvp, handleRequireSignUp]);
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const filterArtwork = useCallback(
     (item: any) => {
@@ -220,7 +256,7 @@ export default function DiscoverScreen() {
 
     switch (tab) {
       case "topPicks":
-        return <DiscoverArtworksTab data={filteredTopPicks} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={() => {}} isFetchingNextPage={false} />;
+        return <DiscoverArtworksTab data={filteredTopPicks} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={() => { }} isFetchingNextPage={false} />;
       case "artworks":
         return <DiscoverArtworksTab data={filteredArtworks} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreArtworks} isFetchingNextPage={isMoreArtworksLoading} />;
       case "profiles":
@@ -236,7 +272,17 @@ export default function DiscoverScreen() {
           />
         );
       case "events":
-        return <DiscoverEventsTab data={filteredEvents} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreEvents} isFetchingNextPage={isMoreEventsLoading} />;
+        return <DiscoverEventsTab
+          data={filteredEvents}
+          onCardPress={isGuest ? handleRequireSignUp : (item) => navigation.navigate("EventDetail", {
+            event: item,
+            onRsvpChange: (status) => handleRsvpChange(item.id, status)
+          })}
+          onRsvpChange={(item, status) => handleRsvpChange(item.id, status)}
+          onScroll={handleScroll}
+          onEndReached={loadMoreEvents}
+          isFetchingNextPage={isMoreEventsLoading}
+        />;
       case "moments":
         return <DiscoverMomentsTab data={filteredMoments} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreMoments} isFetchingNextPage={isMoreMomentsLoading} />;
       case "nearby":
@@ -293,7 +339,7 @@ export default function DiscoverScreen() {
               onChangeText={setSearchQuery}
               placeholder="Search artworks, profiles, events"
               placeholderTextColor="#94A3B8"
-              className="flex-1 px-2 py-2 text-sm text-slate-900"
+              className="flex-1 px-2 py-2 text-[12px] text-slate-900"
               autoCapitalize="none"
               autoCorrect={false}
               returnKeyType="search"

@@ -44,6 +44,11 @@
         allow create: if isSignedIn() && request.resource.data.artistId == request.auth.uid;
         allow update: if isSignedIn() && (resource.data.artistId == request.auth.uid || onlyArtworkMetricsChanged());
         allow delete: if false;
+
+        match /likes/{userId} {
+          allow read: if true;
+          allow create, delete: if isSignedIn() && request.auth.uid == userId;
+        }
       }
       match /artists/{artistId} {
         allow read: if true;
@@ -101,6 +106,15 @@
         match /following/{followingId} {
           allow read: if true;
           allow write: if request.auth.uid == userId;
+        }
+
+        // Moodboards
+        match /moodboards/{boardId} {
+          allow read, create, update, delete: if isOwner(userId);
+
+          match /items/{itemId} {
+            allow read, create, update, delete: if isOwner(userId);
+          }
         }
       }
 

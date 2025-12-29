@@ -22,6 +22,7 @@ import {
 import { firestore } from "@/configs/firebase";
 import { FeedPost, FeedComment } from "../types";
 
+
 const POSTS_COLLECTION = "posts";
 
 export type PaginatedPostsResult = {
