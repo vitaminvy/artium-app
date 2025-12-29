@@ -135,7 +135,7 @@ export default function ProfileScreen() {
 
   const handlePressArtwork = (artworkId: string) => {
     console.log("Navigate to artwork:", artworkId);
-    navigation.navigate("ArtworkDetail" as any, { artworkId });
+    navigation.navigate("ArtworkDetail", { id: artworkId });
   };
 
   const handlePressMoment = (momentId: string) => {

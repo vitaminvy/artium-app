@@ -70,6 +70,12 @@ export default function MoodboardDetailScreen() {
     void loadItems(true);
   }, [loadItems]);
 
+  const handlePressArtwork = useCallback((artworkId: string) => {
+    if (!artworkId) return;
+    console.log("Navigate to artwork:", artworkId);
+    navigation.navigate("ArtworkDetail", { id: artworkId });
+  }, [navigation]);
+
   const renderContent = () => {
     if (loading) {
       return (
@@ -94,7 +100,13 @@ export default function MoodboardDetailScreen() {
         data={items}
         numColumns={2}
         keyExtractor={(item) => item.id}
-        renderItem={(item, index) => <MoodboardItemCard item={item} index={index} />}
+        renderItem={(item, index) => (
+          <MoodboardItemCard
+            item={item}
+            index={index}
+            onPress={() => handlePressArtwork(item.artworkId)}
+          />
+        )}
         columnGap={12}
         contentContainerStyle={{
           paddingBottom: Math.max(insets.bottom + 40, 80),
@@ -133,11 +145,20 @@ export default function MoodboardDetailScreen() {
   );
 }
 
-function MoodboardItemCard({ item, index }: { item: MoodboardItemWithId; index: number }) {
+function MoodboardItemCard({
+  item,
+  index,
+  onPress,
+}: {
+  item: MoodboardItemWithId;
+  index: number;
+  onPress?: () => void;
+}) {
   const height = 180 + (index % 3) * 28;
   return (
-    <View
-      className="mb-4 rounded-2xl border border-slate-200 overflow-hidden bg-white"
+    <Pressable
+      onPress={onPress}
+      className="mb-4 rounded-2xl border border-slate-200 overflow-hidden bg-white active:opacity-80"
       style={{
         shadowColor: "#000",
         shadowOpacity: 0.08,
@@ -172,6 +193,6 @@ function MoodboardItemCard({ item, index }: { item: MoodboardItemWithId; index: 
           </Text>
         ) : null}
       </View>
-    </View>
+    </Pressable>
   );
 }
