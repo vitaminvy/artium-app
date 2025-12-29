@@ -22,6 +22,7 @@ type Props = {
   onPressImage?: (images: { uri: string }[], index: number) => void;
   isVisible?: boolean;
   onAvatarLoad?: (postId: string) => void;
+  disableRealtime?: boolean; // Add option to disable real-time for performance in list views
 };
 
 function FeedPostCard({
@@ -34,8 +35,17 @@ function FeedPostCard({
   onPressImage,
   isVisible = true,
   onAvatarLoad,
+  disableRealtime = true, // Default to true for better performance in lists
 }: Props) {
-  const { isLiked, toggleOptimistic } = usePostLike(post.id, post.liked);
+  // Only use real-time hooks when explicitly enabled (e.g., in detail view)
+  const { isLiked, toggleOptimistic } = usePostLike(
+    disableRealtime ? "" : post.id,
+    post.liked
+  );
+
+  // Use real-time data if enabled, otherwise use post data directly
+  const liked = disableRealtime ? (post.liked ?? false) : isLiked;
+  const metrics = post.metrics;
   const authorName = post.author?.name?.trim() || "User";
   const authorHandle = normalizeHandle(post.author?.handle, authorName);
   const authorAvatar =
@@ -322,18 +332,18 @@ function FeedPostCard({
         <Pressable
           className="flex-row items-center gap-2"
           onPress={() => {
-            toggleOptimistic();
-            onPressLike(post.id, isLiked);
+            if (!disableRealtime) toggleOptimistic();
+            onPressLike(post.id, liked);
           }}
           hitSlop={6}
         >
           <Ionicons
-            name={isLiked ? "heart" : "heart-outline"}
+            name={liked ? "heart" : "heart-outline"}
             size={22}
-            color={isLiked ? FEED_COLORS.LIKE_ACTIVE : FEED_COLORS.ICON}
+            color={liked ? FEED_COLORS.LIKE_ACTIVE : FEED_COLORS.ICON}
           />
           <Text className="text-[13px] text-slate-600">
-            {post.metrics.likes}
+            {metrics.likes}
           </Text>
         </Pressable>
 
@@ -348,7 +358,7 @@ function FeedPostCard({
             color={post.reshared ? FEED_COLORS.SHARE_ACTIVE : FEED_COLORS.ICON}
           />
           <Text className="text-[13px] text-slate-600">
-            {post.metrics.shares}
+            {metrics.shares}
           </Text>
         </Pressable>
 
@@ -363,7 +373,7 @@ function FeedPostCard({
             color={FEED_COLORS.ICON}
           />
           <Text className="text-[13px] text-slate-600">
-            {post.metrics.comments}
+            {metrics.comments}
           </Text>
         </Pressable>
 

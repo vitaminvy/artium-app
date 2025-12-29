@@ -11,7 +11,7 @@ import { QueryDocumentSnapshot, DocumentData, collection, onSnapshot } from "fir
 import { firestore } from "@/configs/firebase";
 import { useProfileContext } from "@/domains/user/contexts/ProfileContext";
 
-const POST_PAGE_SIZE = 5;
+const POST_PAGE_SIZE = 15; // Increased from 5 to 15 for better initial load
 
 type UseFeedResult = {
   tab: FeedTab;
