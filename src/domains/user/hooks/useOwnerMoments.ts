@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { collection, query, where, orderBy, getDocs, limit, Timestamp } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
@@ -24,6 +24,11 @@ export function useOwnerMoments(limitCount: number = 20) {
   const [moments, setMoments] = useState<MomentCardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refresh = useCallback(() => {
+    setRefreshKey(prev => prev + 1);
+  }, []);
 
   useEffect(() => {
     if (!currentUser?.uid) {
@@ -83,7 +88,7 @@ export function useOwnerMoments(limitCount: number = 20) {
     };
 
     fetchMoments();
-  }, [currentUser?.uid, limitCount]);
+  }, [currentUser?.uid, limitCount, refreshKey]);
 
-  return { moments, loading, error };
+  return { moments, loading, error, refresh };
 }

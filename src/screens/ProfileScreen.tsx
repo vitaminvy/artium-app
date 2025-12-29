@@ -12,6 +12,7 @@ import ProfileMomentsTab from "../domains/user/components/profile/tabs/ProfileMo
 import ProfileMoodboardsTab from "../domains/user/components/profile/tabs/ProfileMoodboardsTab";
 import { useProfile } from "../domains/user/hooks/useProfile";
 import { useOwnerMoments } from "../domains/user/hooks/useOwnerMoments";
+import { useOwnerArtworks } from "../domains/user/hooks/useOwnerArtworks";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
 import Sidebar from "../shared/components/Sidebar";
 import {
@@ -104,8 +105,9 @@ export default function ProfileScreen() {
   } = useLogout();
   const [avatarLoaded, setAvatarLoaded] = React.useState(false);
 
-  // Fetch owner moments to get data for navigation
-  const { moments } = useOwnerMoments();
+  // Fetch owner data for navigation and display
+  const { moments, refresh: refreshMoments } = useOwnerMoments();
+  const { artworks, refresh: refreshArtworks } = useOwnerArtworks();
 
   const handleBack = () => {
     if (navigation.canGoBack()) {
@@ -158,6 +160,14 @@ export default function ProfileScreen() {
     navigation.navigate("FeedDetail", { post: feedPost });
   };
 
+  const handleSeeAllArtworks = () => {
+    setTab("artworks");
+  };
+
+  const handleSeeAllMoments = () => {
+    setTab("moments");
+  };
+
   const handleSidebarSelect = (key: SidebarActionKey) => {
     setSidebarOpen(false);
 
@@ -193,7 +203,10 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       setActiveKey("profile");
-    }, [setActiveKey])
+      // Refresh data when screen comes into focus
+      refreshMoments();
+      refreshArtworks();
+    }, [setActiveKey, refreshMoments, refreshArtworks])
   );
 
   useFocusEffect(
@@ -248,8 +261,14 @@ export default function ProfileScreen() {
               {tab === "overview" && (
                 <ProfileOverviewTab
                   profile={profile}
+                  artworks={artworks}
+                  moments={moments}
                   onPressUpload={handleUploadInventory}
                   onPressShare={handlePostMoment}
+                  onPressSeeAllArtworks={handleSeeAllArtworks}
+                  onPressSeeAllMoments={handleSeeAllMoments}
+                  onPressArtwork={handlePressArtwork}
+                  onPressMoment={handlePressMoment}
                 />
               )}
               {tab === "artworks" && (

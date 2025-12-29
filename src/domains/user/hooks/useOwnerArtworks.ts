@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { collection, query, where, orderBy, getDocs, limit } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
@@ -12,6 +12,11 @@ export function useOwnerArtworks(limitCount: number = 20) {
   const [artworks, setArtworks] = useState<ArtworkCardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refresh = useCallback(() => {
+    setRefreshKey(prev => prev + 1);
+  }, []);
 
   useEffect(() => {
     if (!currentUser?.uid) {
@@ -96,7 +101,7 @@ export function useOwnerArtworks(limitCount: number = 20) {
     };
 
     fetchArtworks();
-  }, [currentUser?.uid, currentUser?.displayName, currentUser?.photoURL, limitCount]);
+  }, [currentUser?.uid, currentUser?.displayName, currentUser?.photoURL, limitCount, refreshKey]);
 
-  return { artworks, loading, error };
+  return { artworks, loading, error, refresh };
 }
