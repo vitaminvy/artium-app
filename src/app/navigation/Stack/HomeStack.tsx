@@ -14,6 +14,8 @@ import type { ArtworkDetail } from "../../../domains/artwork/types";
 import type { EventItem } from "../../../domains/discover/types";
 import BlogDetailScreen from "../../../screens/BlogDetailScreen"; // Renamed import
 import BlogScreen from "../../../screens/BlogScreen";
+import MoodboardDetailScreen from "../../../screens/MoodboardDetailScreen";
+import FollowsScreen from "../../../screens/FollowsScreen";
 
 export type HomeStackParamList = {
   HomeMain: undefined;
@@ -26,6 +28,8 @@ export type HomeStackParamList = {
   PopularArtists: undefined;
   SimilarSaved: undefined;
   BlogDetail: { blogId: string };
+  MoodboardDetail: { id: string };
+  Follows: { type: "followers" | "following" };
   EventDetail: {
     id?: string;
     initialRsvp?: "none" | "going" | "maybe" | "notGoing";
@@ -49,6 +53,8 @@ export default function HomeStack() {
       <Stack.Screen name="SimilarSaved" component={SimilarSavedScreen} />
       <Stack.Screen name="BlogDetail" component={BlogDetailScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Blog" component={BlogScreen} />
+      <Stack.Screen name="MoodboardDetail" component={MoodboardDetailScreen} />
+      <Stack.Screen name="Follows" component={FollowsScreen} />
       <Stack.Screen
         name="EditProfile"
         component={EditProfileScreen}

@@ -204,6 +204,8 @@ export default function ProfileScreen() {
               user={profile.user}
               stats={profile.stats}
               onAvatarLoad={() => setAvatarLoaded(true)}
+              onPressFollowers={() => navigation.navigate("Follows" as never, { type: "followers" } as never)}
+              onPressFollowing={() => navigation.navigate("Follows" as never, { type: "following" } as never)}
             />
             <ProfileActionButtons
               onPressEdit={openEditProfile}
