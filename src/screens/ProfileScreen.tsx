@@ -125,6 +125,10 @@ export default function ProfileScreen() {
     rootNavigate("Upload");
   };
 
+  const openMoodboardDetail = (id: string) => {
+    navigation.navigate("MoodboardDetail" as never, { id } as never);
+  };
+
   const handleSidebarSelect = (key: SidebarActionKey) => {
     setSidebarOpen(false);
 
@@ -226,7 +230,12 @@ export default function ProfileScreen() {
                   onPressUpload={handlePostMoment}
                 />
               )}
-              {tab === "moodboards" && <ProfileMoodboardsTab profile={profile} />}
+              {tab === "moodboards" && (
+                <ProfileMoodboardsTab
+                  profile={profile}
+                  onPressMoodboard={openMoodboardDetail}
+                />
+              )}
             </View>
           </>
         )}

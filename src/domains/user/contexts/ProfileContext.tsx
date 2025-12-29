@@ -18,6 +18,7 @@ import { EDIT_PROFILE_DEFAULTS } from "../constants/editProfile";
 import { PROFILE_ACCENT } from "../constants/profile";
 import { profileMockData } from "../mockData";
 import { EditProfileFormValues, ProfileViewModel } from "../types";
+import { fetchMoodboards } from "@/domains/artwork/services/moodboardService";
 
 type ProfileContextValue = {
   profile: ProfileViewModel;
@@ -243,7 +244,10 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       await upsertUserProfile(currentUser);
 
       const userRef = doc(firestore, "users", currentUser.uid);
-      const userSnap = await getDoc(userRef);
+      const [userSnap, moodboards] = await Promise.all([
+        getDoc(userRef),
+        fetchMoodboards(currentUser.uid).catch(() => []),
+      ]);
       const data = (userSnap.data() ?? {}) as UserDoc;
 
       const nextProfile = buildProfileFromUserDoc(
@@ -251,6 +255,12 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         currentUser,
         baseProfile
       );
+      nextProfile.moodboards = moodboards.map((mb) => ({
+        id: mb.id,
+        title: mb.name,
+        visibility: mb.isPrivate ? "private" : "public",
+        ownerName: nextProfile.user.name,
+      }));
       setProfile(nextProfile);
       setEditProfile(buildEditProfileFromDoc(data, nextProfile));
 
