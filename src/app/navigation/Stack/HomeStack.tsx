@@ -15,6 +15,7 @@ import type { EventItem } from "../../../domains/discover/types";
 import BlogDetailScreen from "../../../screens/BlogDetailScreen"; // Renamed import
 import BlogScreen from "../../../screens/BlogScreen";
 import MoodboardDetailScreen from "../../../screens/MoodboardDetailScreen";
+import FollowsScreen from "../../../screens/FollowsScreen";
 
 export type HomeStackParamList = {
   HomeMain: undefined;
@@ -27,6 +28,8 @@ export type HomeStackParamList = {
   PopularArtists: undefined;
   SimilarSaved: undefined;
   BlogDetail: { blogId: string };
+  MoodboardDetail: { id: string };
+  Follows: { type: "followers" | "following" };
   EventDetail: {
     id?: string;
     initialRsvp?: "none" | "going" | "maybe" | "notGoing";
@@ -34,7 +37,6 @@ export type HomeStackParamList = {
     event?: EventItem;
   };
   Blog: undefined;
-  MoodboardDetail: { id: string };
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -52,6 +54,7 @@ export default function HomeStack() {
       <Stack.Screen name="BlogDetail" component={BlogDetailScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Blog" component={BlogScreen} />
       <Stack.Screen name="MoodboardDetail" component={MoodboardDetailScreen} />
+      <Stack.Screen name="Follows" component={FollowsScreen} />
       <Stack.Screen
         name="EditProfile"
         component={EditProfileScreen}

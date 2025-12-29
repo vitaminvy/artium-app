@@ -87,7 +87,8 @@ type UseEventsResult = {
   refreshEvents: () => Promise<void>;
   error: Error | null;
   addHostedEvent: (event: EventItem) => void;
-  setHostingEvents: (events: EventItem[]) => void;
+  deleteHostedEvent: (eventId: string) => Promise<void>;
+  setHostingEvents: React.Dispatch<React.SetStateAction<EventItem[]>>;
   getRsvpStatus: (id: string) => RsvpStatus;
   setRsvpStatus: (id: string, status: RsvpStatus) => void;
   hostingSortOptions: EventSortOption[];
@@ -367,9 +368,7 @@ export function useEvents(): UseEventsResult {
       setDiscoverItems((prev) => [event, ...prev]);
     },
     deleteHostedEvent,
-    setHostingEvents: (events: EventItem[]) => {
-      setHostingItems(events);
-    },
+    setHostingEvents: setHostingItems,
     getRsvpStatus,
     setRsvpStatus,
     hostingSortOptions: HOSTING_SORT_OPTIONS,
