@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { View, Text, Pressable, FlatList } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   collection,
@@ -13,7 +13,9 @@ import {
 
 import { useAuth } from "../domains/auth/contexts/AuthContext";
 import { firestore } from "@/configs/firebase";
-import { markAllNotificationsAsRead } from "../domains/notifications/services/notificationService";
+import { markNotificationAsRead } from "../domains/notifications/services/notificationService";
+import { navigate as rootNavigate } from "../app/navigation/navigationRef";
+import { getPostById } from "../domains/feed/services/feedService";
 
 type NotificationItem = {
   id: string;
@@ -22,6 +24,7 @@ type NotificationItem = {
   message: string;
   createdAt: number;
   read?: boolean;
+  postId?: string;
 };
 
 const formatTime = (ts: number) => {
@@ -74,6 +77,7 @@ export default function NotificationsScreen() {
             message: data.message || "",
             createdAt,
             read: data.read,
+            postId: data.postId,
           };
         });
         setItems(list);
@@ -83,21 +87,41 @@ export default function NotificationsScreen() {
     return () => unsub();
   }, [currentUser]);
 
-  // Mark all notifications as read when screen is focused
-  useFocusEffect(
-    useCallback(() => {
-      if (!currentUser) return;
+  const handleNotificationPress = useCallback(async (item: NotificationItem) => {
+    // Mark this specific notification as read
+    if (currentUser && !item.read) {
+      try {
+        await markNotificationAsRead(currentUser.uid, item.id);
+      } catch (error) {
+        console.error("Error marking notification as read:", error);
+      }
+    }
 
-      // Wait a bit for user to see the notifications before marking as read
-      const timer = setTimeout(() => {
-        markAllNotificationsAsRead(currentUser.uid).catch((error) => {
-          console.error("Failed to mark notifications as read:", error);
+    if (!item.postId) {
+      console.warn("No postId in notification");
+      return;
+    }
+
+    try {
+      // Fetch the post to navigate to FeedDetail
+      const post = await getPostById(item.postId);
+
+      if (post) {
+        // Navigate to Feed tab with FeedDetail screen
+        rootNavigate("Tabs", {
+          screen: "Feed",
+          params: {
+            screen: "FeedDetail",
+            params: { post },
+          },
         });
-      }, 1000); // 1 second delay
-
-      return () => clearTimeout(timer);
-    }, [currentUser])
-  );
+      } else {
+        console.warn("Post not found:", item.postId);
+      }
+    } catch (error) {
+      console.error("Error navigating to post:", error);
+    }
+  }, [currentUser]);
 
   return (
     <View className="flex-1 bg-white">
@@ -136,24 +160,36 @@ export default function NotificationsScreen() {
           }}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
           renderItem={({ item }) => (
-            <View className="flex-row items-center rounded-2xl border border-slate-200 bg-white px-3 py-3">
-              <Ionicons
-                name={typeIcon[item.type] ?? "notifications-outline"}
-                size={20}
-                color="#0F172A"
-              />
+            <Pressable
+              onPress={() => handleNotificationPress(item)}
+              className={`flex-row items-center rounded-2xl border px-3 py-3 active:bg-slate-50 ${
+                item.read
+                  ? "border-slate-200 bg-white"
+                  : "border-blue-200 bg-blue-50"
+              }`}
+            >
+              <View className="relative">
+                <Ionicons
+                  name={typeIcon[item.type] ?? "notifications-outline"}
+                  size={20}
+                  color={item.read ? "#0F172A" : "#3B82F6"}
+                />
+                {!item.read && (
+                  <View className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-blue-500 rounded-full" />
+                )}
+              </View>
               <View className="flex-1 ml-3">
-                <Text className="text-sm font-semibold text-slate-900">
+                <Text className={`text-sm ${item.read ? "font-semibold" : "font-bold"} text-slate-900`}>
                   {item.actorName}
                 </Text>
-                <Text className="text-sm text-slate-600" numberOfLines={2}>
+                <Text className={`text-sm ${item.read ? "text-slate-600" : "text-slate-700"}`} numberOfLines={2}>
                   {item.message}
                 </Text>
               </View>
               <Text className="text-[12px] text-slate-400">
                 {formatTime(item.createdAt)}
               </Text>
-            </View>
+            </Pressable>
           )}
         />
       )}
