@@ -123,7 +123,7 @@ export default function FollowsScreen() {
             onChangeText={setSearch}
             placeholder="Search"
             placeholderTextColor="#94A3B8"
-            className="flex-1 px-2 py-2 text-sm text-slate-900"
+            className="flex-1 px-2 py-2 text-[12px] text-slate-900"
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
@@ -137,9 +137,7 @@ export default function FollowsScreen() {
       </View>
 
       {loading ? (
-        <View className="flex-1 items-center justify-center">
-          <Text className="text-sm text-slate-500">Loading...</Text>
-        </View>
+        <FollowListSkeleton bottomInset={insets.bottom} />
       ) : (
         <FlatList
           data={data}
@@ -152,6 +150,35 @@ export default function FollowsScreen() {
           }}
         />
       )}
+    </View>
+  );
+}
+
+function FollowListSkeleton({ count = 6, bottomInset = 0 }: { count?: number; bottomInset?: number }) {
+  return (
+    <View
+      className="px-4 animate-pulse"
+      style={{
+        paddingBottom: Math.max(bottomInset + 40, 80),
+        rowGap: 16,
+      }}
+    >
+      {Array.from({ length: count }).map((_, index) => (
+        <FollowSkeletonRow key={`follow-skeleton-${index}`} />
+      ))}
+    </View>
+  );
+}
+
+function FollowSkeletonRow() {
+  return (
+    <View className="flex-row items-center">
+      <View className="h-12 w-12 rounded-full bg-slate-200 mr-3" />
+      <View style={{ flex: 1 }}>
+        <View className="h-4 w-32 rounded bg-slate-200 mb-2" />
+        <View className="h-3 w-24 rounded bg-slate-200" />
+      </View>
+      <View className="h-8 w-20 rounded-full bg-slate-200" />
     </View>
   );
 }
