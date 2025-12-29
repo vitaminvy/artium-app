@@ -24,6 +24,7 @@ import type { EventDetail } from "../domains/events/types";
 import { getEventById, fetchEventGuestCounts, fetchEventGuests } from "../domains/discover/services/eventService";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
+import { useAuth } from "../domains/auth/contexts/AuthContext";
 
 type NavigationProp = NativeStackNavigationProp<HomeStackParamList, "EventDetail">;
 type RsvpStatus = "none" | "going" | "maybe" | "notGoing";
@@ -33,6 +34,7 @@ export default function EventDetailScreen() {
   const route = useRoute();
   const insets = useSafeAreaInsets();
   const { setHidden } = useTabBarVisibility();
+  const { currentUser } = useAuth();
   const initialHeaderHeight = Math.max(insets.top + 60, 60);
   const params = route.params as
     | { id?: string; initialRsvp?: RsvpStatus; onRsvpChange?: (status: RsvpStatus) => void; event?: EventItem }
@@ -41,10 +43,24 @@ export default function EventDetailScreen() {
   const [eventItem, setEventItem] = useState<EventItem | undefined>(undefined);
   const [detail, setDetail] = useState<EventDetail | null>(null);
   const [guestCounts, setGuestCounts] = useState<{ going: number; maybe: number; invited: number }>({ going: 0, maybe: 0, invited: 0 });
+  const [organizerId, setOrganizerId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [headerHeight, setHeaderHeight] = useState(initialHeaderHeight);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const showToast = useCallback((text: string) => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    setToastMessage(text);
+    toastTimerRef.current = setTimeout(() => {
+      setToastMessage(null);
+      toastTimerRef.current = null;
+    }, 2400);
+  }, []);
 
   const fetchDetail = useCallback(
     async (showLoader: boolean) => {
@@ -64,20 +80,26 @@ export default function EventDetailScreen() {
         if (showLoader) setIsLoading(true);
         setLoadError(null);
 
-        // Parallel fetch: Event Data, Guest Counts, Guest List (limited)
-        const [eventResult, counts, guests] = await Promise.all([
-          !params?.event || !params.event.description ? getEventById(eventId) : Promise.resolve(null),
-          fetchEventGuestCounts(eventId),
-          fetchEventGuests(eventId),
-        ]);
+        // Parallel fetch: Event Data first to get organizerId
+        // LUÔN fetch để lấy organizerId từ raw data
+        const eventResult = await getEventById(eventId);
 
-        let finalEvent = params?.event;
-        let rawData: any = {};
-
-        if (eventResult) {
-          finalEvent = eventResult.event;
-          rawData = eventResult.raw;
+        // Kiểm tra kết quả fetch
+        if (!eventResult) {
+          setLoadError("Event not found");
+          if (showLoader) setIsLoading(false);
+          return;
         }
+
+        const finalEvent = eventResult.event;
+        const rawData = eventResult.raw;
+        const eventOrganizerId = rawData?.organizerId || finalEvent.organizerSnapshot?.id;
+
+        // Fetch guest counts and guests, excluding organizer
+        const [counts, guests] = await Promise.all([
+          fetchEventGuestCounts(eventId, eventOrganizerId),
+          fetchEventGuests(eventId, eventOrganizerId),
+        ]);
 
         if (!finalEvent) {
           setLoadError("Event not found");
@@ -87,6 +109,14 @@ export default function EventDetailScreen() {
 
         setEventItem(finalEvent);
         setGuestCounts(counts);
+
+        // Lưu organizerId từ raw data
+        console.log('[EventDetailScreen] Setting organizerId:', {
+          fromRawData: rawData?.organizerId,
+          fromSnapshot: finalEvent.organizerSnapshot?.id,
+          final: eventOrganizerId,
+        });
+        setOrganizerId(eventOrganizerId || null);
 
         const start = finalEvent.datetime ? new Date(finalEvent.datetime) : finalEvent.startDate ? new Date(finalEvent.startDate) : new Date();
         const end = finalEvent.endDatetime ? new Date(finalEvent.endDatetime) : undefined;
@@ -135,6 +165,33 @@ export default function EventDetailScreen() {
   const [showGuests, setShowGuests] = useState(false);
   const [rsvpStatus, setRsvpStatus] = useState<RsvpStatus>(params?.initialRsvp ?? "none");
 
+  // Xác định xem user có phải là organizer không
+  const isHosting = useMemo(() => {
+    if (!currentUser?.uid) return false;
+
+    // Debug logging
+    console.log('[EventDetailScreen] isHosting check:', {
+      currentUserId: currentUser.uid,
+      organizerId,
+      organizerSnapshotId: eventItem?.organizerSnapshot?.id,
+    });
+
+    // Ưu tiên dùng organizerId từ state (lấy từ Firebase raw data)
+    if (organizerId) {
+      const result = organizerId === currentUser.uid;
+      console.log('[EventDetailScreen] isHosting via organizerId:', result);
+      return result;
+    }
+    // Fallback: check organizerSnapshot.id
+    if (eventItem?.organizerSnapshot?.id) {
+      const result = eventItem.organizerSnapshot.id === currentUser.uid;
+      console.log('[EventDetailScreen] isHosting via organizerSnapshot.id:', result);
+      return result;
+    }
+    console.log('[EventDetailScreen] isHosting: false (no organizer data)');
+    return false;
+  }, [currentUser?.uid, organizerId, eventItem?.organizerSnapshot?.id]);
+
   useEffect(() => {
     if (params?.initialRsvp) {
       setRsvpStatus(params.initialRsvp);
@@ -142,14 +199,61 @@ export default function EventDetailScreen() {
   }, [params?.initialRsvp]);
 
   const handleRsvpChange = useCallback(
-    (status: RsvpStatus) => {
-      setRsvpStatus(status);
-      params?.onRsvpChange?.(status);
-      
-      // Update local counts optimistically
-      fetchEventGuestCounts(eventItem?.id!).then(c => setGuestCounts(c));
+    async (status: RsvpStatus) => {
+      const previousStatus = rsvpStatus;
+      const previousCounts = { ...guestCounts };
+
+      try {
+        // Update local RSVP status immediately
+        setRsvpStatus(status);
+
+        // Optimistic update for guest counts
+        setGuestCounts((prev) => {
+          const updated = { ...prev };
+
+          // Decrease old status count
+          if (previousStatus === "going" && prev.going > 0) {
+            updated.going = prev.going - 1;
+          } else if (previousStatus === "maybe" && prev.maybe > 0) {
+            updated.maybe = prev.maybe - 1;
+          }
+
+          // Increase new status count
+          if (status === "going") {
+            updated.going = prev.going + 1;
+          } else if (status === "maybe") {
+            updated.maybe = prev.maybe + 1;
+          }
+
+          return updated;
+        });
+
+        // Call parent callback and wait for Firebase update
+        if (params?.onRsvpChange) {
+          await params.onRsvpChange(status);
+        }
+
+        // Show success toast
+        showToast("Updated successfully");
+
+        // Fetch actual counts from Firebase to ensure accuracy
+        try {
+          const counts = await fetchEventGuestCounts(eventItem?.id!);
+          setGuestCounts(counts);
+        } catch (error) {
+          console.error("Failed to fetch guest counts:", error);
+        }
+      } catch (error) {
+        console.error("Failed to update RSVP:", error);
+
+        // Revert optimistic updates on error
+        setRsvpStatus(previousStatus);
+        setGuestCounts(previousCounts);
+
+        showToast("Failed to update RSVP");
+      }
     },
-    [params?.onRsvpChange, eventItem?.id]
+    [params?.onRsvpChange, eventItem?.id, showToast, rsvpStatus, guestCounts]
   );
 
   const handleRefresh = useCallback(async () => {
@@ -161,6 +265,67 @@ export default function EventDetailScreen() {
       setIsRefreshing(false);
     }
   }, [fetchDetail, isRefreshing]);
+
+  const handleDeleteEvent = useCallback(async () => {
+    if (!eventItem?.id) {
+      console.error("[EventDetailScreen] No event ID");
+      return;
+    }
+
+    if (!currentUser?.uid) {
+      console.error("[EventDetailScreen] No current user");
+      showToast("You must be logged in to delete this event");
+      return;
+    }
+
+    console.log("[EventDetailScreen] Deleting event:", {
+      eventId: eventItem.id,
+      currentUserId: currentUser.uid,
+      organizerId,
+    });
+
+    try {
+      const { deleteEvent } = await import("../domains/discover/services/eventService");
+      await deleteEvent(eventItem.id, currentUser.uid);
+
+      showToast("Event deleted successfully");
+
+      // Navigate back after a short delay
+      setTimeout(() => {
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+        } else {
+          navigation.navigate("HomeMain");
+        }
+      }, 500);
+    } catch (error: any) {
+      console.error("Failed to delete event:", error);
+      const errorMessage = error?.message || "Failed to delete event";
+      showToast(errorMessage);
+    }
+  }, [eventItem?.id, currentUser?.uid, organizerId, navigation, showToast]);
+
+  const handleInviteSent = useCallback(
+    async (eventId: string, invitedCount: number) => {
+      try {
+        // Hiển thị toast thông báo thành công
+        showToast(`Invited ${invitedCount} ${invitedCount === 1 ? 'person' : 'people'} successfully`);
+
+        // Cập nhật lại guest counts (excluding organizer)
+        const counts = await fetchEventGuestCounts(eventId, organizerId || undefined);
+        setGuestCounts(counts);
+
+        // Cập nhật attendees count cho event item - dùng functional update
+        const totalAttendees = counts.going + counts.invited;
+        setEventItem((prevItem) =>
+          prevItem ? { ...prevItem, attendees: totalAttendees } : prevItem
+        );
+      } catch (error) {
+        console.error("Failed to update event guest counts:", error);
+      }
+    },
+    [showToast, organizerId]
+  );
 
   const guestStats = useMemo(() => {
     return [
@@ -221,6 +386,31 @@ export default function EventDetailScreen() {
         />
       </View>
 
+      {toastMessage ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            left: 16,
+            right: 16,
+            top: Math.max(headerHeight - 6, 24),
+            zIndex: 30,
+            elevation: 8,
+          }}
+        >
+          <View className="rounded-2xl border border-[#0B73FF] bg-white px-4 py-3 shadow-lg shadow-[#0B73FF]/30">
+            <View className="flex-row items-center gap-2">
+              <View className="h-8 w-8 rounded-full bg-[#E0F2FE] items-center justify-center">
+                <Ionicons name="checkmark-done" size={18} color="#0B73FF" />
+              </View>
+              <Text className="text-sm font-semibold text-slate-900 flex-1">
+                {toastMessage}
+              </Text>
+            </View>
+          </View>
+        </View>
+      ) : null}
+
       <ScrollView
         className="flex-1"
         keyboardShouldPersistTaps="handled"
@@ -236,6 +426,9 @@ export default function EventDetailScreen() {
           initialRsvp={rsvpStatus}
           rsvp={rsvpStatus}
           onChangeRsvp={handleRsvpChange}
+          isHosting={isHosting}
+          onDelete={handleDeleteEvent}
+          onInviteSent={handleInviteSent}
         />
 
         {detail ? <OverviewCard detail={detail} /> : null}

@@ -125,6 +125,10 @@ export default function ProfileScreen() {
     rootNavigate("Upload");
   };
 
+  const openMoodboardDetail = (id: string) => {
+    navigation.navigate("MoodboardDetail", { id });
+  };
+
   const handleSidebarSelect = (key: SidebarActionKey) => {
     setSidebarOpen(false);
 
@@ -204,8 +208,8 @@ export default function ProfileScreen() {
               user={profile.user}
               stats={profile.stats}
               onAvatarLoad={() => setAvatarLoaded(true)}
-              onPressFollowers={() => navigation.navigate("Follows" as never, { type: "followers" } as never)}
-              onPressFollowing={() => navigation.navigate("Follows" as never, { type: "following" } as never)}
+              onPressFollowers={() => navigation.navigate("Follows", { type: "followers" })}
+              onPressFollowing={() => navigation.navigate("Follows", { type: "following" })}
             />
             <ProfileActionButtons
               onPressEdit={openEditProfile}
@@ -228,7 +232,12 @@ export default function ProfileScreen() {
                   onPressUpload={handlePostMoment}
                 />
               )}
-              {tab === "moodboards" && <ProfileMoodboardsTab profile={profile} />}
+              {tab === "moodboards" && (
+                <ProfileMoodboardsTab
+                  profile={profile}
+                  onPressMoodboard={openMoodboardDetail}
+                />
+              )}
             </View>
           </>
         )}

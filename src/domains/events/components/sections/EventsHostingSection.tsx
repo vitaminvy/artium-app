@@ -5,7 +5,7 @@ import type { EventItem } from "../../../discover/types";
 import type { EventSortOption } from "../../types";
 import SelectSheet from "../ui/SelectSheet";
 import EmptyStateCard from "../ui/EmptyStateCard";
-import EventCard from "../../../discover/components/cards/EventCard";
+import HostingEventCard from "../../../discover/components/cards/HostingEventCard";
 
 type Props = {
   events: EventItem[];
@@ -13,9 +13,9 @@ type Props = {
   sortValue: EventSortOption;
   onChangeSort: (option: EventSortOption) => void;
   onCreateEvent?: () => void;
-  getRsvpStatus: (id: string) => "none" | "going" | "maybe" | "notGoing";
-  onChangeRsvp: (id: string, status: "none" | "going" | "maybe" | "notGoing") => void;
+  onDeleteEvent?: (eventId: string) => void;
   onPressEvent?: (event: EventItem) => void;
+  onInviteSent?: (eventId: string, invitedCount: number) => void;
   isLoading?: boolean;
 };
 
@@ -40,9 +40,9 @@ export default function EventsHostingSection({
   sortValue,
   onChangeSort,
   onCreateEvent,
-  getRsvpStatus,
-  onChangeRsvp,
+  onDeleteEvent,
   onPressEvent,
+  onInviteSent,
   isLoading = false,
 }: Props) {
   const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT);
@@ -93,12 +93,12 @@ export default function EventsHostingSection({
         ) : hasEvents ? (
           <View className="gap-4">
             {visibleEvents.map((event) => (
-              <EventCard
+              <HostingEventCard
                 key={event.id}
                 item={event}
-                rsvpStatus={getRsvpStatus(event.id)}
-                onRsvpChange={(status) => onChangeRsvp(event.id, status)}
+                onDelete={onDeleteEvent}
                 onPress={() => onPressEvent?.(event)}
+                onInviteSent={onInviteSent}
               />
             ))}
           </View>
