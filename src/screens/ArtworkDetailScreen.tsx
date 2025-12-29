@@ -64,6 +64,7 @@ export default function ArtworkDetailScreen() {
   const [showReshareSheet, setShowReshareSheet] = useState(false);
   const [showSaveSheet, setShowSaveSheet] = useState(false);
   const [showReportSheet, setShowReportSheet] = useState(false);
+  const [isResharing, setIsResharing] = useState(false);
   const [heroImageLoaded, setHeroImageLoaded] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(initialHeaderHeight);
   const { currentUser } = useAuth();
@@ -364,16 +365,19 @@ export default function ArtworkDetailScreen() {
           <ReshareSheet
             visible={showReshareSheet}
             target={reshareTarget}
+            isSubmitting={isResharing}
             onClose={() => {
               setShowReshareSheet(false);
               handleCloseSheet();
             }}
             onSubmit={async (note: string) => {
+              if (isResharing) return;
               if (!currentUser || !reshareTarget) {
                 Alert.alert("Sign in required", "Please log in to reshare.");
                 return;
               }
               try {
+                setIsResharing(true);
                 await createPost({
                   authorId: currentUser.uid,
                   authorSnapshot: {
@@ -408,12 +412,27 @@ export default function ArtworkDetailScreen() {
                   resharedFrom: reshareTarget.author,
                 } as any);
                 setReshared(true);
+                setShowReshareSheet(false);
+                handleCloseSheet();
+                const refreshKey = Date.now();
+                const parent = navigation.getParent?.();
+                const parentRoutes = parent?.getState?.()?.routeNames;
+                if (parent && parentRoutes?.includes("Feed")) {
+                  parent.navigate("Feed", {
+                    screen: "FeedMain",
+                    params: { refreshKey },
+                  });
+                } else {
+                  navigation.navigate("Tabs", {
+                    screen: "Feed",
+                    params: { screen: "FeedMain", params: { refreshKey } },
+                  });
+                }
               } catch (err) {
                 console.error("Failed to reshare artwork:", err);
                 Alert.alert("Error", "Could not reshare. Please try again.");
               } finally {
-                setShowReshareSheet(false);
-                handleCloseSheet();
+                setIsResharing(false);
               }
             }}
           />

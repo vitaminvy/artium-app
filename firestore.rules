@@ -21,7 +21,7 @@
           && request.resource.data.status == "invited";
       }
 
-      // Just allow to update fields related to follow counters
+      // Chỉ cho phép update các field liên quan follow counters
       function onlyFollowCountersChanged() {
         // changedKeys on nested maps returns top-level keys only (e.g., "stats"),
         // so we allow stats as a whole plus the top-level counters.
@@ -44,12 +44,12 @@
         allow create: if isSignedIn() && request.resource.data.artistId == request.auth.uid;
         allow update: if isSignedIn() && (resource.data.artistId == request.auth.uid || onlyArtworkMetricsChanged());
         allow delete: if false;
-         match /likes/{userId} {
+
+        match /likes/{userId} {
           allow read: if true;
           allow create, delete: if isSignedIn() && request.auth.uid == userId;
         }
       }
-      
       match /artists/{artistId} {
         allow read: if true;
         allow create, update: if isOwner(artistId);
@@ -106,6 +106,15 @@
         match /following/{followingId} {
           allow read: if true;
           allow write: if request.auth.uid == userId;
+        }
+
+        // Moodboards
+        match /moodboards/{boardId} {
+          allow read, create, update, delete: if isOwner(userId);
+
+          match /items/{itemId} {
+            allow read, create, update, delete: if isOwner(userId);
+          }
         }
       }
 

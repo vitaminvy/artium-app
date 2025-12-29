@@ -2,7 +2,7 @@
 // src/screens/FeedScreen.tsx
 import React from "react";
 import { View, Text, Keyboard } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import FeedTabs from "../domains/feed/components/ui/FeedTabs";
 import FeedExploreTab from "../domains/feed/components/tabs/FeedExploreTab";
 import FeedFollowingTab from "../domains/feed/components/tabs/FeedFollowingTab";
@@ -35,6 +35,7 @@ import { navigate as rootNavigate } from "../app/navigation/navigationRef";
 export default function FeedScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<FeedStackParamList>>();
+  const route = useRoute<RouteProp<FeedStackParamList, "FeedMain">>();
   const { currentUser: user } = useAuth();
   const {
     tab,
@@ -65,6 +66,7 @@ export default function FeedScreen() {
 
   const [selectedPost, setSelectedPost] = React.useState<FeedPost | undefined>();
   const [commentTarget, setCommentTarget] = React.useState<FeedPost | undefined>();
+  const lastRefreshKey = useRef<number | undefined>(undefined);
   const viewerKeyRef = useRef(0);
   const [viewerState, setViewerState] = React.useState<{
     visible: boolean;
@@ -76,6 +78,13 @@ export default function FeedScreen() {
   const tabsAnim = useSharedValue(1);
   const lastOffset = useSharedValue(0);
   const { setHidden } = useTabBarVisibility();
+  const refreshKey = route.params?.refreshKey;
+
+  useEffect(() => {
+    if (!refreshKey || refreshKey === lastRefreshKey.current) return;
+    lastRefreshKey.current = refreshKey;
+    onRefresh();
+  }, [onRefresh, refreshKey]);
 
   const openReshare = React.useCallback((post: FeedPost) => {
     setSelectedPost(post);
