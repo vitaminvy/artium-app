@@ -7,7 +7,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, CommonActions } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -34,9 +34,58 @@ type BlogScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList>;
 
 export default function BlogScreen() {
   const navigation = useNavigation<BlogScreenNavigationProp>();
+
+  // Determine which tab we're in by getting parent navigator
+  const getActiveTab = useCallback(() => {
+    try {
+      // Navigate up the hierarchy to find the tab navigator
+      // Structure: BlogScreen -> Stack (Home/Feed/Discover) -> Tab Navigator
+
+      let current: any = navigation;
+      let tabNavigator = null;
+      let attempts = 0;
+      const maxAttempts = 5; // Prevent infinite loop
+
+      // Walk up the navigation tree
+      while (attempts < maxAttempts) {
+        const parent = current.getParent?.();
+        if (!parent) break;
+
+        const state = parent.getState();
+
+        // Check if this is the tab navigator (has Home, Feed, Discover routes)
+        if (state?.routeNames?.includes('Home') &&
+            state?.routeNames?.includes('Feed') &&
+            state?.routeNames?.includes('Discover')) {
+          tabNavigator = parent;
+          break;
+        }
+
+        current = parent;
+        attempts++;
+      }
+
+      if (!tabNavigator) {
+        return null;
+      }
+
+      const tabState = tabNavigator.getState();
+      const currentRoute = tabState.routes[tabState.index];
+      const tabName = currentRoute?.name?.toLowerCase();
+
+      // Only return "home" if we're in Home tab
+      if (tabName === "home") return "home";
+
+      // For Feed/Discover, return null so sidebar doesn't highlight
+      return null;
+    } catch (error) {
+      return null;
+    }
+  }, [navigation]);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(92);
-  const [activeKey, setActiveKey] = useState<SidebarKey>("home");
+  const [activeKey, setActiveKey] = useState<SidebarKey | undefined>(undefined);
   const [visibleAllCount, setVisibleAllCount] = useState(5);
   const [pendingShowMore, setPendingShowMore] = useState(false);
   const sidebarItems = useSidebarItems();
@@ -68,8 +117,9 @@ export default function BlogScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      setActiveKey("home");
-    }, [])
+      const tab = getActiveTab();
+      setActiveKey((tab as SidebarKey) || undefined);
+    }, [getActiveTab])
   );
 
   useEffect(() => {
@@ -98,14 +148,93 @@ export default function BlogScreen() {
       return;
     }
 
-    if (key === "inventory") {
-      navigation.navigate("Inventory");
-      return;
-    }
+    // Get current tab to determine navigation strategy
+    const currentTabName = getActiveTab();
 
-    if (key === "profile") {
-      navigation.navigate("Profile");
-      return;
+    // If we're in Feed or Discover stack, need to navigate to Home first
+    if (currentTabName !== "home") {
+      // Find the tab navigator by walking up the tree
+      let current: any = navigation;
+      let tabNav = null;
+
+      while (current) {
+        const parent = current.getParent?.();
+        if (!parent) break;
+
+        const state = parent.getState();
+        // Check if this parent has Home, Feed, Discover routes (it's the tab navigator)
+        if (state?.routeNames?.includes('Home') &&
+            state?.routeNames?.includes('Feed') &&
+            state?.routeNames?.includes('Discover')) {
+          tabNav = parent;
+          break;
+        }
+        current = parent;
+      }
+
+      if (tabNav) {
+        // Use CommonActions to navigate to nested screens in different tab
+        if (key === "inventory") {
+          tabNav.dispatch(
+            CommonActions.navigate({
+              name: "Home",
+              params: { screen: "Inventory" },
+            })
+          );
+          return;
+        }
+
+        if (key === "profile") {
+          tabNav.dispatch(
+            CommonActions.navigate({
+              name: "Home",
+              params: { screen: "Profile" },
+            })
+          );
+          return;
+        }
+
+        if (key === "events") {
+          tabNav.dispatch(
+            CommonActions.navigate({
+              name: "Home",
+              params: { screen: "Events" },
+            })
+          );
+          return;
+        }
+
+        if (key === "home") {
+          tabNav.dispatch(
+            CommonActions.navigate({
+              name: "Home",
+              params: { screen: "HomeMain" },
+            })
+          );
+          return;
+        }
+      }
+    } else {
+      // We're in Home stack, can navigate directly
+      if (key === "inventory") {
+        navigation.navigate("Inventory");
+        return;
+      }
+
+      if (key === "profile") {
+        navigation.navigate("Profile");
+        return;
+      }
+
+      if (key === "events") {
+        navigation.navigate("Events" as any);
+        return;
+      }
+
+      if (key === "home") {
+        navigation.navigate("HomeMain");
+        return;
+      }
     }
   };
 
