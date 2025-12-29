@@ -160,6 +160,7 @@ export default function DiscoverScreen() {
             event: item,
             onRsvpChange: (status) => handleRsvpChange(item.id, status)
           })}
+          onRsvpChange={(item, status) => handleRsvpChange(item.id, status)}
           onScroll={handleScroll}
           onEndReached={loadMoreEvents}
           isFetchingNextPage={isMoreEventsLoading}
