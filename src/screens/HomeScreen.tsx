@@ -138,6 +138,11 @@ export default function HomeScreen() {
       return;
     }
 
+    if (key === "notifications") {
+      navigation.navigate("Notifications" as never);
+      return;
+    }
+
     console.log("Sidebar selected:", key);
   };
 

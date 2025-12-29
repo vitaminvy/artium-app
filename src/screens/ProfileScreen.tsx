@@ -152,6 +152,11 @@ export default function ProfileScreen() {
       return;
     }
 
+    if (key === "notifications") {
+      navigation.navigate("Notifications" as never);
+      return;
+    }
+
     if (key === "profile") return;
     
     // console.log("Sidebar selected:", key);

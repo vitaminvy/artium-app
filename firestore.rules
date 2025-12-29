@@ -65,7 +65,7 @@
         allow update: if isSignedIn()
           && resource.data.organizerId == request.auth.uid
           && request.resource.data.organizerId == resource.data.organizerId;
-        allow delete: if false;
+        allow delete: if isSignedIn() && resource.data.organizerId == request.auth.uid;
       }
       match /posts/{postId} {
         allow read: if true;
@@ -115,6 +115,12 @@
           match /items/{itemId} {
             allow read, create, update, delete: if isOwner(userId);
           }
+        }
+
+        // Notifications - allow users to read/manage their own notifications
+        match /notifications/{notificationId} {
+          allow read: if isSignedIn() && request.auth.uid == userId;
+          allow create, update, delete: if isSignedIn() && request.auth.uid == userId;
         }
       }
 

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, View, Text, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { CompositeNavigationProp } from "@react-navigation/native";
 import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
@@ -26,6 +26,7 @@ import {
 import { useLogout } from "../domains/auth/hooks/useLogout";
 import { useProfileContext } from "../domains/user/contexts/ProfileContext";
 import { toggleEventRsvp } from "../domains/discover/services/eventService";
+import { navigate as rootNavigate } from "../app/navigation/navigationRef";
 
 // Import Tabs
 import DiscoverArtworksTab from "../domains/discover/components/tabs/DiscoverArtworksTab";
@@ -83,25 +84,29 @@ export default function DiscoverScreen() {
       logout();
       return;
     }
+
     if (key === "inventory") {
-      // Navigate to Home tab -> Inventory screen
       navigation.navigate("Home", { screen: "Inventory" } as any);
       return;
     }
+
     if (key === "profile") {
-      // Navigate to Home tab -> Profile screen
       navigation.navigate("Home", { screen: "Profile" } as any);
       return;
     }
+
     if (key === "events") {
-      // Navigate to Home tab -> Events screen
       navigation.navigate("Home", { screen: "Events" } as any);
       return;
     }
-    if (key === "home") {
-      // Navigate to Home tab
-      navigation.navigate("Home", {} as any);
+
+    if (key === "notifications") {
+      navigation.navigate("Home", { screen: "Notifications" } as any);
       return;
+    }
+
+    if (key === "home") {
+      navigation.navigate("Home", {} as any);
     }
   };
 
@@ -128,6 +133,11 @@ export default function DiscoverScreen() {
       setHidden(false);
     };
   }, [setHidden]);
+  useFocusEffect(
+    useCallback(() => {
+      setActiveKey("home");
+    }, [])
+  );
 
   const [showLocationSheet, setShowLocationSheet] = useState(false);
   const [locationText, setLocationText] = useState("Albuquerque, NM, USA");
@@ -138,10 +148,10 @@ export default function DiscoverScreen() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(96);
   const [activeKey, setActiveKey] = useState<SidebarKey>("home");
-  const { logout, showConfirmModal, onConfirmLogout, onCancelLogout, loading: logoutLoading } = useLogout();
+  const { logout } = useLogout();
   const handleRequireSignUp = useCallback(() => {
-    navigation.navigate("SignUp" as any);
-  }, [navigation]);
+    rootNavigate("SignUp");
+  }, []);
 
   const handleRsvpChange = useCallback(async (eventId: string, status: "none" | "going" | "maybe" | "notGoing") => {
     if (isGuest) {
