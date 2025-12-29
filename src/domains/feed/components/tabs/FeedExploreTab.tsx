@@ -12,6 +12,7 @@ type Props = {
   onToggleReshare: (post: FeedPost) => void;
   onPressComment: (post: FeedPost) => void;
   onPressCard?: (post: FeedPost) => void;
+  onPressQuote?: (quoteId: string) => void;
   onPressImage?: (images: { uri: string }[], index: number) => void;
   scrollHandler?: any;
   isTabActive?: boolean;
@@ -28,6 +29,7 @@ export default function FeedExploreTab({
   onToggleReshare,
   onPressComment,
   onPressCard,
+  onPressQuote,
   onPressImage,
   scrollHandler,
   isTabActive = true,
@@ -117,6 +119,7 @@ export default function FeedExploreTab({
           onPressReshare={onToggleReshare}
           onPressComment={onPressComment}
           onPressCard={onPressCard}
+          onPressQuote={onPressQuote}
           onPressImage={onPressImage}
           isVisible={hasVideo ? (isTabActive && isActive) : true}
           onAvatarLoad={(postId) => {

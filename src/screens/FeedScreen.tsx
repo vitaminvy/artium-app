@@ -93,6 +93,28 @@ export default function FeedScreen() {
     navigation.navigate("FeedDetail", { post });
   }, [navigation]);
 
+  const openQuote = React.useCallback((quoteId: string) => {
+    if (!quoteId) return;
+    const allPosts = [...explorePosts, ...followingPosts, ...myPosts];
+    const target = allPosts.find((p) => p.id === quoteId);
+    if (target) {
+      navigation.navigate("FeedDetail", { post: target });
+      return;
+    }
+    // Fallback: if not found locally, fetch from Firestore then open
+    // Lazy-load to avoid pulling every time
+    import("../domains/feed/services/feedService")
+      .then(({ getPostById }) => getPostById(quoteId))
+      .then((post) => {
+        if (post) {
+          navigation.navigate("FeedDetail", { post });
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to fetch quoted post:", err);
+      });
+  }, [explorePosts, followingPosts, myPosts, navigation]);
+
   const openComments = React.useCallback((post: FeedPost) => {
     setCommentTarget(post);
   }, []);
@@ -166,6 +188,7 @@ export default function FeedScreen() {
             onToggleReshare={openReshare}
             onPressComment={openComments}
             onPressCard={openDetail}
+            onPressQuote={openQuote}
             onPressImage={handleOpenViewer}
             scrollHandler={scrollHandler}
             isTabActive={tab === "explore"}
@@ -183,6 +206,7 @@ export default function FeedScreen() {
             onToggleReshare={openReshare}
             onPressComment={openComments}
             onPressCard={openDetail}
+            onPressQuote={openQuote}
             onPressImage={handleOpenViewer}
             scrollHandler={scrollHandler}
             isTabActive={tab === "following"}
@@ -198,6 +222,7 @@ export default function FeedScreen() {
             onToggleReshare={openReshare}
             onPressComment={openComments}
             onPressCard={openDetail}
+            onPressQuote={openQuote}
             onPressImage={handleOpenViewer}
             scrollHandler={scrollHandler}
             isTabActive={tab === "myFeed"}
