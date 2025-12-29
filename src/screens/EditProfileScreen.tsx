@@ -33,7 +33,7 @@ type NavigationProp = NativeStackNavigationProp<
 
 export default function EditProfileScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const { editProfile, updateProfile } = useProfileContext();
+  const { editProfile, updateProfile, isLoading } = useProfileContext();
   const {
     control,
     limits,
@@ -44,6 +44,8 @@ export default function EditProfileScreen() {
   } = useEditProfileForm(editProfile);
   
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [avatarLoaded, setAvatarLoaded] = useState(false);
+  const [headerHeight, setHeaderHeight] = useState(0);
   const pendingAction = useRef<any>(null);
   const isSaving = useRef(false);
 
@@ -52,6 +54,18 @@ export default function EditProfileScreen() {
   const lastNameRef = React.useRef<TextInput | null>(null);
   const phoneRef = React.useRef<TextInput | null>(null);
   const addressRef = React.useRef<TextInput | null>(null);
+
+  useEffect(() => {
+    if (isLoading) {
+      setAvatarLoaded(false);
+      return;
+    }
+    if (!editProfile.avatar) {
+      setAvatarLoaded(true);
+      return;
+    }
+    setAvatarLoaded(false);
+  }, [isLoading, editProfile.avatar]);
 
   // Intercept back navigation
   useEffect(() => {
@@ -126,11 +140,18 @@ export default function EditProfileScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View className="flex-1">
-        <EditProfileHeader
-          onBack={() => navigation.goBack()}
-          onSave={onSave}
-          saveDisabled={formState.isSubmitting || !formState.isDirty}
-        />
+        <View
+          onLayout={(event) =>
+            setHeaderHeight(event?.nativeEvent?.layout?.height ?? 0)
+          }
+          style={{ zIndex: 2 }}
+        >
+          <EditProfileHeader
+            onBack={() => navigation.goBack()}
+            onSave={onSave}
+            saveDisabled={formState.isSubmitting || !formState.isDirty}
+          />
+        </View>
 
         <ScrollView
           className="flex-1"
@@ -138,79 +159,94 @@ export default function EditProfileScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <EditProfileSection title={EDIT_PROFILE_LABELS.basicInfo}>
-            <Controller
-              control={control}
-              name="avatar"
-              render={({ field: { value, onChange } }) => (
-                <AvatarUploader
-                  value={value}
-                  onPick={pickImage}
-                  onClear={() => onChange(null)}
-                />
-              )}
-            />
+          {isLoading ? (
+            <EditProfileSkeleton />
+          ) : (
+            <EditProfileSection title={EDIT_PROFILE_LABELS.basicInfo}>
+              <Controller
+                control={control}
+                name="avatar"
+                render={({ field: { value, onChange } }) => (
+                  <AvatarUploader
+                    value={value}
+                    onPick={pickImage}
+                    onClear={() => onChange(null)}
+                    onImageLoad={() => setAvatarLoaded(true)}
+                  />
+                )}
+              />
 
-            <TextField
-              control={control}
-              name="username"
-              label={EDIT_PROFILE_LABELS.username}
-              required
-              maxLength={limits.username}
-              helperText={EDIT_PROFILE_LABELS.usernameHint}
-              rules={{ required: "Username is required" }}
-              inputRef={usernameRef}
-              returnKeyType="next"
-              blurOnSubmit={false}
-              onSubmitEditing={() => firstNameRef.current?.focus()}
-            />
+              <TextField
+                control={control}
+                name="username"
+                label={EDIT_PROFILE_LABELS.username}
+                required
+                maxLength={limits.username}
+                helperText={EDIT_PROFILE_LABELS.usernameHint}
+                rules={{ required: "Username is required" }}
+                inputRef={usernameRef}
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => firstNameRef.current?.focus()}
+              />
 
-            <TextField
-              control={control}
-              name="firstName"
-              label={EDIT_PROFILE_LABELS.firstName}
-              required
-              maxLength={limits.firstName}
-              rules={{ required: "First name is required" }}
-              inputRef={firstNameRef}
-              returnKeyType="next"
-              blurOnSubmit={false}
-              onSubmitEditing={() => lastNameRef.current?.focus()}
-            />
+              <TextField
+                control={control}
+                name="firstName"
+                label={EDIT_PROFILE_LABELS.firstName}
+                required
+                maxLength={limits.firstName}
+                rules={{ required: "First name is required" }}
+                inputRef={firstNameRef}
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => lastNameRef.current?.focus()}
+              />
 
-            <TextField
-              control={control}
-              name="lastName"
-              label={EDIT_PROFILE_LABELS.lastName}
-              maxLength={limits.lastName}
-              inputRef={lastNameRef}
-              returnKeyType="next"
-              blurOnSubmit={false}
-              onSubmitEditing={() => phoneRef.current?.focus()}
-            />
+              <TextField
+                control={control}
+                name="lastName"
+                label={EDIT_PROFILE_LABELS.lastName}
+                maxLength={limits.lastName}
+                inputRef={lastNameRef}
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => phoneRef.current?.focus()}
+              />
 
-            <PhoneField
-              control={control}
-              label={EDIT_PROFILE_LABELS.phoneNumber}
-              maxLength={limits.phoneNumber}
-              inputRef={phoneRef}
-              returnKeyType="next"
-              blurOnSubmit={false}
-              onSubmitEditing={() => addressRef.current?.focus()}
-            />
+              <PhoneField
+                control={control}
+                label={EDIT_PROFILE_LABELS.phoneNumber}
+                maxLength={limits.phoneNumber}
+                inputRef={phoneRef}
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => addressRef.current?.focus()}
+              />
 
-            <TextField
-              control={control}
-              name="address"
-              label={EDIT_PROFILE_LABELS.address}
-              maxLength={limits.address}
-              inputRef={addressRef}
-              returnKeyType="done"
-              onSubmitEditing={() => Keyboard.dismiss()}
-            />
-          </EditProfileSection>
+              <TextField
+                control={control}
+                name="address"
+                label={EDIT_PROFILE_LABELS.address}
+                maxLength={limits.address}
+                inputRef={addressRef}
+                returnKeyType="done"
+                onSubmitEditing={() => Keyboard.dismiss()}
+              />
+            </EditProfileSection>
+          )}
         </ScrollView>
       </View>
+
+      {!isLoading && !avatarLoaded ? (
+        <View
+          className="absolute left-0 right-0 bottom-0 bg-slate-50"
+          style={{ top: headerHeight, zIndex: 1 }}
+          pointerEvents="none"
+        >
+          <EditProfileSkeleton />
+        </View>
+      ) : null}
 
       {/* Exit Confirmation Modal */}
       <Modal
@@ -262,5 +298,25 @@ export default function EditProfileScreen() {
         </View>
       </Modal>
     </KeyboardAvoidingView>
+  );
+}
+
+function EditProfileSkeleton() {
+  return (
+    <View className="animate-pulse">
+      <View className="rounded-3xl bg-white p-5 border border-slate-200">
+        <View className="h-4 w-40 rounded bg-slate-200 mb-4" />
+        <View className="items-center mb-6">
+          <View className="h-28 w-28 rounded-full bg-slate-200" />
+        </View>
+        <View className="gap-4">
+          <View className="h-10 rounded-full bg-slate-200" />
+          <View className="h-10 rounded-full bg-slate-200" />
+          <View className="h-10 rounded-full bg-slate-200" />
+          <View className="h-10 rounded-full bg-slate-200" />
+          <View className="h-10 rounded-full bg-slate-200" />
+        </View>
+      </View>
+    </View>
   );
 }

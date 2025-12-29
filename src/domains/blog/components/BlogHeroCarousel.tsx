@@ -87,6 +87,7 @@ function HeroCard({
         style={{ width: "100%", height: "100%" }}
         contentFit="cover"
         cachePolicy="memory-disk"
+        transition={0}
       />
       <View className="absolute inset-0 bg-black/25" />
 
@@ -111,6 +112,8 @@ function HeroCard({
                   source={{ uri: item.authorAvatar }}
                   style={{ width: "100%", height: "100%" }}
                   contentFit="cover"
+                  cachePolicy="memory-disk"
+                  transition={0}
                 />
               </View>
               <View>

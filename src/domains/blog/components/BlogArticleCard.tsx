@@ -30,6 +30,8 @@ export default function BlogArticleCard({ item, onPress }: Props) {
           style={{ width: "100%", height: "100%", transform: [{ scale: 1.35 }] }}
           contentFit="cover"
           contentPosition="center"
+          cachePolicy="memory-disk"
+          transition={0}
         />
         <View
           className="absolute inset-0"
@@ -61,6 +63,8 @@ export default function BlogArticleCard({ item, onPress }: Props) {
               source={{ uri: item.authorAvatar }}
               style={{ width: "100%", height: "100%" }}
               contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={0}
             />
           </View>
           <View className="flex-1 flex-row items-center" style={{ columnGap: 8 }}>

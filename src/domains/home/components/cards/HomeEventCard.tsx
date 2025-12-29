@@ -53,7 +53,10 @@ function HomeEventCard({ item, onPress, width, height }: Props) {
             <Text className="text-[10px] font-semibold text-[#2563EB]">
               {month}
             </Text>
-            <Text className="text-[16px] font-extrabold text-slate-900 leading-4">
+            <Text
+              className="text-[16px] font-extrabold text-slate-900 mt-0.5"
+              style={{ lineHeight: 20 }}
+            >
               {day}
             </Text>
           </View>

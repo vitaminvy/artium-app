@@ -1,10 +1,9 @@
 import React, { useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
-import { Image } from "expo-image";
 import { PostMomentMedia } from "../types";
-import { CURRENT_USER } from "../constants";
 import { getInitials } from "../utils";
 import { MEDIA_CONFIG, UI_SIZES } from "../constants/media";
 import { FEED_MESSAGES } from "../constants/messages";
@@ -15,6 +14,11 @@ type Props = {
   onChangeText: (value: string) => void;
   onPickImage: () => void;
   onPickVideo: () => void;
+  author?: {
+    name: string;
+    handle: string;
+    avatar?: string | null;
+  };
 };
 
 type MediaButtonProps = {
@@ -46,18 +50,25 @@ export default function PostMomentEditor({
   onChangeText,
   onPickImage,
   onPickVideo,
+  author,
 }: Props) {
-  const initials = useMemo(() => getInitials(CURRENT_USER.name), []);
+  const displayName = author?.name?.trim() || "You";
+  const rawHandle = author?.handle?.trim() || "you";
+  const displayHandle = rawHandle.startsWith("@") ? rawHandle.slice(1) : rawHandle;
+  const hasAvatar = typeof author?.avatar === "string" && author.avatar.length > 0;
+  const initials = useMemo(() => getInitials(displayName), [displayName]);
 
   return (
     <View className="gap-4">
       <View className="flex-row items-center gap-3">
         <View className="h-11 w-11 rounded-full bg-slate-200 overflow-hidden items-center justify-center">
-          {CURRENT_USER.avatar ? (
+          {hasAvatar ? (
             <Image
-              source={{ uri: CURRENT_USER.avatar }}
-              className="h-full w-full"
+              source={{ uri: author?.avatar as string }}
+              style={{ width: "100%", height: "100%" }}
               contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={0}
             />
           ) : (
             <Text className="text-xs font-semibold text-slate-700">{initials}</Text>
@@ -65,9 +76,9 @@ export default function PostMomentEditor({
         </View>
         <View>
           <Text className="text-sm font-semibold text-slate-900">
-            {CURRENT_USER.name}
+            {displayName}
           </Text>
-          <Text className="text-xs text-slate-500">@{CURRENT_USER.handle}</Text>
+          <Text className="text-xs text-slate-500">@{displayHandle}</Text>
         </View>
       </View>
 

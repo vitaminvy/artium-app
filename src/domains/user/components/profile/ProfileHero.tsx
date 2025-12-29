@@ -1,19 +1,38 @@
-import React from "react";
-import { View, Text, Image } from "react-native";
+import React, { useCallback, useEffect, useRef } from "react";
+import { View, Text } from "react-native";
+import { Image } from "expo-image";
 import { PROFILE_ACCENT } from "../../constants/profile";
 import { ProfileStats, ProfileUser } from "../../types";
 
 type Props = {
   user: ProfileUser;
   stats: ProfileStats;
+  onAvatarLoad?: () => void;
 };
 
-export default function ProfileHero({ user, stats }: Props) {
+export default function ProfileHero({ user, stats, onAvatarLoad }: Props) {
   const initial = user.avatarLabel ?? user.name?.charAt(0) ?? "?";
   const avatarColor = user.avatarColor ?? PROFILE_ACCENT;
   const hasAvatar = typeof user.avatarUri === "string" && user.avatarUri.length > 0;
   const showLogo = user.avatarUri === null;
   const fallbackLogo = require("../../../../../assets/logos/logo-light-mode.png");
+  const notifiedRef = useRef(false);
+
+  useEffect(() => {
+    notifiedRef.current = false;
+  }, [user.avatarUri]);
+
+  const notifyAvatarLoad = useCallback(() => {
+    if (!onAvatarLoad || notifiedRef.current) return;
+    notifiedRef.current = true;
+    onAvatarLoad();
+  }, [onAvatarLoad]);
+
+  useEffect(() => {
+    if (!hasAvatar) {
+      notifyAvatarLoad();
+    }
+  }, [hasAvatar, notifyAvatarLoad]);
 
   return (
     <View className="items-center pt-6 pb-4 px-6">
@@ -25,13 +44,19 @@ export default function ProfileHero({ user, stats }: Props) {
           <Image
             source={{ uri: user.avatarUri as string }}
             style={{ width: "100%", height: "100%" }}
-            resizeMode="cover"
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={0}
+            onLoadEnd={notifyAvatarLoad}
+            onError={notifyAvatarLoad}
           />
         ) : showLogo ? (
           <Image
             source={fallbackLogo}
             style={{ width: "65%", height: "65%" }}
-            resizeMode="contain"
+            contentFit="contain"
+            cachePolicy="memory-disk"
+            transition={0}
           />
         ) : (
           <Text className="text-4xl font-extrabold text-slate-900">

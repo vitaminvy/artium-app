@@ -1,8 +1,12 @@
 import React from "react";
-import { View, Text, Image, Pressable } from "react-native";
+import { View, Text, Pressable, GestureResponderEvent } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { ArtistProfile } from "../../types";
 import { navigateToUserProfile } from "../../../../shared/utils/navigateToUserProfile";
+import { HOME_COLORS } from "../../../home/constants";
+import { useAuth } from "@/domains/auth/contexts/AuthContext";
+import { useFollow } from "@/domains/user/hooks/useFollow";
 
 const cardShadow = {
   shadowColor: "#000",
@@ -15,9 +19,20 @@ const cardShadow = {
 type Props = {
   item: ArtistProfile;
   onPress?: () => void;
+  isFollowing?: boolean;
+  onToggleFollow?: (id: string) => void;
 };
 
-export default function ProfileCard({ item, onPress }: Props) {
+export default function ProfileCard({ item, onPress, isFollowing = false, onToggleFollow }: Props) {
+  const { currentUser } = useAuth();
+  const { isFollowing: isFollowingFromHook, toggleFollow } = useFollow(
+    currentUser?.uid,
+    item.id
+  );
+
+  // Use hook's isFollowing state if no prop is provided
+  const actualIsFollowing = isFollowing ?? isFollowingFromHook;
+
   const handlePress = () => {
     if (onPress) {
       onPress();
@@ -26,10 +41,47 @@ export default function ProfileCard({ item, onPress }: Props) {
     }
   };
 
+  const handleFollowPress = (e: GestureResponderEvent) => {
+    e.stopPropagation?.();
+    if (onToggleFollow) {
+      onToggleFollow(item.id);
+    } else {
+      toggleFollow();
+    }
+  };
+
+  const FollowIcon = actualIsFollowing ? (
+    <View style={{ width: 16, height: 16 }}>
+      <Ionicons name="person-outline" size={16} color={HOME_COLORS.TEXT_PRIMARY} />
+      <View
+        style={{
+          position: "absolute",
+          right: -2,
+          bottom: -2,
+          width: 10,
+          height: 10,
+          borderRadius: 999,
+          backgroundColor: HOME_COLORS.VERIFIED_BADGE,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Ionicons name="checkmark" size={7} color={HOME_COLORS.WHITE} />
+      </View>
+    </View>
+  ) : (
+    <Ionicons name="person-add-outline" size={16} color={HOME_COLORS.TEXT_PRIMARY} />
+  );
   const content = (
-    <View pointerEvents="none" className="items-center">
+    <View className="items-center">
       <View className="h-20 w-20 rounded-full overflow-hidden bg-slate-200">
-        <Image source={{ uri: item.avatar }} className="h-full w-full" />
+        <Image
+          source={{ uri: item.avatar }}
+          style={{ width: "100%", height: "100%" }}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={0}
+        />
       </View>
       <Text className="mt-3 text-base font-semibold text-slate-900 text-center">
         {item.name}
@@ -43,8 +95,18 @@ export default function ProfileCard({ item, onPress }: Props) {
         ) : null}
       </View>
 
-      <Pressable className="mt-4 px-4 py-2 rounded-full bg-slate-900 active:opacity-90">
-        <Text className="text-xs font-semibold text-white">Follow</Text>
+      <Pressable
+        className="mt-4 flex-row items-center gap-2 rounded-full border px-4 py-2 active:opacity-90"
+        style={{
+          borderColor: actualIsFollowing ? HOME_COLORS.FOLLOWING_BORDER : HOME_COLORS.FOLLOW_BORDER,
+          backgroundColor: actualIsFollowing ? HOME_COLORS.FOLLOWING_BG : HOME_COLORS.FOLLOW_BG,
+        }}
+        onPress={handleFollowPress}
+      >
+        {FollowIcon}
+        <Text className="text-[12px] font-semibold text-slate-900">
+          {actualIsFollowing ? "Following" : "Follow"}
+        </Text>
       </Pressable>
     </View>
   );

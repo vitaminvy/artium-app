@@ -19,16 +19,42 @@ export default function ArtworkDetails({ detail }: ArtworkDetailsProps) {
   const [showDimensionConvert, setShowDimensionConvert] = useState(false);
   const [showWeightConvert, setShowWeightConvert] = useState(false);
 
-  const dimensionInLabel = `${detail.dimension.h.toFixed(
+  const dimensionUnit = detail.dimension.unit?.trim() || "in";
+  const normalizedDimensionUnit = dimensionUnit.toLowerCase();
+  const dimensionLabel = `${detail.dimension.h.toFixed(
     2
-  )} × ${detail.dimension.w.toFixed(2)} × ${detail.dimension.d.toFixed(2)} in`;
-  const dimensionCmLabel = `${(detail.dimension.h * 2.54).toFixed(2)} × ${(
-    detail.dimension.w * 2.54
-  ).toFixed(2)} × ${(detail.dimension.d * 2.54).toFixed(2)} cm`;
-  const weightLbLabel = detail.weight;
-  const weightKgLabel = `${(parseFloat(detail.weight) * 0.45359237).toFixed(
+  )} × ${detail.dimension.w.toFixed(2)} × ${detail.dimension.d.toFixed(
     2
-  )} kg`;
+  )} ${dimensionUnit}`;
+  const dimensionConvertFactor = normalizedDimensionUnit === "cm" ? 1 / 2.54 : 2.54;
+  const dimensionConvertUnit = normalizedDimensionUnit === "cm" ? "in" : "cm";
+  const dimensionConvertLabel = `${(
+    detail.dimension.h * dimensionConvertFactor
+  ).toFixed(2)} × ${(detail.dimension.w * dimensionConvertFactor).toFixed(
+    2
+  )} × ${(detail.dimension.d * dimensionConvertFactor).toFixed(
+    2
+  )} ${dimensionConvertUnit}`;
+
+  const weightSource = detail.weight?.trim() || "";
+  const weightValue = Number.isFinite(detail.weightValue)
+    ? (detail.weightValue as number)
+    : (() => {
+        const match = weightSource.match(/([\d.]+)/);
+        return match ? Number(match[1]) : 0;
+      })();
+  const weightUnit =
+    detail.weightUnit || weightSource.replace(/[\d.\s]/g, "").trim();
+  const normalizedWeightUnit = weightUnit.toLowerCase();
+  const isKg = normalizedWeightUnit.startsWith("kg");
+  const isLb = normalizedWeightUnit.startsWith("lb");
+  const weightLabel =
+    weightSource || (weightValue ? `${weightValue} ${weightUnit}`.trim() : "");
+  const weightConvertLabel = isKg
+    ? `${(weightValue / 0.45359237).toFixed(2)} lb`
+    : isLb
+      ? `${(weightValue * 0.45359237).toFixed(2)} kg`
+      : weightLabel;
 
   return (
     <>
@@ -80,17 +106,17 @@ export default function ArtworkDetails({ detail }: ArtworkDetailsProps) {
         <View className="flex-row gap-6">
           <InfoBlockWithConvert
             label="Dimension: (H X W X D)"
-            value={`${dimensionInLabel}`}
+            value={dimensionLabel}
             convertLabel="This is equivalent to:"
-            convertValue={dimensionCmLabel}
+            convertValue={dimensionConvertLabel}
             visible={showDimensionConvert}
             onToggle={() => setShowDimensionConvert((prev) => !prev)}
           />
           <InfoBlockWithConvert
             label="Weight:"
-            value={weightLbLabel}
+            value={weightLabel}
             convertLabel="This is equivalent to:"
-            convertValue={weightKgLabel}
+            convertValue={weightConvertLabel}
             visible={showWeightConvert}
             onToggle={() => setShowWeightConvert((prev) => !prev)}
           />

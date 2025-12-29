@@ -9,13 +9,15 @@ import HomeFollowingCard from "../domains/home/components/cards/HomeFollowingCar
 import { useProfileContext } from "../domains/user/contexts/ProfileContext";
 import type { HomeFollowingProfile } from "../domains/home/types";
 import { navigateToUserProfile } from "../shared/utils/navigateToUserProfile";
+import { useAuth } from "../domains/auth/contexts/AuthContext";
 
 export default function PopularArtistsScreen() {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { popularArtists } = useHome();
-  const { followingIds, toggleFollow } = useProfileContext();
+  const { isFollowing, toggleFollow } = useProfileContext();
+  const { currentUser } = useAuth();
   const cardWidth = Math.round((width - 16 * 2 - 12) / 2);
 
   const renderItem = useCallback(
@@ -23,13 +25,13 @@ export default function PopularArtistsScreen() {
       <View style={{ width: cardWidth, marginBottom: 12 }}>
         <HomeFollowingCard
           item={item}
-          isFollowing={followingIds.includes(item.id)}
+          isFollowing={isFollowing(item.id)}
           onToggleFollow={toggleFollow}
           onPress={() => navigateToUserProfile(item.id)}
         />
       </View>
     ),
-    [cardWidth, followingIds, toggleFollow]
+    [cardWidth, isFollowing, toggleFollow]
   );
 
   const keyExtractor = useCallback((item: HomeFollowingProfile) => item.id, []);
@@ -52,7 +54,7 @@ export default function PopularArtistsScreen() {
       </View>
 
       <FlatList
-        data={popularArtists}
+        data={popularArtists.filter((item) => item.id !== currentUser?.uid)}
         keyExtractor={keyExtractor}
         numColumns={2}
         initialNumToRender={8}

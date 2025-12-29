@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, Image } from "react-native";
+import { View, Text } from "react-native";
+import { Image } from "expo-image";
 import { InspirationArticle } from "../../types";
 
 const cardShadow = {
@@ -26,7 +27,9 @@ export default function InspirationCard({ item }: { item: InspirationArticle }) 
       <Image
         source={{ uri: item.image }}
         className="h-44 w-full"
-        resizeMode="cover"
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        transition={0}
       />
       <View className="px-4 py-4 gap-2">
         <Text className="text-xs font-semibold text-slate-500">

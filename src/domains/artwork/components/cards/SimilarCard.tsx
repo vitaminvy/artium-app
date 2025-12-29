@@ -1,6 +1,9 @@
 import React from "react";
-import { View, Text, Image, Pressable, ViewStyle } from "react-native";
+import { View, Text, Pressable, ViewStyle } from "react-native";
+import { Image } from "expo-image";
 import { Artwork } from "../../../discover/types";
+
+const FALLBACK_AVATAR = require("../../../../../assets/logos/logo-light-mode.png");
 
 const cardShadow: ViewStyle = {
   shadowColor: "#000",
@@ -25,17 +28,20 @@ export default function SimilarCard({ item, onPress }: SimilarCardProps) {
       <Image
         source={{ uri: item.image }}
         className="h-44 w-full rounded-t-2xl"
-        resizeMode="cover"
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        transition={0}
       />
       <View className="px-3 py-3 gap-1">
         <View className="flex-row items-center gap-2">
           <View className="h-6 w-6 rounded-full bg-slate-200 overflow-hidden">
-            {item.artistAvatar ? (
-              <Image
-                source={{ uri: item.artistAvatar }}
-                className="h-full w-full"
-              />
-            ) : null}
+            <Image
+              source={item.artistAvatar ? { uri: item.artistAvatar } : FALLBACK_AVATAR}
+              style={{ width: "100%", height: "100%" }}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={0}
+            />
           </View>
           <Text
             className="text-xs font-semibold text-slate-700"

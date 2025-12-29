@@ -11,6 +11,8 @@ import PostMomentPreview from "./PostMomentPreview";
 import { PostMomentMedia } from "../types";
 import { ANIMATION_CONFIG, MEDIA_CONFIG } from "../constants/media";
 import { FEED_MESSAGES } from "../constants/messages";
+import { useProfileContext } from "@/domains/user/contexts/ProfileContext";
+import { useAuth } from "@/domains/auth/contexts/AuthContext";
 
 type Props = {
   visible: boolean;
@@ -44,9 +46,39 @@ export default function PostMomentSheet({
   isVideoActive,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const { profile } = useProfileContext();
+  const { currentUser } = useAuth();
   const sheetRef = useRef<BottomSheetModal>(null);
   const snapPoints = useMemo(() => [...ANIMATION_CONFIG.MOMENT_SHEET_SNAP_POINTS], []);
   const blurOpacity = useSharedValue(0);
+  const author = useMemo(() => {
+    if (!currentUser) {
+      return {
+        name: "You",
+        handle: "you",
+        avatar: undefined,
+      };
+    }
+    const name =
+      profile.user.name ||
+      currentUser.displayName ||
+      currentUser.email ||
+      "You";
+    const rawHandle =
+      profile.user.handle ||
+      (currentUser.email ? currentUser.email.split("@")[0] : "you");
+    const handle = rawHandle.startsWith("@") ? rawHandle.slice(1) : rawHandle;
+    const profileAvatar =
+      typeof profile.user.avatarUri === "string" && profile.user.avatarUri.length > 0
+        ? profile.user.avatarUri
+        : undefined;
+    const authAvatar =
+      typeof currentUser.photoURL === "string" && currentUser.photoURL.length > 0
+        ? currentUser.photoURL
+        : undefined;
+    const avatar = profileAvatar ?? authAvatar;
+    return { name, handle, avatar };
+  }, [currentUser, profile.user.avatarUri, profile.user.handle, profile.user.name]);
 
   useEffect(() => {
     blurOpacity.value = withTiming(visible ? 1 : 0, {
@@ -132,6 +164,7 @@ export default function PostMomentSheet({
             onChangeText={onChangeText}
             onPickImage={onPickImage}
             onPickVideo={onPickVideo}
+            author={author}
           />
 
           <PostMomentPreview

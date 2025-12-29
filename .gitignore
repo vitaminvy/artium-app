@@ -42,3 +42,7 @@ GoogleService-Info.plist
 /ios
 /android
 serviceAccount.json
+
+# Gemini context file
+GEMINI.md
+AGENTS.md

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Image,
   Keyboard,
   Modal,
   Pressable,
@@ -12,6 +11,7 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
@@ -311,7 +311,9 @@ export default function CheckoutScreen() {
               <Image
                 source={{ uri: artworkImage }}
                 className="h-20 w-20 rounded-2xl bg-slate-100"
-                resizeMode="cover"
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={0}
               />
               <View className="flex-1">
                 <Text className="text-base font-semibold text-slate-900">

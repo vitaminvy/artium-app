@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,8 +22,8 @@ import GuestList from "../domains/events/components/eventDetail/GuestList";
 import type { EventItem } from "../domains/discover/types";
 import type { EventDetail } from "../domains/events/types";
 import { getEventById, fetchEventGuestCounts, fetchEventGuests } from "../domains/discover/services/eventService";
-import Loader from "../shared/components/Loader";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
+import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 
 type NavigationProp = NativeStackNavigationProp<HomeStackParamList, "EventDetail">;
 type RsvpStatus = "none" | "going" | "maybe" | "notGoing";
@@ -32,6 +32,8 @@ export default function EventDetailScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute();
   const insets = useSafeAreaInsets();
+  const { setHidden } = useTabBarVisibility();
+  const initialHeaderHeight = Math.max(insets.top + 60, 60);
   const params = route.params as
     | { id?: string; initialRsvp?: RsvpStatus; onRsvpChange?: (status: RsvpStatus) => void; event?: EventItem }
     | undefined;
@@ -42,6 +44,7 @@ export default function EventDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [headerHeight, setHeaderHeight] = useState(initialHeaderHeight);
 
   const fetchDetail = useCallback(
     async (showLoader: boolean) => {
@@ -123,6 +126,13 @@ export default function EventDetailScreen() {
     fetchDetail(true);
   }, [fetchDetail]);
 
+  useFocusEffect(
+    useCallback(() => {
+      setHidden(true);
+      return () => setHidden(false);
+    }, [setHidden])
+  );
+
   const [showGuests, setShowGuests] = useState(false);
   const [rsvpStatus, setRsvpStatus] = useState<RsvpStatus>(params?.initialRsvp ?? "none");
 
@@ -163,8 +173,23 @@ export default function EventDetailScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-white pt-12">
-        <Loader />
+      <View className="flex-1 bg-white">
+        <View style={{ zIndex: 2 }}>
+          <EventHeader
+            title="EVENT DETAIL"
+            onPressBack={() => {
+              if (navigation.canGoBack()) navigation.goBack();
+              else navigation.navigate("HomeMain");
+            }}
+            onLayout={(event) => {
+              const nextHeight = event?.nativeEvent?.layout?.height;
+              if (nextHeight && nextHeight !== headerHeight) {
+                setHeaderHeight(nextHeight);
+              }
+            }}
+          />
+        </View>
+        <EventDetailSkeleton />
       </View>
     );
   }
@@ -181,13 +206,21 @@ export default function EventDetailScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      <EventHeader
-        title="EVENT DETAIL"
-        onPressBack={() => {
-          if (navigation.canGoBack()) navigation.goBack();
-          else navigation.navigate("HomeMain");
-        }}
-      />
+      <View style={{ zIndex: 2 }}>
+        <EventHeader
+          title="EVENT DETAIL"
+          onPressBack={() => {
+            if (navigation.canGoBack()) navigation.goBack();
+            else navigation.navigate("HomeMain");
+          }}
+          onLayout={(event) => {
+            const nextHeight = event?.nativeEvent?.layout?.height;
+            if (nextHeight && nextHeight !== headerHeight) {
+              setHeaderHeight(nextHeight);
+            }
+          }}
+        />
+      </View>
 
       <ScrollView
         className="flex-1"
@@ -245,6 +278,31 @@ export default function EventDetailScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
+    </View>
+  );
+}
+
+function EventDetailSkeleton() {
+  return (
+    <View className="flex-1 bg-white animate-pulse">
+      <View className="px-4 pt-4 gap-4">
+        <View className="h-56 rounded-3xl bg-slate-200" />
+        <View className="rounded-3xl border border-slate-200 bg-white p-5 gap-3">
+          <View className="h-4 w-24 rounded bg-slate-200" />
+          <View className="h-3 w-40 rounded bg-slate-200" />
+          <View className="h-3 w-48 rounded bg-slate-200" />
+          <View className="h-3 w-32 rounded bg-slate-200" />
+          <View className="mt-2 h-3 w-28 rounded bg-slate-200" />
+          <View className="h-3 w-full rounded bg-slate-200" />
+          <View className="h-3 w-5/6 rounded bg-slate-200" />
+        </View>
+        <View className="rounded-3xl border border-slate-200 bg-white p-5 gap-3">
+          <View className="h-4 w-20 rounded bg-slate-200" />
+          <View className="h-10 rounded-full bg-slate-200" />
+          <View className="h-10 rounded-full bg-slate-200" />
+          <View className="h-10 rounded-full bg-slate-200" />
+        </View>
+      </View>
     </View>
   );
 }

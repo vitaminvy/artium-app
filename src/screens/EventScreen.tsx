@@ -6,12 +6,17 @@ import {
   View,
   Text,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import Sidebar from "../shared/components/Sidebar";
-import { useSidebarItems, type SidebarKey } from "../shared/hooks/useSidebar";
+import {
+  SidebarActionKey,
+  useSidebarItems,
+  type SidebarKey,
+} from "../shared/hooks/useSidebar";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
 
@@ -22,6 +27,8 @@ import DiscoverEventsSection from "../domains/events/components/sections/Discove
 import EventHeader from "../domains/events/components/ui/EventHeader";
 import CreateEventModal from "../domains/events/components/modals/CreateEventModal";
 import { createEvent } from "../domains/discover/services/eventService";
+import { useLogout } from "../domains/auth/hooks/useLogout";
+import { LogoutConfirmModal } from "../domains/auth/components/LogoutConfirmModal";
 
 type NavigationProp = NativeStackNavigationProp<HomeStackParamList, "Events">;
 
@@ -35,14 +42,24 @@ export default function EventScreen() {
   const [activeKey, setActiveKey] = useState<SidebarKey>("events");
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const screenPadding = 16;
   const lastOffset = useRef(0);
   const yourLayoutRef = useRef<{ y: number; height: number }>({
     y: 0,
     height: 0,
   });
-  const toastTimer = useRef<NodeJS.Timeout | null>(null);
+  const showToast = useCallback((text: string) => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    setToastMessage(text);
+    toastTimerRef.current = setTimeout(() => {
+      setToastMessage(null);
+      toastTimerRef.current = null;
+    }, 2400);
+  }, []);
 
   const {
     hostingEvents,
@@ -91,8 +108,9 @@ export default function EventScreen() {
   useEffect(
     () => () => {
       setHidden(false);
-      if (toastTimer.current) {
-        clearTimeout(toastTimer.current);
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+        toastTimerRef.current = null;
       }
     },
     [setHidden]
@@ -112,10 +130,21 @@ export default function EventScreen() {
     [setHidden]
   );
 
-  const handleSidebarSelect = (key: SidebarKey | "more") => {
+  const {
+    logout,
+    loading: logoutLoading,
+    showConfirmModal,
+    onConfirmLogout,
+    onCancelLogout,
+  } = useLogout();
+
+  const handleSidebarSelect = (key: SidebarActionKey) => {
     setSidebarOpen(false);
 
-    if (key === "more") return;
+    if (key === "logout") {
+      logout();
+      return;
+    }
 
     if (key === "home") {
       if (navigation.popToTop) {
@@ -156,13 +185,9 @@ export default function EventScreen() {
   const handleRsvpChange = useCallback(
     (id: string, status: "none" | "going" | "maybe" | "notGoing") => {
       setRsvpStatus(id, status);
-      if (toastTimer.current) {
-        clearTimeout(toastTimer.current);
-      }
-      setToastMessage("Updated successfully");
-      toastTimer.current = setTimeout(() => setToastMessage(null), 1200);
+      showToast("Updated successfully");
     },
-    [setRsvpStatus]
+    [setRsvpStatus, showToast]
   );
 
   const handleOpenEvent = useCallback(
@@ -209,14 +234,41 @@ export default function EventScreen() {
             navigation.navigate("HomeMain");
           }
         }}
+        onPressSidebar={() => setSidebarOpen((prev) => !prev)}
+        isSidebarOpen={sidebarOpen}
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
       />
+
+      {toastMessage ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            left: screenPadding,
+            right: screenPadding,
+            top: Math.max(headerHeight - 6, 24),
+            zIndex: 30,
+            elevation: 8,
+          }}
+        >
+          <View className="rounded-2xl border border-[#0B73FF] bg-white px-4 py-3 shadow-lg shadow-[#0B73FF]/30">
+            <View className="flex-row items-center gap-2">
+              <View className="h-8 w-8 rounded-full bg-[#E0F2FE] items-center justify-center">
+                <Ionicons name="checkmark-done" size={18} color="#0B73FF" />
+              </View>
+              <Text className="text-sm font-semibold text-slate-900 flex-1">
+                {toastMessage}
+              </Text>
+            </View>
+          </View>
+        </View>
+      ) : null}
 
       <KeyboardAwareScrollView
         ref={scrollRef}
         className="flex-1"
         contentContainerStyle={{
-          paddingHorizontal: 16,
+          paddingHorizontal: screenPadding,
           paddingTop: 16,
           paddingBottom: 24 + tabBarHeight,
           rowGap: 18,
@@ -301,34 +353,23 @@ export default function EventScreen() {
           onClose={() => setShowCreateEvent(false)}
           onCreate={async (event) => {
             try {
-              setIsCreating(true);
               const saved = await createEvent(event);
               addHostedEvent(saved);
-              setShowCreateEvent(false);
-              setToastMessage("Event created");
-              toastTimer.current = setTimeout(() => setToastMessage(null), 1200);
+              showToast("Event created");
+              return true;
             } catch (e) {
-              setToastMessage("Failed to create event");
-              toastTimer.current = setTimeout(() => setToastMessage(null), 1500);
-            } finally {
-              setIsCreating(false);
+              showToast("Failed to create event");
+              return false;
             }
           }}
         />
 
-        {toastMessage ? (
-        <View
-          pointerEvents="none"
-          className="absolute left-0 right-0 items-center"
-          style={{ bottom: 24 + tabBarHeight }}
-        >
-          <View className="px-4 py-2 rounded-full bg-black/80">
-            <Text className="text-[13px] font-semibold text-white">
-              {toastMessage}
-            </Text>
-          </View>
-        </View>
-      ) : null}
+      <LogoutConfirmModal
+        visible={showConfirmModal}
+        onConfirm={onConfirmLogout}
+        onCancel={onCancelLogout}
+        loading={logoutLoading}
+      />
     </View>
   );
 }

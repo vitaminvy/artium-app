@@ -44,14 +44,16 @@ export default function DiscoverNearbyTab({
 
   // Render Helpers
   const renderArtwork = ({ item }: ListRenderItemInfo<Artwork>) => (
-    <ArtworkCard
-      item={item}
-      onPress={() =>
-        onCardPress
-          ? onCardPress(item)
-          : (navigation.navigate as any)("ArtworkDetail", { id: item.id })
-      }
-    />
+    <View className="flex-1">
+      <ArtworkCard
+        item={item}
+        onPress={() =>
+          onCardPress
+            ? onCardPress(item)
+            : (navigation.navigate as any)("ArtworkDetail", { id: item.id })
+        }
+      />
+    </View>
   );
 
   const renderProfile = ({ item }: ListRenderItemInfo<ArtistProfile>) => (

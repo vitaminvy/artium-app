@@ -34,6 +34,8 @@ export default function EventHeroCard({
   const [localRsvp, setLocalRsvp] = useState<RsvpStatus>(initialRsvp);
   const [openMenu, setOpenMenu] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
+  const hasImage = typeof event.image === "string" && event.image.trim().length > 0;
+  const [imageLoaded, setImageLoaded] = useState(!hasImage);
 
   // Keep local state in sync with controlled prop or updated initial value
   useEffect(() => {
@@ -43,6 +45,14 @@ export default function EventHeroCard({
       setLocalRsvp(initialRsvp);
     }
   }, [rsvp, initialRsvp]);
+
+  useEffect(() => {
+    if (!hasImage) {
+      setImageLoaded(true);
+    } else {
+      setImageLoaded(false);
+    }
+  }, [hasImage, event.image]);
 
   const displayedRsvp = rsvp ?? localRsvp;
 
@@ -65,13 +75,24 @@ export default function EventHeroCard({
   };
 
   return (
-    <View className="rounded-3xl bg-white border border-slate-200 overflow-hidden">
+    <View className="rounded-3xl bg-white border border-slate-200 overflow-hidden relative">
       <View className="relative">
-        <Image
-          source={{ uri: event.image }}
-          className="h-56 w-full bg-slate-100"
-          resizeMode="cover"
-        />
+        {hasImage ? (
+          <View className="relative">
+            <Image
+              source={{ uri: event.image }}
+              className="h-56 w-full bg-slate-200"
+              resizeMode="cover"
+              onLoad={() => setImageLoaded(true)}
+              onError={() => setImageLoaded(true)}
+            />
+            {!imageLoaded && (
+              <View className="absolute inset-0 bg-slate-200 animate-pulse" />
+            )}
+          </View>
+        ) : (
+          <View className="h-56 w-full bg-slate-200" />
+        )}
         <View className="absolute top-3 right-3 bg-white rounded-2xl px-2 py-2 items-center shadow-sm">
           <View className="rounded-full bg-[#0B73FF] px-2 py-0.5">
             <Text className="text-[11px] font-semibold text-white">{month}</Text>
