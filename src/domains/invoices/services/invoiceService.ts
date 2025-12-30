@@ -4,7 +4,6 @@ import {
   getDoc,
   getDocs,
   increment,
-  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -43,7 +42,7 @@ const toMillis = (value: any) => {
 const mapInvoice = (id: string, data: any): Invoice => ({
   id,
   invoiceNumber: data.invoiceNumber,
-  status: data.status,
+  status: data.status ?? "draft",
   deliveryMethod: data.deliveryMethod,
   shippingAddress: data.shippingAddress,
   payment: data.payment
@@ -53,6 +52,8 @@ const mapInvoice = (id: string, data: any): Invoice => ({
         paidAt: toMillis(data.payment.paidAt),
       }
     : undefined,
+  isActive: data.isActive ?? true,
+  paidAt: toMillis(data.paidAt),
   sellerId: data.sellerId,
   sellerSnapshot: data.sellerSnapshot,
   buyer: data.buyer,
@@ -80,6 +81,7 @@ export const createInvoiceDraft = async (
   await setDoc(docRef, {
     status: "draft",
     invoiceNumber,
+    isActive: true,
     sellerId,
     sellerSnapshot,
     buyer,
@@ -127,9 +129,11 @@ export const fetchInvoicesBySeller = async (
 ): Promise<Invoice[]> => {
   const q = query(
     collection(firestore, INVOICES_COLLECTION),
-    where("sellerId", "==", sellerId),
-    orderBy("createdAt", "desc")
+    where("sellerId", "==", sellerId)
   );
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((docSnap) => mapInvoice(docSnap.id, docSnap.data()));
+  return snapshot.docs
+    .map((docSnap) => mapInvoice(docSnap.id, docSnap.data()))
+    .filter((invoice) => invoice.isActive !== false)
+    .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
 };

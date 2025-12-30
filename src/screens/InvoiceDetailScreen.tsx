@@ -4,6 +4,7 @@ import {
   Alert,
   ImageBackground,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -22,7 +23,7 @@ import { createEmptyAddress } from "../domains/checkout/constants";
 import { AddressSheet } from "../domains/checkout/components/sheets/AddressSheet";
 import type { AddressForm } from "../domains/checkout/types";
 import { firestore, functions } from "../configs/firebase";
-import { doc, onSnapshot, Timestamp } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, Timestamp } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import * as WebBrowser from "expo-web-browser";
 
@@ -80,7 +81,7 @@ const toMillis = (value: any) => {
 const mapInvoiceData = (id: string, data: any): Invoice => ({
   id,
   invoiceNumber: data.invoiceNumber,
-  status: data.status,
+  status: data.status ?? "draft",
   deliveryMethod: data.deliveryMethod,
   shippingAddress: data.shippingAddress,
   payment: data.payment
@@ -90,6 +91,8 @@ const mapInvoiceData = (id: string, data: any): Invoice => ({
         paidAt: toMillis(data.payment.paidAt),
       }
     : undefined,
+  isActive: data.isActive ?? true,
+  paidAt: toMillis(data.paidAt),
   sellerId: data.sellerId,
   sellerSnapshot: data.sellerSnapshot,
   buyer: data.buyer,
@@ -118,7 +121,9 @@ export default function InvoiceDetailScreen() {
   );
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [paying, setPaying] = useState(false);
+  const paidHandledRef = useRef(false);
   const { setHidden } = useTabBarVisibility();
   const addressSheetRef = useRef<BottomSheetModal>(null);
   const [addressByMethod, setAddressByMethod] = useState<
@@ -161,6 +166,7 @@ export default function InvoiceDetailScreen() {
   const invoiceId = (route.params as any)?.invoiceId as string | undefined;
 
   useEffect(() => {
+    paidHandledRef.current = false;
     if (!invoiceId) {
       setLoading(false);
       return;
@@ -185,6 +191,22 @@ export default function InvoiceDetailScreen() {
       }
     );
     return () => unsubscribe();
+  }, [invoiceId]);
+
+  const handleRefresh = useCallback(async () => {
+    if (!invoiceId) return;
+    setRefreshing(true);
+    try {
+      const invoiceRef = doc(firestore, "invoices", invoiceId);
+      const snapshot = await getDoc(invoiceRef);
+      if (snapshot.exists()) {
+        setInvoice(mapInvoiceData(snapshot.id, snapshot.data()));
+      }
+    } catch (err) {
+      console.error("Failed to refresh invoice:", err);
+    } finally {
+      setRefreshing(false);
+    }
   }, [invoiceId]);
 
   useEffect(() => {
@@ -299,7 +321,15 @@ export default function InvoiceDetailScreen() {
     return invoice.invoiceNumber || formatInvoiceNumber(invoice.id);
   }, [invoice?.id, invoice?.invoiceNumber]);
 
-  const isPaid = invoice?.payment?.status === "paid";
+  const isPaid =
+    invoice?.status === "paid" || invoice?.payment?.status === "paid";
+
+  useEffect(() => {
+    if (!invoice || !isPaid || paidHandledRef.current) return;
+    paidHandledRef.current = true;
+    Alert.alert("Payment successful", "Invoice has been paid.");
+    navigation.navigate("Invoices");
+  }, [invoice, isPaid, navigation]);
 
   if (loading) {
     return (
@@ -333,6 +363,9 @@ export default function InvoiceDetailScreen() {
               { paddingBottom: Math.max(insets.bottom + 24, 32) },
             ]}
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+            }
           >
             <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
               <Pressable

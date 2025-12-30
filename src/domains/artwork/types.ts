@@ -53,6 +53,9 @@ export type ArtworkDetail = {
     shares?: number;
   };
 
-  status?: string;
+  status?: "for_sale" | "sold";
+  isActive?: boolean;
+  soldAt?: number;
+  soldByInvoiceId?: string;
   liked?: boolean;
 };

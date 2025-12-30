@@ -324,6 +324,9 @@ export const getArtworkById = async (id: string, userId?: string): Promise<Artwo
       description: data.description || "",
       metrics: data.metrics,
       status: data.status,
+      isActive: data.isActive,
+      soldAt: data.soldAt?.toDate?.() ? data.soldAt.toDate().getTime() : undefined,
+      soldByInvoiceId: data.soldByInvoiceId,
       priceSnapshot: typeof data.price === "object" ? data.price : undefined,
       liked,
     };
