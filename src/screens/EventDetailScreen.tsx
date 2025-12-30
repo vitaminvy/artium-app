@@ -132,6 +132,7 @@ export default function EventDetailScreen() {
             visibility: finalEvent.visibility ?? rawData?.visibility ?? (finalEvent.locationType === "online" ? "online" : "public"),
             description: rawData?.description ?? (finalEvent as any).description ?? "No description.",
             organizer: {
+              id: organizerSnapshot?.id,
               name: organizerSnapshot?.name ?? "Organizer",
               handle: organizerSnapshot?.handle,
               avatar: organizerSnapshot?.avatar ?? "",

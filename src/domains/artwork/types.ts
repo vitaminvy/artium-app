@@ -6,6 +6,7 @@ export type ArtworkDetail = {
   description?: string;
 
   artist: {
+    id?: string; // User ID for navigation
     name: string;
     avatar: string;
     verified: boolean;

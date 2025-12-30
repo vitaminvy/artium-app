@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,11 +10,9 @@ import {
   Keyboard,
   useColorScheme,
 } from "react-native";
-import { useRoute, useNavigation } from "@react-navigation/native";
+import { useRoute, useNavigation, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import FeedPostCard from "../domains/feed/components/cards/FeedPostCard";
-import { FeedStackParamList } from "../app/navigation/Stack/FeedStack";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { FEED_STRINGS, CURRENT_USER } from "../domains/feed/constants";
 import { FeedPost } from "../domains/feed/types";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,15 +20,16 @@ import { useFocusEffect } from "@react-navigation/native";
 import ReshareSheet from "../domains/feed/components/sheets/ReshareSheet";
 import ImageViewing from "react-native-image-viewing";
 import { usePostComments } from "../domains/feed/hooks/usePostComments";
-import { addCommentToPost } from "../domains/feed/services/feedService";
+import { addCommentToPost, togglePostLike } from "../domains/feed/services/feedService";
 import { useAuth } from "../domains/auth/contexts/AuthContext";
+import { doc, onSnapshot, Timestamp } from "firebase/firestore";
+import { firestore } from "@/configs/firebase";
 
-type RouteProps = { key: string; name: "FeedDetail"; params: { post: FeedPost } };
+type RouteProps = RouteProp<Record<string, { post: FeedPost }>, string>;
 
 export default function FeedDetailScreen() {
   const route = useRoute<RouteProps>();
-  const navigation =
-    useNavigation<NativeStackNavigationProp<FeedStackParamList>>();
+  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const { currentUser } = useAuth();
@@ -40,6 +39,35 @@ export default function FeedDetailScreen() {
   const [input, setInput] = useState("");
   const [showReshare, setShowReshare] = useState(false);
   const { comments, loading } = usePostComments(post?.id);
+  const currentUserId = currentUser?.uid;
+
+  // Keep post metrics/content in sync with Firestore (cross-screen consistency)
+  useEffect(() => {
+    if (!originalPost?.id) return;
+    const ref = doc(firestore, "posts", originalPost.id);
+    const unsubscribe = onSnapshot(ref, (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data();
+      setPost((prev) => ({
+        id: snap.id,
+        author: data.authorSnapshot ?? prev?.author ?? originalPost.author,
+        content: data.content ?? prev?.content ?? "",
+        createdAt:
+          (data.createdAt as Timestamp | undefined)?.toMillis?.() ??
+          prev?.createdAt ??
+          Date.now(),
+        relativeTime: prev?.relativeTime ?? originalPost.relativeTime,
+        media: data.media ?? prev?.media,
+        metrics: data.metrics ?? prev?.metrics ?? originalPost.metrics,
+        liked: prev?.liked ?? originalPost.liked,
+        quote: data.quote ?? prev?.quote,
+        reshared: data.reshared ?? prev?.reshared,
+        resharedFrom: data.resharedFrom ?? prev?.resharedFrom,
+        isReshare: data.isReshare ?? prev?.isReshare,
+      }));
+    });
+    return () => unsubscribe();
+  }, [originalPost?.id, originalPost?.author, originalPost?.metrics, originalPost?.relativeTime]);
 
   // Image viewer state
   const viewerKeyRef = useRef(0);
@@ -56,14 +84,18 @@ export default function FeedDetailScreen() {
   });
 
   const toggleLike = () => {
+    if (!post?.id || !currentUserId) return;
     setPost((prev) => ({
       ...prev,
       liked: !prev.liked,
       metrics: {
         ...prev.metrics,
-        likes: prev.metrics.likes + (prev.liked ? -1 : 1),
+        likes: Math.max(0, prev.metrics.likes + (prev.liked ? -1 : 1)),
       },
     }));
+    togglePostLike(post.id, currentUserId, post.liked).catch((err) => {
+      console.error("Failed to toggle like from detail:", err);
+    });
   };
 
   const openReshare = () => {

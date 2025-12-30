@@ -1,35 +1,31 @@
 import React from "react";
 import { View, Text, ScrollView } from "react-native";
 import ProfileSection from "../ProfileSection";
-import { PROFILE_STRINGS } from "../../../constants/profile";
-import { ProfileMoodboard, ProfileViewModel } from "../../../types";
 import ArtworkCard, { ArtworkCardItem } from "../ArtworkCard";
 import MomentCard, { MomentCardItem } from "../MomentCard";
+import { ProfileMoodboard, ProfileViewModel } from "../../../types";
+import { PROFILE_STRINGS } from "../../../constants/profile";
 import MoodboardCard from "../MoodboardCard";
 
 type Props = {
   profile: ProfileViewModel;
   artworks?: ArtworkCardItem[];
   moments?: MomentCardItem[];
-  onPressUpload?: () => void;
-  onPressShare?: () => void;
+  onPressSeeAllMoodboards?: () => void;
   onPressSeeAllArtworks?: () => void;
   onPressSeeAllMoments?: () => void;
-  onPressSeeAllMoodboards?: () => void;
   onPressArtwork?: (artworkId: string) => void;
   onPressMoment?: (momentId: string) => void;
   onPressMoodboard?: (moodboard: ProfileMoodboard) => void;
 };
 
-export default function ProfileOverviewTab({
+export default function UserProfileOverviewTab({
   profile,
   artworks = [],
   moments = [],
-  onPressUpload,
-  onPressShare,
+  onPressSeeAllMoodboards,
   onPressSeeAllArtworks,
   onPressSeeAllMoments,
-  onPressSeeAllMoodboards,
   onPressArtwork,
   onPressMoment,
   onPressMoodboard,
@@ -64,7 +60,7 @@ export default function ProfileOverviewTab({
         ) : (
           <View className="rounded-2xl border border-slate-200 bg-[#F8FAFC] px-4 py-8 items-center">
             <Text className="text-sm text-center text-slate-500">
-              Save artworks into moodboards to show them here.
+              {PROFILE_STRINGS.moodboardsEmpty}
             </Text>
           </View>
         )}
@@ -75,11 +71,8 @@ export default function ProfileOverviewTab({
         title="Featured Artworks"
         actions={
           artworks.length > 0
-            ? [
-                { label: "See All", tone: "secondary", onPress: onPressSeeAllArtworks },
-                { label: "+ Upload", tone: "primary", onPress: onPressUpload },
-              ]
-            : [{ label: "+ Upload", tone: "primary", onPress: onPressUpload }]
+            ? [{ label: "See All", tone: "secondary", onPress: onPressSeeAllArtworks }]
+            : []
         }
       >
         {artworks.length > 0 ? (
@@ -108,14 +101,11 @@ export default function ProfileOverviewTab({
 
       {/* Moments Section */}
       <ProfileSection
-        title={PROFILE_STRINGS.momentsTitle}
+        title="Moments"
         actions={
           moments.length > 0
-            ? [
-                { label: "See All", tone: "secondary", onPress: onPressSeeAllMoments },
-                { label: "+ Share", tone: "primary", onPress: onPressShare },
-              ]
-            : [{ label: "+ Share", tone: "primary", onPress: onPressShare }]
+            ? [{ label: "See All", tone: "secondary", onPress: onPressSeeAllMoments }]
+            : []
         }
       >
         {moments.length > 0 ? (
@@ -137,7 +127,7 @@ export default function ProfileOverviewTab({
         ) : (
           <View className="rounded-2xl border border-slate-200 bg-[#F8FAFC] px-4 py-8 items-center">
             <Text className="text-sm text-center text-slate-500">
-              {PROFILE_STRINGS.momentsEmpty}
+              No moments yet
             </Text>
           </View>
         )}
