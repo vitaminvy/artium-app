@@ -17,15 +17,15 @@ import ChangeLocationSheet from "../domains/discover/components/sheets/ChangeLoc
 import Loader from "../shared/components/Loader";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
-import Sidebar from "../shared/components/Sidebar";
+import { useProfileContext } from "../domains/user/contexts/ProfileContext";
+import { toggleEventRsvp } from "../domains/discover/services/eventService";
+import { navigate as rootNavigate } from "../app/navigation/navigationRef";
 import {
   SidebarActionKey,
   SidebarKey,
   useSidebarItems,
 } from "../shared/hooks/useSidebar";
 import { useLogout } from "../domains/auth/hooks/useLogout";
-import { useProfileContext } from "../domains/user/contexts/ProfileContext";
-import { toggleEventRsvp } from "../domains/discover/services/eventService";
 
 // Import Tabs
 import DiscoverArtworksTab from "../domains/discover/components/tabs/DiscoverArtworksTab";
@@ -33,6 +33,7 @@ import DiscoverProfilesTab from "../domains/discover/components/tabs/DiscoverPro
 import DiscoverEventsTab from "../domains/discover/components/tabs/DiscoverEventsTab";
 import DiscoverMomentsTab from "../domains/discover/components/tabs/DiscoverMomentsTab";
 import DiscoverNearbyTab from "../domains/discover/components/tabs/DiscoverNearbyTab";
+import type { DiscoverMoment } from "../domains/discover/types";
 
 const TABS: { key: DiscoverTab; label: string }[] = [
   { key: "topPicks", label: "TOP PICKS" },
@@ -84,25 +85,33 @@ export default function DiscoverScreen() {
       logout();
       return;
     }
+
     if (key === "inventory") {
-      // Navigate to Home tab -> Inventory screen
       navigation.navigate("Home", { screen: "Inventory" } as any);
       return;
     }
+
     if (key === "profile") {
-      // Navigate to Home tab -> Profile screen
       navigation.navigate("Home", { screen: "Profile" } as any);
       return;
     }
+
     if (key === "events") {
-      // Navigate to Home tab -> Events screen
       navigation.navigate("Home", { screen: "Events" } as any);
       return;
     }
-    if (key === "home") {
-      // Navigate to Home tab
-      navigation.navigate("Home", {} as any);
+
+    if (key === "notifications") {
+      navigation.navigate("Home", { screen: "Notifications" } as any);
       return;
+    }
+
+    if (key === "invoices") {
+      navigation.navigate("Home", { screen: "Invoices" } as any);
+      return;
+    }
+    if (key === "home") {
+      navigation.navigate("Home", {} as any);
     }
   };
 
@@ -129,6 +138,11 @@ export default function DiscoverScreen() {
       setHidden(false);
     };
   }, [setHidden]);
+  useFocusEffect(
+    useCallback(() => {
+      setActiveKey("home");
+    }, [])
+  );
 
   // Refresh artworks when screen comes into focus
   useFocusEffect(
@@ -146,10 +160,10 @@ export default function DiscoverScreen() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(96);
   const [activeKey, setActiveKey] = useState<SidebarKey>("home");
-  const { logout, showConfirmModal, onConfirmLogout, onCancelLogout, loading: logoutLoading } = useLogout();
+  const { logout } = useLogout();
   const handleRequireSignUp = useCallback(() => {
-    navigation.navigate("SignUp" as any);
-  }, [navigation]);
+    rootNavigate("SignUp");
+  }, []);
 
   const handleRsvpChange = useCallback(async (eventId: string, status: "none" | "going" | "maybe" | "notGoing") => {
     if (isGuest) {
@@ -261,6 +275,10 @@ export default function DiscoverScreen() {
     }
 
     const onCardPress = isGuest ? handleRequireSignUp : undefined;
+    const onMomentPress = isGuest
+      ? handleRequireSignUp
+      : (moment: DiscoverMoment) =>
+          navigation.navigate("MomentDetail", { post: moment.post });
 
     switch (tab) {
       case "topPicks":
@@ -292,7 +310,7 @@ export default function DiscoverScreen() {
           isFetchingNextPage={isMoreEventsLoading}
         />;
       case "moments":
-        return <DiscoverMomentsTab data={filteredMoments} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreMoments} isFetchingNextPage={isMoreMomentsLoading} />;
+        return <DiscoverMomentsTab data={filteredMoments} onCardPress={onMomentPress} onScroll={handleScroll} onEndReached={loadMoreMoments} isFetchingNextPage={isMoreMomentsLoading} />;
       case "nearby":
         return (
           <DiscoverNearbyTab
@@ -317,10 +335,7 @@ export default function DiscoverScreen() {
       <ScreenHeader
         title="Discover"
         badgeLabel="Blog"
-        actionType="menu"
-        isMenuOpen={sidebarOpen}
-        onPressAction={() => setSidebarOpen((prev) => !prev)}
-        onHeightChange={(h) => setHeaderHeight(h)}
+        onPressBadge={() => navigation.navigate("Blog")}
         underlineSource={UnderlineHome}
       />
 
@@ -385,15 +400,6 @@ export default function DiscoverScreen() {
           </Pressable>
         </View>
       )}
-
-      <Sidebar
-        visible={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        onSelect={handleSidebarSelect}
-        topOffset={headerHeight}
-        activeKey={activeKey}
-        items={sidebarItems}
-      />
     </View>
   );
 }

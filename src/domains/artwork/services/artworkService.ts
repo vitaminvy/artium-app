@@ -284,6 +284,8 @@ export const getArtworkById = async (id: string, userId?: string): Promise<Artwo
     }
 
     const data = artworkSnap.data();
+    const artist = resolveArtistSnapshot(data);
+
     let liked = false;
     if (userId) {
       try {
@@ -298,7 +300,12 @@ export const getArtworkById = async (id: string, userId?: string): Promise<Artwo
     const artworkDetail: ArtworkDetail = {
       id: artworkSnap.id,
       title: data.title || "Untitled",
-      artist: resolveArtistSnapshot(data),
+      artist: {
+        id: data.artistId,
+        name: artist.name,
+        avatar: artist.avatar,
+        verified: artist.verified,
+      },
       stats: data.stats || { worksSold: 0, buyers: 0 },
       price: formatPrice(data.price),
       availabilityNote: data.availabilityNote,
@@ -324,6 +331,9 @@ export const getArtworkById = async (id: string, userId?: string): Promise<Artwo
       description: data.description || "",
       metrics: data.metrics,
       status: data.status,
+      isActive: data.isActive,
+      soldAt: data.soldAt?.toDate?.() ? data.soldAt.toDate().getTime() : undefined,
+      soldByInvoiceId: data.soldByInvoiceId,
       priceSnapshot: typeof data.price === "object" ? data.price : undefined,
       artistId: data.artistId,
       liked,

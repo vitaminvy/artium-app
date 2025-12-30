@@ -3,6 +3,7 @@ import { View, Text, Pressable, GestureResponderEvent } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { ArtistProfile } from "../../types";
+import { navigateToUserProfile } from "../../../../shared/utils/navigateToUserProfile";
 import { HOME_COLORS } from "../../../home/constants";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
 import { useFollow } from "@/domains/user/hooks/useFollow";
@@ -31,6 +32,14 @@ export default function ProfileCard({ item, onPress, isFollowing = false, onTogg
 
   // Use hook's isFollowing state if no prop is provided
   const actualIsFollowing = isFollowing ?? isFollowingFromHook;
+
+  const handlePress = () => {
+    if (onPress) {
+      onPress();
+    } else {
+      navigateToUserProfile(item.id);
+    }
+  };
 
   const handleFollowPress = (e: GestureResponderEvent) => {
     e.stopPropagation?.();
@@ -102,24 +111,13 @@ export default function ProfileCard({ item, onPress, isFollowing = false, onTogg
     </View>
   );
 
-  if (onPress) {
-    return (
-      <Pressable
-        className="flex-1 rounded-3xl bg-white border border-slate-100 px-4 py-5 items-center"
-        style={cardShadow}
-        onPress={onPress}
-      >
-        {content}
-      </Pressable>
-    );
-  }
-
   return (
-    <View
+    <Pressable
       className="flex-1 rounded-3xl bg-white border border-slate-100 px-4 py-5 items-center"
       style={cardShadow}
+      onPress={handlePress}
     >
       {content}
-    </View>
+    </Pressable>
   );
 }

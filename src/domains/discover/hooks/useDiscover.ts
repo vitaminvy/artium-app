@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { collection, getDocs, query, orderBy, limit, where, startAfter, QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, limit, where, startAfter, QueryDocumentSnapshot, DocumentData, Timestamp } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 import { getArtworks, getTrendingArtworks } from "../../artwork/services/artworkService";
 import {
@@ -7,7 +7,10 @@ import {
   EventItem,
   ArtistProfile,
   Artwork,
+  DiscoverMoment,
 } from "../types";
+import type { MomentCardItem } from "../../user/components/profile/MomentCard";
+import type { FeedPost, FeedMedia, FeedMetrics, FeedAuthor } from "../../feed/types";
 import { defaultDiscoverTab, discoverMockData } from "../mockData";
 
 import { getEvents, fetchUserRsvps } from "../services/eventService";
@@ -30,6 +33,68 @@ const adaptEvent = (ev: any): EventItem => {
   };
 };
 
+const formatTimeAgo = (createdAt: number) => {
+  const diff = Date.now() - createdAt;
+  const minutes = Math.floor(diff / 60000);
+  if (minutes <= 0) return "Just now";
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+};
+
+const mapMomentDoc = (doc: QueryDocumentSnapshot<DocumentData>): DiscoverMoment => {
+  const data = doc.data();
+  const createdAtMs =
+    (data.createdAt as Timestamp | undefined)?.toMillis?.() ?? Date.now();
+  const metrics: FeedMetrics = data.metrics ?? { likes: 0, comments: 0, shares: 0 };
+  const media: FeedMedia | undefined = data.media ?? undefined;
+  const authorSnapshot: FeedAuthor = {
+    id: data.authorSnapshot?.id ?? data.authorId ?? "unknown",
+    name: data.authorSnapshot?.name ?? "Unknown",
+    handle:
+      data.authorSnapshot?.handle ??
+      (data.authorSnapshot?.name
+        ? data.authorSnapshot.name.replace(/\s+/g, "").toLowerCase()
+        : "user"),
+    avatar: data.authorSnapshot?.avatar,
+    verified: data.authorSnapshot?.verified ?? false,
+  };
+
+  const card: MomentCardItem = {
+    id: doc.id,
+    author: authorSnapshot,
+    title: (data.media?.title as string | undefined) ?? undefined,
+    content: data.content ?? "Untitled Moment",
+    media: media,
+    metrics,
+    liked: data.liked ?? false,
+    relativeTime: formatTimeAgo(createdAtMs),
+  };
+
+  const post: FeedPost = {
+    id: doc.id,
+    author: authorSnapshot,
+    content: data.content ?? "",
+    createdAt: createdAtMs,
+    media: media,
+    metrics,
+    liked: data.liked ?? false,
+    reshared: data.reshared ?? false,
+    isReshare: data.isReshare ?? false,
+    resharedFrom: data.resharedFrom,
+    quote: data.quote,
+    relativeTime: formatTimeAgo(createdAtMs),
+  };
+
+  return {
+    id: doc.id,
+    card,
+    post,
+  };
+};
+
 type UseDiscoverResult = {
   tab: DiscoverTab;
   setTab: (tab: DiscoverTab) => void;
@@ -41,7 +106,7 @@ type UseDiscoverResult = {
   isMoreArtworksLoading: boolean;
   hasMoreArtworks: boolean;
   refreshArtworks: () => Promise<void>;
-  moments: Artwork[];
+  moments: DiscoverMoment[];
   loadMoreMoments: () => void;
   isMoreMomentsLoading: boolean;
   hasMoreMoments: boolean;
@@ -68,7 +133,7 @@ export function useDiscover(): UseDiscoverResult {
   const [hasMoreArtworks, setHasMoreArtworks] = useState(true);
   const [isMoreArtworksLoading, setIsMoreArtworksLoading] = useState(false);
 
-  const [moments, setMoments] = useState<Artwork[]>([]);
+  const [moments, setMoments] = useState<DiscoverMoment[]>([]);
   const [lastMomentDoc, setLastMomentDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMoreMoments, setHasMoreMoments] = useState(true);
   const [isMoreMomentsLoading, setIsMoreMomentsLoading] = useState(false);
@@ -141,26 +206,19 @@ export function useDiscover(): UseDiscoverResult {
         ? query(collection(firestore, "posts"), orderBy("createdAt", "desc"), startAfter(lastDoc), limit(MOMENT_PAGE_SIZE))
         : query(collection(firestore, "posts"), orderBy("createdAt", "desc"), limit(MOMENT_PAGE_SIZE));
 
-      const snapshot = await getDocs(q);
-      const newMoments = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          title: data.content || "Untitled Moment",
-          artist: data.authorSnapshot?.name || "Unknown",
-          artistAvatar: data.authorSnapshot?.avatar,
-          image: data.media?.items?.[0]?.uri || "https://via.placeholder.com/300",
-        } as Artwork;
-      });
-      
-      setHasMoreMoments(newMoments.length === MOMENT_PAGE_SIZE);
-      setLastMomentDoc(snapshot.docs[snapshot.docs.length - 1] || null);
-      return newMoments;
-    } catch (e: any) {
-      setError(e);
-      return [];
-    }
-  }, []);
+        const snapshot = await getDocs(q);
+        const newMoments = snapshot.docs.map(mapMomentDoc);
+
+        setHasMoreMoments(newMoments.length === MOMENT_PAGE_SIZE);
+        setLastMomentDoc(snapshot.docs[snapshot.docs.length - 1] || null);
+        return newMoments;
+      } catch (e: any) {
+        setError(e);
+        return [];
+      }
+    },
+    []
+  );
 
   const loadMoreMoments = useCallback(async () => {
     if (isMoreMomentsLoading || !hasMoreMoments) return;

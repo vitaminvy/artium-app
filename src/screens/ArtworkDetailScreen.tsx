@@ -168,6 +168,8 @@ export default function ArtworkDetailScreen() {
     };
   }, [artwork]);
 
+  const isSold = artwork?.status === "sold" || artwork?.isActive === false;
+
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
       <BottomSheetBackdrop
@@ -408,6 +410,7 @@ export default function ArtworkDetailScreen() {
           onReshare={handleOpenReshareSheet}
           onSave={handleOpenSaveSheet}
           onBuy={() => navigation.navigate("Checkout", { artwork })}
+          buyDisabled={isSold}
         />
 
         {/* Reshare Sheet */}

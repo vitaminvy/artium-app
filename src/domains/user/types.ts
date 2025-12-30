@@ -27,6 +27,9 @@ export type ProfileMoodboard = {
   title: string;
   visibility: "private" | "public";
   ownerName: string;
+  ownerAvatar?: string | null;
+  coverImage?: string | null;
+  itemsCount?: number;
   previewColor?: string;
 };
 
