@@ -139,6 +139,11 @@ export default function HomeScreen() {
       return;
     }
 
+    if (key === "notifications") {
+      navigation.navigate("Notifications" as never);
+      return;
+    }
+
     if (key === "invoices") {
       navigation.navigate("Invoices");
       return;

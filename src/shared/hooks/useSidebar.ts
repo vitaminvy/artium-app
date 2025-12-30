@@ -8,6 +8,7 @@ export type SidebarKey =
   | "customWebsite"
   | "events"
   | "inventory"
+  | "notifications"
   | "sales"
   | "invoices"
   | "salesRecord"
@@ -45,6 +46,11 @@ const ITEMS: SidebarItem[] = [
     label: "Events",
     icon: "calendar-outline",
     subtitle: "Manage your events",
+  },
+  {
+    key: "notifications",
+    label: "Notifications",
+    icon: "notifications-outline",
   },
   {
     key: "invoices",

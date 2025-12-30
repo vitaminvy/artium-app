@@ -14,6 +14,7 @@ import type { ArtworkDetail } from "../../../domains/artwork/types";
 import type { EventItem } from "../../../domains/discover/types";
 import BlogDetailScreen from "../../../screens/BlogDetailScreen"; // Renamed import
 import BlogScreen from "../../../screens/BlogScreen";
+import NotificationsScreen from "../../../screens/NotificationsScreen";
 import UserProfileScreen from "../../../screens/UserProfileScreen";
 import FeedDetailScreen from "../../../screens/FeedDetailScreen";
 import type { FeedPost } from "../../../domains/feed/types";
@@ -36,6 +37,7 @@ export type HomeStackParamList = {
   PopularArtists: undefined;
   SimilarSaved: undefined;
   BlogDetail: { blogId: string };
+  Notifications: undefined;
   FeedDetail: { post: FeedPost };
   MoodboardDetail: { id: string; ownerId?: string; title?: string; cover?: string | null; ownerName?: string };
   Follows: { type: "followers" | "following" };
@@ -67,6 +69,7 @@ export default function HomeStack() {
       <Stack.Screen name="SimilarSaved" component={SimilarSavedScreen} />
       <Stack.Screen name="BlogDetail" component={BlogDetailScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Blog" component={BlogScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="FeedDetail" component={FeedDetailScreen} />
       <Stack.Screen name="MoodboardDetail" component={MoodboardDetailScreen} />
       <Stack.Screen name="Follows" component={FollowsScreen} />

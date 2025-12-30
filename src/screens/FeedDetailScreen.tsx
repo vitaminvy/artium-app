@@ -174,13 +174,13 @@ export default function FeedDetailScreen() {
       keyboardVerticalOffset={0}
     >
       <View
-        className="flex-row items-center px-4 py-3 border-b border-slate-100"
-        style={{ paddingTop: insets.top }}
-      >
-        <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
-          <Ionicons name="arrow-back-outline" size={22} color="#0F172A" />
-        </Pressable>
-      </View>
+      className="flex-row items-center px-4 py-3 border-b border-slate-100"
+      style={{ paddingTop: insets.top }}
+    >
+      <Pressable onPress={() => navigation.popToTop()} hitSlop={8}>
+        <Ionicons name="arrow-back-outline" size={22} color="#0F172A" />
+      </Pressable>
+    </View>
 
       <ScrollView
         className="flex-1"

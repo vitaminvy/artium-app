@@ -6,6 +6,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import ArtworkDetailScreen from "../../screens/ArtworkDetailScreen";
 import UploadInventoryScreen from "../../screens/UploadInventoryScreen";
 import CheckoutScreen from "../../screens/CheckoutScreen";
+import NotificationsScreen from "../../screens/NotificationsScreen";
 import TabNavigator from "./TabNavigator";
 import { TabParamList } from "./tabTypes";
 import AuthStack from "./AuthStack";
@@ -19,6 +20,7 @@ type AppStackParamList = {
   ArtworkDetail: { id?: string };
   Checkout: { artwork?: ArtworkDetail };
   Upload: undefined;
+  Notifications: undefined;
 };
 
 type RootNavigatorProps = {
@@ -54,6 +56,11 @@ function AppStack() {
       <Stack.Screen
         name="Upload"
         component={UploadInventoryScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Notifications"
+        component={NotificationsScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
