@@ -14,6 +14,8 @@ import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import { BottomSheetModal, BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
+import type { RouteProp } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { Invoice } from "../domains/invoices/types";
@@ -26,6 +28,7 @@ import { firestore, functions } from "../configs/firebase";
 import { doc, getDoc, onSnapshot, Timestamp } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import * as WebBrowser from "expo-web-browser";
+import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
 
 const DELIVERY_OPTION_SELLER = "Pick up / Ship by seller";
 const DELIVERY_OPTION_ARTIUM = "Ship by Artium";
@@ -113,8 +116,9 @@ const formatInvoiceNumber = (id: string) => {
 };
 
 export default function InvoiceDetailScreen() {
-  const navigation = useNavigation();
-  const route = useRoute();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<HomeStackParamList, "InvoiceDetail">>();
+  const route = useRoute<RouteProp<HomeStackParamList, "InvoiceDetail">>();
   const insets = useSafeAreaInsets();
   const [delivery, setDelivery] = useState<DeliveryOption>(
     DELIVERY_OPTION_SELLER
@@ -163,7 +167,7 @@ export default function InvoiceDetailScreen() {
     .filter(Boolean)
     .join(", ");
 
-  const invoiceId = (route.params as any)?.invoiceId as string | undefined;
+  const { invoiceId } = route.params;
 
   useEffect(() => {
     paidHandledRef.current = false;

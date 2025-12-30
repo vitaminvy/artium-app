@@ -84,7 +84,7 @@
       match /posts/{postId} {
         allow read: if true;
         allow write: if isSignedIn();
-
+ 
         // Allow any authenticated user to like/unlike
         match /likes/{userId} {
           allow read: if true;
