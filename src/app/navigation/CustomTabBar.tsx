@@ -80,6 +80,12 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
                 return;
               }
 
+              if (meta?.isCenter) {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                navigation.navigate("Home", { screen: "CreateInvoice" } as any);
+                return;
+              }
+
               if (!isFocused && !event.defaultPrevented) {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); // Rung nhẹ khi chuyển tab
                 navigation.navigate(route.name);
@@ -156,6 +162,10 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
         onSelectOption={(option: UploadOption) => {
           if (option.key === "moment") {
             requestPostMomentSheet();
+            return;
+          }
+          if (option.key === "invoice") {
+            navigation.navigate("Home", { screen: "CreateInvoice" } as any);
             return;
           }
           if (option.targetTab) {

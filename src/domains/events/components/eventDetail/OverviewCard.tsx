@@ -1,8 +1,9 @@
 import React from "react";
-import { Text, View } from "react-native";
+import { Text, View, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import type { EventDetail } from "../../types";
+import { navigateToUserProfile } from "../../../../shared/utils/navigateToUserProfile";
 
 type Props = {
   detail: EventDetail;
@@ -57,7 +58,12 @@ export default function OverviewCard({ detail }: Props) {
 
       <View className="mt-3">
         <Text className="text-[13px] font-semibold text-slate-900">Organized by</Text>
-        <View className="mt-2 flex-row items-center gap-3">
+        <Pressable
+          className="mt-2 flex-row items-center gap-3"
+          onPress={() => overview.organizer.id && navigateToUserProfile(overview.organizer.id)}
+          hitSlop={4}
+          disabled={!overview.organizer.id}
+        >
           {overview.organizer.avatar ? (
             <Image
               source={{ uri: overview.organizer.avatar }}
@@ -86,7 +92,7 @@ export default function OverviewCard({ detail }: Props) {
               </Text>
             ) : null}
           </View>
-        </View>
+        </Pressable>
       </View>
     </View>
   );

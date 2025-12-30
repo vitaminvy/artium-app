@@ -14,7 +14,15 @@ import type { ArtworkDetail } from "../../../domains/artwork/types";
 import type { EventItem } from "../../../domains/discover/types";
 import BlogDetailScreen from "../../../screens/BlogDetailScreen"; // Renamed import
 import BlogScreen from "../../../screens/BlogScreen";
+import UserProfileScreen from "../../../screens/UserProfileScreen";
+import FeedDetailScreen from "../../../screens/FeedDetailScreen";
+import type { FeedPost } from "../../../domains/feed/types";
 import MoodboardDetailScreen from "../../../screens/MoodboardDetailScreen";
+import FollowsScreen from "../../../screens/FollowsScreen";
+import InvoicesScreen from "../../../screens/InvoicesScreen";
+import CreateInvoiceScreen from "../../../screens/CreateInvoiceScreen";
+import InvoiceDetailScreen from "../../../screens/InvoiceDetailScreen";
+import PreviewInvoiceScreen from "../../../screens/PreviewInvoiceScreen";
 
 export type HomeStackParamList = {
   HomeMain: undefined;
@@ -22,11 +30,19 @@ export type HomeStackParamList = {
   Events: undefined;
   ArtworkDetail: { id: string };
   Profile: undefined;
+  UserProfile: { userId: string };
   EditProfile: undefined;
   Checkout: { artwork?: ArtworkDetail };
   PopularArtists: undefined;
   SimilarSaved: undefined;
   BlogDetail: { blogId: string };
+  FeedDetail: { post: FeedPost };
+  MoodboardDetail: { id: string; ownerId?: string; title?: string; cover?: string | null; ownerName?: string };
+  Follows: { type: "followers" | "following" };
+  Invoices: undefined;
+  CreateInvoice: undefined;
+  PreviewInvoice: { invoiceId: string };
+  InvoiceDetail: { invoiceId: string };
   EventDetail: {
     id?: string;
     initialRsvp?: "none" | "going" | "maybe" | "notGoing";
@@ -34,7 +50,6 @@ export type HomeStackParamList = {
     event?: EventItem;
   };
   Blog: undefined;
-  MoodboardDetail: { id: string };
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -47,11 +62,18 @@ export default function HomeStack() {
       <Stack.Screen name="Events" component={EventScreen} />
       <Stack.Screen name="ArtworkDetail" component={ArtworkDetailScreen} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="UserProfile" component={UserProfileScreen} />
       <Stack.Screen name="PopularArtists" component={PopularArtistsScreen} />
       <Stack.Screen name="SimilarSaved" component={SimilarSavedScreen} />
       <Stack.Screen name="BlogDetail" component={BlogDetailScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Blog" component={BlogScreen} />
+      <Stack.Screen name="FeedDetail" component={FeedDetailScreen} />
       <Stack.Screen name="MoodboardDetail" component={MoodboardDetailScreen} />
+      <Stack.Screen name="Follows" component={FollowsScreen} />
+      <Stack.Screen name="Invoices" component={InvoicesScreen} />
+      <Stack.Screen name="CreateInvoice" component={CreateInvoiceScreen} />
+      <Stack.Screen name="PreviewInvoice" component={PreviewInvoiceScreen} />
+      <Stack.Screen name="InvoiceDetail" component={InvoiceDetailScreen} />
       <Stack.Screen
         name="EditProfile"
         component={EditProfileScreen}

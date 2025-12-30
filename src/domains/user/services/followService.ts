@@ -3,6 +3,7 @@ import {
   doc,
   runTransaction,
   serverTimestamp,
+  getDocs,
 } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 
@@ -97,4 +98,49 @@ export const toggleFollow = async (
   });
 
   return result;
+};
+
+type FollowUser = {
+  id: string;
+  name: string;
+  handle: string;
+  avatar?: string | null;
+  verified?: boolean;
+};
+
+const fetchUserDocsByIds = async (ids: string[]): Promise<FollowUser[]> => {
+  if (!ids.length) return [];
+  const { getDoc, doc } = await import("firebase/firestore");
+  const users: FollowUser[] = [];
+  await Promise.all(
+    ids.map(async (uid) => {
+      const ref = doc(firestore, "users", uid);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const data = snap.data();
+        users.push({
+          id: uid,
+          name: data.displayName || data.name || data.email || "User",
+          handle: data.username || data.email || uid,
+          avatar: data.avatarUri || data.photoURL || null,
+          verified: data.roles?.isArtist ?? false,
+        });
+      }
+    })
+  );
+  return users;
+};
+
+export const fetchFollowers = async (userId: string): Promise<FollowUser[]> => {
+  const col = collection(firestore, "users", userId, "followers");
+  const snap = await getDocs(col);
+  const ids = snap.docs.map((d) => d.id);
+  return fetchUserDocsByIds(ids);
+};
+
+export const fetchFollowing = async (userId: string): Promise<FollowUser[]> => {
+  const col = collection(firestore, "users", userId, "following");
+  const snap = await getDocs(col);
+  const ids = snap.docs.map((d) => d.id);
+  return fetchUserDocsByIds(ids);
 };

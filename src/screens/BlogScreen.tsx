@@ -236,6 +236,11 @@ export default function BlogScreen() {
         return;
       }
     }
+
+    if (key === "invoices") {
+      navigation.navigate("Invoices");
+      return;
+    }
   };
 
   const handleShowMore = useCallback(async () => {

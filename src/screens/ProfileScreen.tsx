@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { View, ScrollView } from "react-native";
+import { View, ScrollView, RefreshControl } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import ProfileHeader from "../domains/user/components/profile/ProfileHeader";
@@ -11,6 +11,9 @@ import ProfileArtworksTab from "../domains/user/components/profile/tabs/ProfileA
 import ProfileMomentsTab from "../domains/user/components/profile/tabs/ProfileMomentsTab";
 import ProfileMoodboardsTab from "../domains/user/components/profile/tabs/ProfileMoodboardsTab";
 import { useProfile } from "../domains/user/hooks/useProfile";
+import { useOwnerMoments } from "../domains/user/hooks/useOwnerMoments";
+import { useOwnerArtworks } from "../domains/user/hooks/useOwnerArtworks";
+import { ProfileMoodboard } from "../domains/user/types";
 import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
 import Sidebar from "../shared/components/Sidebar";
 import {
@@ -87,7 +90,7 @@ const ProfileSkeleton = () => (
 
 export default function ProfileScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const { profile, tab, setTab, isLoading } = useProfile();
+  const { profile, tab, setTab, isLoading, refreshProfile } = useProfile();
   const { loading: profileStatusLoading, profileCompleted, promptDismissed } =
     useProfileCompletion();
   const sidebarItems = useSidebarItems();
@@ -102,6 +105,11 @@ export default function ProfileScreen() {
     onCancelLogout,
   } = useLogout();
   const [avatarLoaded, setAvatarLoaded] = React.useState(false);
+
+  // Fetch owner data for navigation and display
+  const { moments, refresh: refreshMoments } = useOwnerMoments();
+  const { artworks, refresh: refreshArtworks } = useOwnerArtworks();
+  const [refreshing, setRefreshing] = React.useState(false);
 
   const handleBack = () => {
     if (navigation.canGoBack()) {
@@ -125,8 +133,54 @@ export default function ProfileScreen() {
     rootNavigate("Upload");
   };
 
-  const openMoodboardDetail = (id: string) => {
-    navigation.navigate("MoodboardDetail" as never, { id } as never);
+  const handlePressArtwork = (artworkId: string) => {
+    console.log("Navigate to artwork:", artworkId);
+    navigation.navigate("ArtworkDetail", { id: artworkId });
+  };
+
+  const handlePressMoment = (momentId: string) => {
+    console.log("Navigate to moment:", momentId);
+    // Find the full moment object from the moments array
+    const moment = moments.find((m) => m.id === momentId);
+    if (!moment) {
+      console.warn("Moment not found:", momentId);
+      return;
+    }
+
+    // Convert MomentCardItem to FeedPost
+    const feedPost = {
+      id: moment.id,
+      author: moment.author,
+      content: moment.content,
+      createdAt: moment.createdAt || Date.now(),
+      relativeTime: moment.relativeTime,
+      media: moment.media,
+      metrics: moment.metrics || { likes: 0, comments: 0, shares: 0 },
+      liked: moment.liked,
+    };
+
+    navigation.navigate("FeedDetail", { post: feedPost });
+  };
+
+  const handleSeeAllArtworks = () => {
+    setTab("artworks");
+  };
+
+  const handleSeeAllMoments = () => {
+    setTab("moments");
+  };
+
+  const openMoodboardDetail = (moodboard: ProfileMoodboard) => {
+    navigation.navigate(
+      "MoodboardDetail" as never,
+      {
+        id: moodboard.id,
+        ownerId: profile.user.id,
+        title: moodboard.title,
+        cover: moodboard.coverImage ?? undefined,
+        ownerName: moodboard.ownerName,
+      } as never
+    );
   };
 
   const handleSidebarSelect = (key: SidebarActionKey) => {
@@ -156,6 +210,11 @@ export default function ProfileScreen() {
       return;
     }
 
+    if (key === "invoices") {
+      navigation.navigate("Invoices");
+      return;
+    }
+
     if (key === "profile") return;
     
     // console.log("Sidebar selected:", key);
@@ -164,7 +223,10 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       setActiveKey("profile");
-    }, [setActiveKey])
+      // Refresh data when screen comes into focus
+      refreshMoments();
+      refreshArtworks();
+    }, [setActiveKey, refreshMoments, refreshArtworks])
   );
 
   useFocusEffect(
@@ -187,6 +249,17 @@ export default function ProfileScreen() {
     setAvatarLoaded(false);
   }, [isLoading, profile.user.avatarUri]);
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([refreshProfile(), refreshMoments(), refreshArtworks()]);
+    } catch (err) {
+      console.warn("Failed to refresh profile", err);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshArtworks, refreshMoments, refreshProfile]);
+
   return (
     <View className="flex-1 bg-white">
       <ProfileHeader
@@ -199,6 +272,9 @@ export default function ProfileScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 120 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
       >
         {isLoading ? (
           <ProfileSkeleton />
@@ -208,6 +284,8 @@ export default function ProfileScreen() {
               user={profile.user}
               stats={profile.stats}
               onAvatarLoad={() => setAvatarLoaded(true)}
+              onPressFollowers={() => navigation.navigate("Follows", { type: "followers" })}
+              onPressFollowing={() => navigation.navigate("Follows", { type: "following" })}
             />
             <ProfileActionButtons
               onPressEdit={openEditProfile}
@@ -219,15 +297,29 @@ export default function ProfileScreen() {
               {tab === "overview" && (
                 <ProfileOverviewTab
                   profile={profile}
+                  artworks={artworks}
+                  moments={moments}
                   onPressUpload={handleUploadInventory}
                   onPressShare={handlePostMoment}
+                  onPressSeeAllArtworks={handleSeeAllArtworks}
+                  onPressSeeAllMoments={handleSeeAllMoments}
+                  onPressSeeAllMoodboards={() => setTab("moodboards")}
+                  onPressArtwork={handlePressArtwork}
+                  onPressMoment={handlePressMoment}
+                  onPressMoodboard={openMoodboardDetail}
                 />
               )}
-              {tab === "artworks" && <ProfileArtworksTab profile={profile} />}
+              {tab === "artworks" && (
+                <ProfileArtworksTab
+                  profile={profile}
+                  onPressArtwork={handlePressArtwork}
+                />
+              )}
               {tab === "moments" && (
                 <ProfileMomentsTab
                   profile={profile}
                   onPressUpload={handlePostMoment}
+                  onPressMoment={handlePressMoment}
                 />
               )}
               {tab === "moodboards" && (

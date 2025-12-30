@@ -1,8 +1,9 @@
 import React from "react";
-import { View, Text } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import type { ArtworkDetail } from "../types";
+import { navigateToUserProfile } from "../../../shared/utils/navigateToUserProfile";
 
 type ArtworkInfoProps = {
   detail: ArtworkDetail;
@@ -19,7 +20,12 @@ export default function ArtworkInfo({ detail }: ArtworkInfoProps) {
       <View className="px-4 pt-6">
         <Text className="text-2xl font-bold text-slate-900">{detail.title}</Text>
 
-        <View className="flex-row items-center gap-3 mt-3">
+        <Pressable
+          className="flex-row items-center gap-3 mt-3"
+          onPress={() => detail.artist.id && navigateToUserProfile(detail.artist.id)}
+          disabled={!detail.artist.id}
+          hitSlop={4}
+        >
           <View className="h-12 w-12 rounded-full overflow-hidden bg-slate-200">
             {hasAvatar ? (
               <Image
@@ -49,7 +55,7 @@ export default function ArtworkInfo({ detail }: ArtworkInfoProps) {
               <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
             ) : null}
           </View>
-        </View>
+        </Pressable>
 
         <View className="flex-row items-center gap-4 mt-4">
           <View className="flex-row items-center gap-1">

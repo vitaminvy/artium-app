@@ -3,6 +3,7 @@ import { View, Text, Pressable, LayoutChangeEvent } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { Artwork } from "../../types";
+import { navigateToUserProfile } from "../../../../shared/utils/navigateToUserProfile";
 
 const FALLBACK_AVATAR = require("../../../../../assets/logos/logo-light-mode.png");
 
@@ -96,7 +97,12 @@ export default function ArtworkCard({
           {/* Artist info + Title */}
           <View className="gap-3">
             {/* Artist Avatar + Name */}
-            <View className="flex-row items-center gap-3">
+            <Pressable
+              className="flex-row items-center gap-3"
+              onPress={() => item.artistId && navigateToUserProfile(item.artistId)}
+              hitSlop={4}
+              disabled={!item.artistId}
+            >
               <View className="h-7 w-7 rounded-full bg-slate-200 overflow-hidden">
                 <Image
                   source={item.artistAvatar ? { uri: item.artistAvatar } : FALLBACK_AVATAR}
@@ -112,7 +118,7 @@ export default function ArtworkCard({
               >
                 {item.artist}
               </Text>
-            </View>
+            </Pressable>
 
             {/* Title */}
             <Text

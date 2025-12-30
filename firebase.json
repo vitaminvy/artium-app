@@ -5,6 +5,24 @@
   "storage": {
     "rules": "storage.rules"
   },
+  "hosting": {
+    "public": "public",
+    "rewrites": [
+      {
+        "source": "/payos/return",
+        "destination": "/payos/return/index.html"
+      },
+      {
+        "source": "/payos/cancel",
+        "destination": "/payos/cancel/index.html"
+      }
+    ],
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  },
   "functions": [
     {
       "source": "functions",

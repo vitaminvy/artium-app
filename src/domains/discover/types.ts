@@ -1,5 +1,8 @@
 // TypeScript definitions for Discover domain
 
+import type { MomentCardItem } from "../user/components/profile/MomentCard";
+import type { FeedPost } from "../feed/types";
+
 export type DiscoverTab =
   | "topPicks"
   | "nearby"
@@ -7,6 +10,12 @@ export type DiscoverTab =
   | "profiles"
   | "moments"
   | "events";
+
+export type DiscoverMoment = {
+  id: string;
+  card: MomentCardItem;
+  post: FeedPost;
+};
 
 export type Badge = {
   label: string;
@@ -18,6 +27,7 @@ export type Artwork = {
   id: string;
   title: string;
   artist: string;
+  artistId?: string; // User ID for navigation
   artistAvatar?: string;
   image: string;
   isTrending?: boolean;
@@ -83,6 +93,6 @@ export type SearchSuggestion = {
 export type DiscoverData = {
   artworks: Artwork[];
   profiles: ArtistProfile[];
-  moments: Artwork[];
+  moments: DiscoverMoment[];
   events: EventItem[];
 };

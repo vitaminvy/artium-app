@@ -6,6 +6,7 @@ import FeedScreen from "../../../screens/FeedScreen";
 import FeedDetailScreen from "../../../screens/FeedDetailScreen";
 import BlogScreen from "../../../screens/BlogScreen";
 import BlogDetailScreen from "../../../screens/BlogDetailScreen";
+import UserProfileScreen from "../../../screens/UserProfileScreen";
 import { FeedPost } from "../../../domains/feed/types";
 
 export type FeedStackParamList = {
@@ -13,6 +14,7 @@ export type FeedStackParamList = {
   FeedDetail: { post: FeedPost };
   Blog: undefined;
   BlogDetail: { blogId: string };
+  UserProfile: { userId: string };
 };
 
 const Stack = createNativeStackNavigator<FeedStackParamList>();
@@ -24,6 +26,7 @@ export default function FeedStack() {
       <Stack.Screen name="FeedDetail" component={FeedDetailScreen} />
       <Stack.Screen name="Blog" component={BlogScreen} />
       <Stack.Screen name="BlogDetail" component={BlogDetailScreen} />
+      <Stack.Screen name="UserProfile" component={UserProfileScreen} />
     </Stack.Navigator>
   );
 }

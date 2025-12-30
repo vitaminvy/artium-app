@@ -26,6 +26,7 @@ import DiscoverProfilesTab from "../domains/discover/components/tabs/DiscoverPro
 import DiscoverEventsTab from "../domains/discover/components/tabs/DiscoverEventsTab";
 import DiscoverMomentsTab from "../domains/discover/components/tabs/DiscoverMomentsTab";
 import DiscoverNearbyTab from "../domains/discover/components/tabs/DiscoverNearbyTab";
+import type { DiscoverMoment } from "../domains/discover/types";
 
 const TABS: { key: DiscoverTab; label: string }[] = [
   { key: "topPicks", label: "TOP PICKS" },
@@ -69,6 +70,38 @@ export default function DiscoverScreen() {
     hasMoreEvents,
     updateEventRsvp,
   } = useDiscover();
+  const handleSidebarSelect = (key: SidebarActionKey) => {
+    setSidebarOpen(false);
+
+    if (key === "logout") {
+      logout();
+      return;
+    }
+    if (key === "inventory") {
+      // Navigate to Home tab -> Inventory screen
+      navigation.navigate("Home", { screen: "Inventory" } as any);
+      return;
+    }
+    if (key === "profile") {
+      // Navigate to Home tab -> Profile screen
+      navigation.navigate("Home", { screen: "Profile" } as any);
+      return;
+    }
+    if (key === "events") {
+      // Navigate to Home tab -> Events screen
+      navigation.navigate("Home", { screen: "Events" } as any);
+      return;
+    }
+    if (key === "invoices") {
+      navigation.navigate("Home", { screen: "Invoices" } as any);
+      return;
+    }
+    if (key === "home") {
+      // Navigate to Home tab
+      navigation.navigate("Home", {} as any);
+      return;
+    }
+  };
 
   const isGuest = status !== "authenticated";
   const { setHidden } = useTabBarVisibility();
@@ -213,6 +246,10 @@ export default function DiscoverScreen() {
     }
 
     const onCardPress = isGuest ? handleRequireSignUp : undefined;
+    const onMomentPress = isGuest
+      ? handleRequireSignUp
+      : (moment: DiscoverMoment) =>
+          navigation.navigate("MomentDetail", { post: moment.post });
 
     switch (tab) {
       case "topPicks":
@@ -244,7 +281,7 @@ export default function DiscoverScreen() {
           isFetchingNextPage={isMoreEventsLoading}
         />;
       case "moments":
-        return <DiscoverMomentsTab data={filteredMoments} onCardPress={onCardPress} onScroll={handleScroll} onEndReached={loadMoreMoments} isFetchingNextPage={isMoreMomentsLoading} />;
+        return <DiscoverMomentsTab data={filteredMoments} onCardPress={onMomentPress} onScroll={handleScroll} onEndReached={loadMoreMoments} isFetchingNextPage={isMoreMomentsLoading} />;
       case "nearby":
         return (
           <DiscoverNearbyTab

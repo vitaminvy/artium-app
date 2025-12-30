@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from "react";
-import { View, Text } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { PROFILE_ACCENT } from "../../constants/profile";
 import { ProfileStats, ProfileUser } from "../../types";
@@ -8,9 +8,11 @@ type Props = {
   user: ProfileUser;
   stats: ProfileStats;
   onAvatarLoad?: () => void;
+  onPressFollowers?: () => void;
+  onPressFollowing?: () => void;
 };
 
-export default function ProfileHero({ user, stats, onAvatarLoad }: Props) {
+export default function ProfileHero({ user, stats, onAvatarLoad, onPressFollowers, onPressFollowing }: Props) {
   const initial = user.avatarLabel ?? user.name?.charAt(0) ?? "?";
   const avatarColor = user.avatarColor ?? PROFILE_ACCENT;
   const hasAvatar = typeof user.avatarUri === "string" && user.avatarUri.length > 0;
@@ -71,15 +73,23 @@ export default function ProfileHero({ user, stats, onAvatarLoad }: Props) {
       <Text className="text-sm text-slate-500">{user.handle}</Text>
 
       <View className="flex-row items-center mt-4" style={{ columnGap: 24 }}>
-        <StatBlock label="Followers" value={stats.followers} />
+        <StatBlock label="Followers" value={stats.followers} onPress={onPressFollowers} />
         <View className="h-6 w-px bg-slate-200" />
-        <StatBlock label="Following" value={stats.following} />
+        <StatBlock label="Following" value={stats.following} onPress={onPressFollowing} />
       </View>
     </View>
   );
 }
 
-function StatBlock({ label, value }: { label: string; value: number }) {
+function StatBlock({ label, value, onPress }: { label: string; value: number; onPress?: () => void }) {
+  if (onPress) {
+    return (
+      <Pressable className="items-center" onPress={onPress} hitSlop={10}>
+        <Text className="text-lg font-semibold text-slate-900">{value}</Text>
+        <Text className="text-xs text-slate-500">{label}</Text>
+      </Pressable>
+    );
+  }
   return (
     <View className="items-center">
       <Text className="text-lg font-semibold text-slate-900">{value}</Text>
