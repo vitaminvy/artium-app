@@ -169,6 +169,11 @@ export default function EventScreen() {
       return;
     }
 
+    if (key === "invoices") {
+      navigation.navigate("Invoices");
+      return;
+    }
+
     if (key === "events") return;
   };
 

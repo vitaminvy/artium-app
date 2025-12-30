@@ -18,6 +18,7 @@ type ScreenHeaderProps = {
   onHeightChange?: (height: number) => void;
   underlineSource?: React.ComponentType<SvgProps>;
   underlineSize?: { width: number; height: number };
+  notificationCount?: number;
 };
 
 const ACTION_ICON: Record<HeaderAction, keyof typeof Ionicons.glyphMap> = {
@@ -38,6 +39,7 @@ export default function ScreenHeader({
   onHeightChange,
   underlineSource,
   underlineSize = { width: 130, height: 12 },
+  notificationCount = 0,
 }: ScreenHeaderProps) {
   const insets = useSafeAreaInsets();
   const topPadding = Math.max(insets.top + 6, 24);
@@ -107,6 +109,13 @@ export default function ScreenHeader({
                   size={22}
                   color="#0F172A"
                 />
+                {actionType === "notifications" && notificationCount > 0 ? (
+                  <View className="absolute top-1 right-1 bg-red-500 rounded-full min-w-[18px] h-[18px] items-center justify-center px-1">
+                    <Text className="text-[10px] font-bold text-white">
+                      {notificationCount > 99 ? "99+" : notificationCount}
+                    </Text>
+                  </View>
+                ) : null}
               </Pressable>
             ) : null}
           </View>

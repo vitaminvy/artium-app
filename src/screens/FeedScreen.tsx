@@ -31,12 +31,14 @@ import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import { useAuth } from "../domains/auth/contexts/AuthContext";
 import { getArtworkById } from "../domains/artwork/services/artworkService";
 import { navigate as rootNavigate } from "../app/navigation/navigationRef";
+import { useUnreadNotificationsCount } from "../domains/notifications/hooks/useUnreadCount";
 
 export default function FeedScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<FeedStackParamList>>();
   const route = useRoute<RouteProp<FeedStackParamList, "FeedMain">>();
   const { currentUser: user } = useAuth();
+  const unreadCount = useUnreadNotificationsCount();
   const {
     tab,
     setTab,
@@ -262,11 +264,13 @@ export default function FeedScreen() {
       <ScreenHeader
         title={FEED_STRINGS.HEADER_TITLE}
         badgeLabel="Blog"
+        onPressBadge={() => navigation.navigate("Blog")}
         actionType="notifications"
         onPressAction={() => {
-          // TODO: Navigate to notifications screen
+          rootNavigate("Notifications");
         }}
         underlineSource={UnderlineHome}
+        notificationCount={unreadCount}
       />
 
       <Animated.View style={[{ overflow: "hidden" }, tabAnimatedStyle]}>

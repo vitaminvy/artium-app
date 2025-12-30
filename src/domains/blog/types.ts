@@ -3,6 +3,7 @@ export type BlogArticle = {
   title: string;
   coverImage: string;
   excerpt: string;
+  authorId?: string; // User ID for navigation
   authorName: string;
   authorAvatar: string;
   publishedAt: string; // ISO string
