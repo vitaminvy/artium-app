@@ -34,6 +34,7 @@ export type PaginatedPostsResult = {
 
 /**
  * Fetches a paginated list of posts.
+ * Optimized version: batch load like status to reduce queries
  */
 export const getFeedPosts = async (
   pageSize: number,
@@ -46,27 +47,30 @@ export const getFeedPosts = async (
       : query(collection(firestore, POSTS_COLLECTION), orderBy("createdAt", "desc"), limit(pageSize));
 
     const snapshot = await getDocs(q);
-    const posts = await Promise.all(snapshot.docs.map(async (docSnapshot) => {
-      const data = docSnapshot.data();
-      let liked = false;
 
-      if (userId) {
+    // Batch load like status for all posts at once
+    const likeStatusMap = new Map<string, boolean>();
+    if (userId) {
+      const likePromises = snapshot.docs.map(async (docSnapshot) => {
         try {
           const likeRef = doc(firestore, POSTS_COLLECTION, docSnapshot.id, "likes", userId);
           const likeSnap = await getDoc(likeRef);
-          liked = likeSnap.exists();
+          return { postId: docSnapshot.id, liked: likeSnap.exists() };
         } catch (err) {
           console.warn(`Failed to check like status for post ${docSnapshot.id}`, err);
+          return { postId: docSnapshot.id, liked: false };
         }
-      }
+      });
 
-      const toMillis = (value: any) => {
-        if (!value) return undefined;
-        if (value instanceof Timestamp) return value.toMillis();
-        if (typeof value?.toDate === "function") return value.toDate().getTime();
-        if (typeof value === "number") return value;
-        return undefined;
-      };
+      const likeResults = await Promise.all(likePromises);
+      likeResults.forEach(({ postId, liked }) => {
+        likeStatusMap.set(postId, liked);
+      });
+    }
+
+    const posts = snapshot.docs.map((docSnapshot) => {
+      const data = docSnapshot.data();
+      const liked = likeStatusMap.get(docSnapshot.id) || false;
 
       return {
         id: docSnapshot.id,
@@ -77,7 +81,7 @@ export const getFeedPosts = async (
         quote: mapQuote(data.quote),
         liked,
       } as FeedPost;
-    }));
+    });
 
     return {
       posts,

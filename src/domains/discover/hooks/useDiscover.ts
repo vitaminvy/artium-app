@@ -105,6 +105,7 @@ type UseDiscoverResult = {
   loadMoreArtworks: () => void;
   isMoreArtworksLoading: boolean;
   hasMoreArtworks: boolean;
+  refreshArtworks: () => Promise<void>;
   moments: DiscoverMoment[];
   loadMoreMoments: () => void;
   isMoreMomentsLoading: boolean;
@@ -184,21 +185,26 @@ export function useDiscover(): UseDiscoverResult {
     }
   }, [isMoreArtworksLoading, hasMoreArtworks, lastArtworkDoc]);
 
-  const fetchMoments = useCallback(
-    async (lastDoc: QueryDocumentSnapshot<DocumentData> | null = null) => {
-      try {
-        const q = lastDoc
-          ? query(
-              collection(firestore, "posts"),
-              orderBy("createdAt", "desc"),
-              startAfter(lastDoc),
-              limit(MOMENT_PAGE_SIZE)
-            )
-          : query(
-              collection(firestore, "posts"),
-              orderBy("createdAt", "desc"),
-              limit(MOMENT_PAGE_SIZE)
-            );
+  const refreshArtworks = useCallback(async () => {
+    try {
+      const [trendingArtworks, initialArtworksResult] = await Promise.all([
+        getTrendingArtworks(),
+        getArtworks(ARTWORK_PAGE_SIZE, null),
+      ]);
+      setTopPicks(trendingArtworks);
+      setArtworks(initialArtworksResult.artworks);
+      setLastArtworkDoc(initialArtworksResult.lastVisible);
+      setHasMoreArtworks(initialArtworksResult.artworks.length === ARTWORK_PAGE_SIZE);
+    } catch (e: any) {
+      setError(e);
+    }
+  }, []);
+
+  const fetchMoments = useCallback(async (lastDoc: QueryDocumentSnapshot<DocumentData> | null = null) => {
+    try {
+      const q = lastDoc 
+        ? query(collection(firestore, "posts"), orderBy("createdAt", "desc"), startAfter(lastDoc), limit(MOMENT_PAGE_SIZE))
+        : query(collection(firestore, "posts"), orderBy("createdAt", "desc"), limit(MOMENT_PAGE_SIZE));
 
         const snapshot = await getDocs(q);
         const newMoments = snapshot.docs.map(mapMomentDoc);
@@ -351,6 +357,7 @@ export function useDiscover(): UseDiscoverResult {
     loadMoreArtworks,
     isMoreArtworksLoading,
     hasMoreArtworks,
+    refreshArtworks,
     moments,
     loadMoreMoments,
     isMoreMomentsLoading,

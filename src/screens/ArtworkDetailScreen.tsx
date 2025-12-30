@@ -30,6 +30,7 @@ import {
   getArtworkById,
   incrementArtworkView,
   toggleArtworkLike,
+  deleteArtwork,
 } from "../domains/artwork/services/artworkService";
 import { addArtworkToMoodboard, findMoodboardForArtwork } from "../domains/artwork/services/moodboardService";
 import SaveSheet from "../domains/artwork/components/SaveSheet";
@@ -280,6 +281,35 @@ export default function ArtworkDetailScreen() {
       Alert.alert("Share unavailable", "Không thể mở chia sẻ trên thiết bị này.");
     }
   }, [artwork]);
+
+  const handleDeleteArtwork = useCallback(() => {
+    if (!artwork || !currentUser) return;
+
+    optionsSheetRef.current?.dismiss();
+
+    setTimeout(() => {
+      Alert.alert(
+        'Delete artwork?',
+        'If you delete this artwork, you won\'t be able to restore it.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await deleteArtwork(artwork.id, currentUser.uid);
+                navigation.goBack();
+              } catch (error: any) {
+                console.error("Failed to delete artwork:", error);
+                Alert.alert("Error", error.message || "Could not delete artwork. Please try again.");
+              }
+            }
+          },
+        ]
+      );
+    }, 300);
+  }, [artwork, currentUser, navigation]);
   
   // Conditional Rendering
   if (loading) {
@@ -502,7 +532,7 @@ export default function ArtworkDetailScreen() {
         {/* Options Sheet */}
         <BottomSheetModal
           ref={optionsSheetRef}
-          snapPoints={[200]}
+          snapPoints={artwork?.artistId === currentUser?.uid ? [260] : [200]}
           backdropComponent={renderBackdrop}
           enablePanDownToClose
           handleIndicatorStyle={{ backgroundColor: "#CBD5E1", width: 40, height: 4 }}
@@ -514,6 +544,16 @@ export default function ArtworkDetailScreen() {
             <Text className="text-lg font-bold text-slate-900 px-5 pt-2 pb-3">
               Options
             </Text>
+            {artwork?.artistId === currentUser?.uid && (
+              <Pressable
+                onPress={handleDeleteArtwork}
+                className="flex-row items-center gap-3 px-5 py-4 active:bg-slate-50"
+                style={{ backgroundColor: 'transparent' }}
+              >
+                <Ionicons name="trash-outline" size={24} color="#EF4444" />
+                <Text className="text-base font-semibold text-red-500">Delete</Text>
+              </Pressable>
+            )}
             <Pressable
               onPress={handleOpenReportSheet}
               className="flex-row items-center gap-3 px-5 py-4 active:bg-slate-50"

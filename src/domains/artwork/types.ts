@@ -59,4 +59,5 @@ export type ArtworkDetail = {
   soldAt?: number;
   soldByInvoiceId?: string;
   liked?: boolean;
+  artistId?: string;
 };

@@ -243,6 +243,7 @@ export default function FeedDetailScreen() {
           onPressReshare={openReshare}
           onPressComment={() => { }}
           onPressImage={handleOpenViewer}
+          disableRealtime={false}
         />
 
         <View className="mt-6 px-2">

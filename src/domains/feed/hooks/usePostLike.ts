@@ -7,12 +7,13 @@ export function usePostLike(postId: string, initialLiked?: boolean) {
   const [isLiked, setIsLiked] = useState(initialLiked ?? false);
 
   useEffect(() => {
-    if (!currentUser) {
-      setIsLiked(false);
+    // Skip subscription if postId is empty (disabled real-time mode)
+    if (!postId || !currentUser) {
+      setIsLiked(initialLiked ?? false);
       return;
     }
 
-    // Set initial state from props to avoid flash if possible, 
+    // Set initial state from props to avoid flash if possible,
     // but the subscription will correct it immediately.
     if (initialLiked !== undefined) {
       setIsLiked(initialLiked);
@@ -25,7 +26,7 @@ export function usePostLike(postId: string, initialLiked?: boolean) {
     return () => {
       unsubscribe();
     };
-  }, [postId, currentUser?.uid]);
+  }, [postId, currentUser?.uid, initialLiked]);
 
   const toggleOptimistic = () => setIsLiked((prev) => !prev);
 

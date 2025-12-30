@@ -8,6 +8,12 @@ export function usePostMetrics(postId: string, initialMetrics?: FeedMetrics) {
   );
 
   useEffect(() => {
+    // Skip subscription if postId is empty (disabled real-time mode)
+    if (!postId) {
+      setMetrics(initialMetrics || { likes: 0, comments: 0, shares: 0 });
+      return;
+    }
+
     const unsubscribe = subscribeToPostMetrics(postId, (newMetrics) => {
       setMetrics(newMetrics);
     });
@@ -15,7 +21,7 @@ export function usePostMetrics(postId: string, initialMetrics?: FeedMetrics) {
     return () => {
       unsubscribe();
     };
-  }, [postId]);
+  }, [postId, initialMetrics]);
 
   return metrics;
 }

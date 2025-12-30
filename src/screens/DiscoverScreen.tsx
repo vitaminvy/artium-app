@@ -63,6 +63,7 @@ export default function DiscoverScreen() {
     loadMoreArtworks,
     isMoreArtworksLoading,
     hasMoreArtworks,
+    refreshArtworks,
     moments,
     loadMoreMoments,
     isMoreMomentsLoading,
@@ -141,6 +142,13 @@ export default function DiscoverScreen() {
     useCallback(() => {
       setActiveKey("home");
     }, [])
+  );
+
+  // Refresh artworks when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      refreshArtworks();
+    }, [refreshArtworks])
   );
 
   const [showLocationSheet, setShowLocationSheet] = useState(false);
