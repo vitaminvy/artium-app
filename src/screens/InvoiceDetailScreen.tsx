@@ -16,14 +16,15 @@ import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/nativ
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { Invoice } from "../domains/invoices/types";
-import {
-  getInvoiceById,
-  updateInvoice,
-} from "../domains/invoices/services/invoiceService";
+import { updateInvoice } from "../domains/invoices/services/invoiceService";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import { createEmptyAddress } from "../domains/checkout/constants";
 import { AddressSheet } from "../domains/checkout/components/sheets/AddressSheet";
 import type { AddressForm } from "../domains/checkout/types";
+import { firestore, functions } from "../configs/firebase";
+import { doc, onSnapshot, Timestamp } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
+import * as WebBrowser from "expo-web-browser";
 
 const DELIVERY_OPTION_SELLER = "Pick up / Ship by seller";
 const DELIVERY_OPTION_ARTIUM = "Ship by Artium";
@@ -68,6 +69,39 @@ const formatCurrency = (amount: number, currency: string) => {
   return `${prefix}${amount.toFixed(2)}`;
 };
 
+const toMillis = (value: any) => {
+  if (!value) return undefined;
+  if (value instanceof Timestamp) return value.toMillis();
+  if (typeof value?.toDate === "function") return value.toDate().getTime();
+  if (typeof value === "number") return value;
+  return undefined;
+};
+
+const mapInvoiceData = (id: string, data: any): Invoice => ({
+  id,
+  invoiceNumber: data.invoiceNumber,
+  status: data.status,
+  deliveryMethod: data.deliveryMethod,
+  shippingAddress: data.shippingAddress,
+  payment: data.payment
+    ? {
+        ...data.payment,
+        createdAt: toMillis(data.payment.createdAt),
+        paidAt: toMillis(data.payment.paidAt),
+      }
+    : undefined,
+  sellerId: data.sellerId,
+  sellerSnapshot: data.sellerSnapshot,
+  buyer: data.buyer,
+  items: data.items ?? [],
+  currency: data.currency,
+  totals: data.totals,
+  createdAt: toMillis(data.createdAt),
+  updatedAt: toMillis(data.updatedAt),
+  lastSentAt: toMillis(data.lastSentAt),
+  sentCount: data.sentCount,
+});
+
 const formatInvoiceNumber = (id: string) => {
   if (!id) return "Invoice";
   const prefix = id.slice(0, 4).toUpperCase();
@@ -84,6 +118,7 @@ export default function InvoiceDetailScreen() {
   );
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
+  const [paying, setPaying] = useState(false);
   const { setHidden } = useTabBarVisibility();
   const addressSheetRef = useRef<BottomSheetModal>(null);
   const [addressByMethod, setAddressByMethod] = useState<
@@ -126,23 +161,30 @@ export default function InvoiceDetailScreen() {
   const invoiceId = (route.params as any)?.invoiceId as string | undefined;
 
   useEffect(() => {
-    const loadInvoice = async () => {
-      if (!invoiceId) {
+    if (!invoiceId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const invoiceRef = doc(firestore, "invoices", invoiceId);
+    const unsubscribe = onSnapshot(
+      invoiceRef,
+      (snapshot) => {
+        if (!snapshot.exists()) {
+          setInvoice(null);
+          setLoading(false);
+          return;
+        }
+        setInvoice(mapInvoiceData(snapshot.id, snapshot.data()));
         setLoading(false);
-        return;
-      }
-      setLoading(true);
-      try {
-        const data = await getInvoiceById(invoiceId);
-        setInvoice(data);
-      } catch (err) {
+      },
+      (err) => {
         console.error("Failed to load invoice:", err);
         Alert.alert("Invoice not found", "Please try again.");
-      } finally {
         setLoading(false);
       }
-    };
-    loadInvoice();
+    );
+    return () => unsubscribe();
   }, [invoiceId]);
 
   useEffect(() => {
@@ -217,6 +259,29 @@ export default function InvoiceDetailScreen() {
     [invoiceId]
   );
 
+  const createPayosPaymentLink = useMemo(
+    () => httpsCallable(functions, "createPayosPaymentLink"),
+    []
+  );
+
+  const handlePayWithCard = useCallback(async () => {
+    if (!invoiceId || isPaid) return;
+    setPaying(true);
+    try {
+      const result = await createPayosPaymentLink({ invoiceId });
+      const data = result.data as { checkoutUrl?: string };
+      if (!data?.checkoutUrl) {
+        throw new Error("Missing checkoutUrl");
+      }
+      await WebBrowser.openBrowserAsync(data.checkoutUrl);
+    } catch (err) {
+      console.error("Failed to start payment:", err);
+      Alert.alert("Payment failed", "Please try again.");
+    } finally {
+      setPaying(false);
+    }
+  }, [createPayosPaymentLink, invoiceId, isPaid]);
+
   useFocusEffect(
     React.useCallback(() => {
       setHidden(true);
@@ -233,6 +298,8 @@ export default function InvoiceDetailScreen() {
     if (!invoice?.id) return "";
     return invoice.invoiceNumber || formatInvoiceNumber(invoice.id);
   }, [invoice?.id, invoice?.invoiceNumber]);
+
+  const isPaid = invoice?.payment?.status === "paid";
 
   if (loading) {
     return (
@@ -277,12 +344,18 @@ export default function InvoiceDetailScreen() {
               </Pressable>
             </View>
 
-            <Text style={styles.title}>Invoice{"\n"}#{invoiceNumber}</Text>
-
-            <View style={styles.secureRow}>
-              <Ionicons name="lock-closed-outline" size={16} color="#94A3B8" />
-              <Text style={styles.secureText}>SECURE CHECKOUT</Text>
+          <Text style={styles.title}>Invoice{"\n"}#{invoiceNumber}</Text>
+          {isPaid ? (
+            <View style={styles.paidBadge}>
+              <Ionicons name="checkmark-circle" size={14} color="#16A34A" />
+              <Text style={styles.paidBadgeText}>Paid</Text>
             </View>
+          ) : null}
+
+          <View style={styles.secureRow}>
+            <Ionicons name="lock-closed-outline" size={16} color="#94A3B8" />
+            <Text style={styles.secureText}>SECURE CHECKOUT</Text>
+          </View>
 
             <View style={styles.actionsRow}>
               <Pressable style={styles.primaryPill}>
@@ -499,8 +572,19 @@ export default function InvoiceDetailScreen() {
               <Pressable style={styles.paymentButton} onPress={() => {}}>
                 <Text style={styles.paymentButtonText}>Tap to Pay</Text>
               </Pressable>
-              <Pressable style={styles.paymentButton} onPress={() => {}}>
-                <Text style={styles.paymentButtonText}>Pay with Card</Text>
+              <Pressable
+                style={[
+                  styles.paymentButton,
+                  (isPaid || paying) && styles.paymentButtonDisabled,
+                ]}
+                onPress={handlePayWithCard}
+                disabled={isPaid || paying}
+              >
+                {paying ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.paymentButtonText}>Pay with Card</Text>
+                )}
               </Pressable>
             </View>
           </InvoiceCardSection>
@@ -641,6 +725,22 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#0F172A",
     lineHeight: 38,
+  },
+  paidBadge: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: "#DCFCE7",
+  },
+  paidBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#15803D",
   },
   secureRow: {
     flexDirection: "row",
@@ -910,6 +1010,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#0B73FF",
+  },
+  paymentButtonDisabled: {
+    backgroundColor: "#94A3B8",
   },
   paymentButtonText: {
     fontSize: 13,

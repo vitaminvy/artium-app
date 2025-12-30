@@ -2,6 +2,19 @@ import type { AddressForm } from "../checkout/types";
 
 export type InvoiceStatus = "draft" | "sent";
 export type InvoiceDeliveryMethod = "seller" | "artium" | "invoice";
+export type InvoicePaymentStatus = "pending" | "paid" | "failed" | "canceled";
+
+export type InvoicePayment = {
+  provider: "payos";
+  status: InvoicePaymentStatus;
+  orderCode: string | number;
+  paymentLinkId?: string;
+  checkoutUrl?: string;
+  createdAt?: number;
+  paidAt?: number;
+  transactionId?: string;
+  rawPayload?: Record<string, unknown>;
+};
 
 export type SellerSnapshot = {
   uid: string;
@@ -38,6 +51,7 @@ export type Invoice = {
   status: InvoiceStatus;
   deliveryMethod?: InvoiceDeliveryMethod;
   shippingAddress?: AddressForm;
+  payment?: InvoicePayment;
   sellerId: string;
   sellerSnapshot: SellerSnapshot;
   buyer: InvoiceBuyer;
