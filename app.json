@@ -2,6 +2,7 @@
   "expo": {
     "name": "Artium",
     "slug": "artium",
+    "scheme": "artium",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

@@ -20,4 +20,5 @@ export const PROFILE_STRINGS = {
     "You have not uploaded any artwork yet\nStart uploading one now!",
   momentsEmpty: "You have not added any moment yet",
   moodboardCta: "Create Moodboard",
+  moodboardsEmpty: "No moodboards yet",
 };

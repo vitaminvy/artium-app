@@ -6,6 +6,7 @@ export type ArtworkDetail = {
   description?: string;
 
   artist: {
+    id?: string; // User ID for navigation
     name: string;
     avatar: string;
     verified: boolean;
@@ -53,6 +54,9 @@ export type ArtworkDetail = {
     shares?: number;
   };
 
-  status?: string;
+  status?: "for_sale" | "sold";
+  isActive?: boolean;
+  soldAt?: number;
+  soldByInvoiceId?: string;
   liked?: boolean;
 };

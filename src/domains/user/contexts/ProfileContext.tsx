@@ -28,6 +28,7 @@ type ProfileContextValue = {
   isFollowing: (userId: string) => boolean;
   toggleFollow: (userId: string) => void;
   resetProfile: () => void;
+  refreshProfile: () => Promise<void>;
 };
 
 type UserDoc = {
@@ -221,6 +222,7 @@ const ProfileContext = createContext<ProfileContextValue>({
   isFollowing: () => false,
   toggleFollow: () => {},
   resetProfile: () => {},
+  refreshProfile: async () => {},
 });
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
@@ -260,6 +262,9 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         title: mb.name,
         visibility: mb.isPrivate ? "private" : "public",
         ownerName: nextProfile.user.name,
+        ownerAvatar: nextProfile.user.avatarUri ?? null,
+        coverImage: mb.cover ?? null,
+        itemsCount: mb.count,
       }));
       setProfile(nextProfile);
       setEditProfile(buildEditProfileFromDoc(data, nextProfile));
@@ -291,12 +296,13 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       userRef,
       (snap) => {
         const data = (snap.data() ?? {}) as UserDoc;
-        const nextProfile = buildProfileFromUserDoc(
-          data,
-          currentUser,
-          baseProfile
+        setProfile((prev) =>
+          buildProfileFromUserDoc(
+            data,
+            currentUser,
+            { ...prev, moodboards: prev.moodboards }
+          )
         );
-        setProfile(nextProfile);
       },
       (err) => {
         console.warn("Profile snapshot error:", err);
@@ -424,8 +430,9 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       isFollowing,
       toggleFollow,
       resetProfile,
+      refreshProfile,
     }),
-    [profile, editProfile, isLoading, updateProfile, isFollowing, toggleFollow, resetProfile]
+    [profile, editProfile, isLoading, updateProfile, isFollowing, toggleFollow, resetProfile, refreshProfile]
   );
 
   return (

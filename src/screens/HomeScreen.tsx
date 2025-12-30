@@ -36,6 +36,7 @@ import {
 } from "../domains/home/types";
 import ArtworkCard from "../domains/discover/components/cards/ArtworkCard";
 import type { Artwork } from "../domains/discover/types";
+import { navigateToUserProfile } from "../shared/utils/navigateToUserProfile";
 import { useLogout } from "../domains/auth/hooks/useLogout";
 import { LogoutConfirmModal } from "../domains/auth/components/LogoutConfirmModal";
 import { useAuth } from "../domains/auth/contexts/AuthContext";
@@ -135,6 +136,16 @@ export default function HomeScreen() {
 
     if (key === "events") {
       navigation.navigate("Events");
+      return;
+    }
+
+    if (key === "notifications") {
+      navigation.navigate("Notifications" as never);
+      return;
+    }
+
+    if (key === "invoices") {
+      navigation.navigate("Invoices");
       return;
     }
 
@@ -268,6 +279,7 @@ export default function HomeScreen() {
                   item={item}
                   isFollowing={isFollowing(item.id)}
                   onToggleFollow={toggleFollow}
+                  onPress={() => navigateToUserProfile(item.id)}
                 />
               </View>
             )}
