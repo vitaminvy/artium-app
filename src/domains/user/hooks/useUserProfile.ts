@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 import { ProfileViewModel, ProfileTabKey } from "../types";
 import { PROFILE_ACCENT } from "../constants/profile";
@@ -140,6 +140,48 @@ export function useUserProfile(userId: string): UseUserProfileResult {
   useEffect(() => {
     void fetchUserProfile();
   }, [fetchUserProfile]);
+
+  // Realtime sync for viewed user's follower/following stats (and basic profile)
+  useEffect(() => {
+    if (!userId) return;
+    const userRef = doc(firestore, "users", userId);
+    const unsubscribe = onSnapshot(
+      userRef,
+      (snap) => {
+        if (!snap.exists()) return;
+        const data = snap.data() as UserDoc;
+        const displayName = buildDisplayName(data);
+        const handle = buildHandle(data, data.email || "", displayName);
+        setProfile((prev) => ({
+          ...prev,
+          user: {
+            ...prev.user,
+            name: displayName,
+            handle,
+            avatarUri:
+              data.avatarUri !== undefined
+                ? data.avatarUri
+                : data.photoURL ?? prev.user.avatarUri,
+            avatarLabel: (displayName || prev.user.avatarLabel || "?")
+              .charAt(0)
+              .toUpperCase(),
+          },
+          stats: {
+            followers:
+              data.stats?.followers ??
+              data.followerCount ??
+              prev.stats.followers,
+            following:
+              data.stats?.following ??
+              data.followingCount ??
+              prev.stats.following,
+          },
+        }));
+      },
+      (err) => console.warn("User profile snapshot error:", err)
+    );
+    return () => unsubscribe();
+  }, [userId]);
 
   return {
     profile,
