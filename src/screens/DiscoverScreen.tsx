@@ -17,13 +17,6 @@ import ChangeLocationSheet from "../domains/discover/components/sheets/ChangeLoc
 import Loader from "../shared/components/Loader";
 import { useAuth } from "@/domains/auth/contexts/AuthContext";
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
-import Sidebar from "../shared/components/Sidebar";
-import {
-  SidebarActionKey,
-  SidebarKey,
-  useSidebarItems,
-} from "../shared/hooks/useSidebar";
-import { useLogout } from "../domains/auth/hooks/useLogout";
 import { useProfileContext } from "../domains/user/contexts/ProfileContext";
 import { toggleEventRsvp } from "../domains/discover/services/eventService";
 
@@ -139,11 +132,6 @@ export default function DiscoverScreen() {
   const [radius, setRadius] = useState("10 miles");
   const [showRadiusOptions, setShowRadiusOptions] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const sidebarItems = useSidebarItems();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [headerHeight, setHeaderHeight] = useState(96);
-  const [activeKey, setActiveKey] = useState<SidebarKey>("home");
-  const { logout, showConfirmModal, onConfirmLogout, onCancelLogout, loading: logoutLoading } = useLogout();
   const handleRequireSignUp = useCallback(() => {
     navigation.navigate("SignUp" as any);
   }, [navigation]);
@@ -318,10 +306,7 @@ export default function DiscoverScreen() {
       <ScreenHeader
         title="Discover"
         badgeLabel="Blog"
-        actionType="menu"
-        isMenuOpen={sidebarOpen}
-        onPressAction={() => setSidebarOpen((prev) => !prev)}
-        onHeightChange={(h) => setHeaderHeight(h)}
+        onPressBadge={() => navigation.navigate("Blog")}
         underlineSource={UnderlineHome}
       />
 
@@ -386,15 +371,6 @@ export default function DiscoverScreen() {
           </Pressable>
         </View>
       )}
-
-      <Sidebar
-        visible={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        onSelect={handleSidebarSelect}
-        topOffset={headerHeight}
-        activeKey={activeKey}
-        items={sidebarItems}
-      />
     </View>
   );
 }
