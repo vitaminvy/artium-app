@@ -1,6 +1,6 @@
 import type { AddressForm } from "../checkout/types";
 
-export type InvoiceStatus = "draft" | "sent";
+export type InvoiceStatus = "draft" | "sent" | "paid" | "cancelled";
 export type InvoiceDeliveryMethod = "seller" | "artium" | "invoice";
 export type InvoicePaymentStatus = "pending" | "paid" | "failed" | "canceled";
 
@@ -10,6 +10,9 @@ export type InvoicePayment = {
   orderCode: string | number;
   paymentLinkId?: string;
   checkoutUrl?: string;
+  returnUrl?: string;
+  cancelUrl?: string;
+  version?: number;
   createdAt?: number;
   paidAt?: number;
   transactionId?: string;
@@ -52,6 +55,8 @@ export type Invoice = {
   deliveryMethod?: InvoiceDeliveryMethod;
   shippingAddress?: AddressForm;
   payment?: InvoicePayment;
+  isActive: boolean;
+  paidAt?: number;
   sellerId: string;
   sellerSnapshot: SellerSnapshot;
   buyer: InvoiceBuyer;

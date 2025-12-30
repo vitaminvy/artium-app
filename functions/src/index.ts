@@ -12,6 +12,32 @@ admin.initializeApp();
 const db = admin.firestore();
 
 const PAYOS_ENDPOINT = "https://api-merchant.payos.vn/v2/payment-requests";
+const PAYOS_LINK_VERSION = 2;
+
+const resolveProjectId = (): string | null => {
+  if (process.env.GCLOUD_PROJECT) return process.env.GCLOUD_PROJECT;
+  if (process.env.FIREBASE_CONFIG) {
+    try {
+      const config = JSON.parse(process.env.FIREBASE_CONFIG);
+      if (config?.projectId) return config.projectId as string;
+    } catch (err) {
+      console.warn("Failed to parse FIREBASE_CONFIG", err);
+    }
+  }
+  return null;
+};
+
+const buildRedirectUrl = (
+  baseUrl: string,
+  params: Record<string, string | number | undefined>
+) => {
+  const url = new URL(baseUrl);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined) return;
+    url.searchParams.set(key, String(value));
+  });
+  return url.toString();
+};
 
 const buildPayosSignature = (payload: {
   amount: number;
@@ -44,9 +70,16 @@ const getSignatureHeader = (req: SignatureRequest) => {
   );
 };
 
-const mapPayosStatus = (status?: string) => {
-  const normalized = status?.toLowerCase();
+const mapPayosStatus = (status?: string | number) => {
+  if (typeof status === "number") {
+    if (status === 1) return "paid";
+    if (status === 0) return "pending";
+  }
+  const normalized =
+    typeof status === "string" ? status.toLowerCase().trim() : undefined;
   if (!normalized) return null;
+  if (normalized === "1") return "paid";
+  if (normalized === "0") return "pending";
   if (["paid", "success"].includes(normalized)) return "paid";
   if (["cancel", "canceled", "cancelled"].includes(normalized)) {
     return "canceled";
@@ -129,25 +162,55 @@ export const createPayosPaymentLink = onCall(
       throw new HttpsError("failed-precondition", "Invoice already paid.");
     }
 
-    if (invoice.payment?.checkoutUrl) {
-      return {
-        checkoutUrl: invoice.payment.checkoutUrl,
-        orderCode: invoice.payment.orderCode,
-        paymentLinkId: invoice.payment.paymentLinkId,
-      };
-    }
-
     const total = Number(invoice?.totals?.total ?? 0);
     if (!total || Number.isNaN(total) || total <= 0) {
       throw new HttpsError("invalid-argument", "Invalid invoice total.");
     }
 
-    const orderCode = buildOrderCode();
     const description = `Invoice ${invoice.invoiceNumber || invoiceId}`;
-    const returnUrl =
-      process.env.PAYOS_RETURN_URL || "artium://payos/return";
-    const cancelUrl =
-      process.env.PAYOS_CANCEL_URL || "artium://payos/cancel";
+    const projectId = resolveProjectId();
+    if (!projectId) {
+      throw new HttpsError("internal", "Missing Firebase project id.");
+    }
+    const hostingBase =
+      process.env.PAYOS_HOSTING_BASE_URL || `https://${projectId}.web.app`;
+    const normalizedBase = hostingBase.replace(/\/+$/, "");
+    const baseReturnUrl = `${normalizedBase}/payos/return`;
+    const baseCancelUrl = `${normalizedBase}/payos/cancel`;
+
+    if (invoice.payment?.checkoutUrl && invoice.payment?.orderCode) {
+      const existingReturnUrl = buildRedirectUrl(baseReturnUrl, {
+        invoiceId,
+        orderCode: invoice.payment.orderCode,
+      });
+      const existingCancelUrl = buildRedirectUrl(baseCancelUrl, {
+        invoiceId,
+        orderCode: invoice.payment.orderCode,
+      });
+      const canReuse =
+        invoice.payment.status !== "paid" &&
+        invoice.payment.returnUrl === existingReturnUrl &&
+        invoice.payment.cancelUrl === existingCancelUrl &&
+        invoice.payment.version === PAYOS_LINK_VERSION;
+
+      if (canReuse) {
+        return {
+          checkoutUrl: invoice.payment.checkoutUrl,
+          orderCode: invoice.payment.orderCode,
+          paymentLinkId: invoice.payment.paymentLinkId,
+        };
+      }
+    }
+
+    const orderCode = buildOrderCode();
+    const returnUrl = buildRedirectUrl(baseReturnUrl, {
+      invoiceId,
+      orderCode,
+    });
+    const cancelUrl = buildRedirectUrl(baseCancelUrl, {
+      invoiceId,
+      orderCode,
+    });
 
     const payload = {
       orderCode,
@@ -195,6 +258,9 @@ export const createPayosPaymentLink = onCall(
         orderCode: paymentData.orderCode ?? orderCode,
         paymentLinkId: paymentData.paymentLinkId,
         checkoutUrl: paymentData.checkoutUrl,
+        returnUrl,
+        cancelUrl,
+        version: PAYOS_LINK_VERSION,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       },
     });
@@ -237,7 +303,7 @@ export const payosWebhook = onRequest(
     const data = payload?.data ?? payload;
     const orderCode = data?.orderCode;
     const paymentLinkId = data?.paymentLinkId;
-    const status = mapPayosStatus(data?.status);
+    const status = mapPayosStatus(data?.status ?? payload?.status);
 
     if (!orderCode && !paymentLinkId) {
       res.status(400).send("Missing orderCode");
@@ -245,21 +311,53 @@ export const payosWebhook = onRequest(
     }
 
     const queryBase = db.collection("invoices");
-    let query = queryBase
-      .where("payment.orderCode", "==", orderCode)
-      .limit(1);
-    if (!orderCode) {
-      query = queryBase
-        .where("payment.paymentLinkId", "==", paymentLinkId)
-        .limit(1);
+    let snapshot:
+      | FirebaseFirestore.QuerySnapshot<FirebaseFirestore.DocumentData>
+      | null = null;
+
+    const orderCodeCandidates: Array<string | number> = [];
+    if (orderCode !== undefined && orderCode !== null) {
+      if (typeof orderCode === "string") {
+        orderCodeCandidates.push(orderCode);
+        const parsed = Number(orderCode);
+        if (!Number.isNaN(parsed)) {
+          orderCodeCandidates.push(parsed);
+        }
+      } else {
+        orderCodeCandidates.push(orderCode);
+        orderCodeCandidates.push(String(orderCode));
+      }
     }
-    const snapshot = await query.get();
+
+    for (const candidate of orderCodeCandidates) {
+      const candidateSnapshot = await queryBase
+        .where("payment.orderCode", "==", candidate)
+        .limit(1)
+        .get();
+      if (!candidateSnapshot.empty) {
+        snapshot = candidateSnapshot;
+        break;
+      }
+    }
+
+    if ((!snapshot || snapshot.empty) && paymentLinkId) {
+      snapshot = await queryBase
+        .where("payment.paymentLinkId", "==", paymentLinkId)
+        .limit(1)
+        .get();
+    }
+
+    if (!snapshot) {
+      res.status(400).send("Missing orderCode");
+      return;
+    }
     if (snapshot.empty) {
       res.status(404).send("Invoice not found");
       return;
     }
 
     const invoiceDoc = snapshot.docs[0];
+    const invoiceData = invoiceDoc.data() as admin.firestore.DocumentData;
     const update: Record<string, unknown> = {
       "payment.status": status ?? "pending",
       "payment.rawPayload": payload,
@@ -272,9 +370,38 @@ export const payosWebhook = onRequest(
     }
     if (status === "paid") {
       update["payment.paidAt"] = admin.firestore.FieldValue.serverTimestamp();
+      update["status"] = "paid";
+      update["isActive"] = false;
+      update["paidAt"] = admin.firestore.FieldValue.serverTimestamp();
+    }
+    const batch = db.batch();
+    batch.update(invoiceDoc.ref, update);
+
+    if (status === "paid") {
+      const artworkIds = new Set<string>();
+      if (invoiceData?.artworkId) {
+        artworkIds.add(String(invoiceData.artworkId));
+      }
+      if (Array.isArray(invoiceData?.items)) {
+        invoiceData.items.forEach((item: { artworkId?: string }) => {
+          if (item?.artworkId) {
+            artworkIds.add(String(item.artworkId));
+          }
+        });
+      }
+
+      artworkIds.forEach((artworkId) => {
+        const artworkRef = db.collection("artworks").doc(artworkId);
+        batch.update(artworkRef, {
+          status: "sold",
+          isActive: false,
+          soldAt: admin.firestore.FieldValue.serverTimestamp(),
+          soldByInvoiceId: invoiceDoc.id,
+        });
+      });
     }
 
-    await invoiceDoc.ref.update(update);
+    await batch.commit();
     res.status(200).send("ok");
   }
 );
