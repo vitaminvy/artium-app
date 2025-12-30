@@ -20,6 +20,12 @@ import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import { useProfileContext } from "../domains/user/contexts/ProfileContext";
 import { toggleEventRsvp } from "../domains/discover/services/eventService";
 import { navigate as rootNavigate } from "../app/navigation/navigationRef";
+import {
+  SidebarActionKey,
+  SidebarKey,
+  useSidebarItems,
+} from "../shared/hooks/useSidebar";
+import { useLogout } from "../domains/auth/hooks/useLogout";
 
 // Import Tabs
 import DiscoverArtworksTab from "../domains/discover/components/tabs/DiscoverArtworksTab";

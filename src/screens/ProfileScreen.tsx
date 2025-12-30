@@ -171,16 +171,13 @@ export default function ProfileScreen() {
   };
 
   const openMoodboardDetail = (moodboard: ProfileMoodboard) => {
-    navigation.navigate(
-      "MoodboardDetail" as never,
-      {
-        id: moodboard.id,
-        ownerId: profile.user.id,
-        title: moodboard.title,
-        cover: moodboard.coverImage ?? undefined,
-        ownerName: moodboard.ownerName,
-      } as never
-    );
+    navigation.navigate("MoodboardDetail", {
+      id: moodboard.id,
+      ownerId: profile.user.id,
+      title: moodboard.title,
+      cover: moodboard.coverImage ?? undefined,
+      ownerName: moodboard.ownerName,
+    });
   };
 
   const handleSidebarSelect = (key: SidebarActionKey) => {
