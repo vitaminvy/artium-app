@@ -31,6 +31,7 @@ import {
   incrementArtworkView,
   toggleArtworkLike,
 } from "../domains/artwork/services/artworkService";
+import { addArtworkToMoodboard, findMoodboardForArtwork } from "../domains/artwork/services/moodboardService";
 import SaveSheet from "../domains/artwork/components/SaveSheet";
 import ReportSheet from "../domains/artwork/components/ReportSheet";
 import ArtworkCarousel from "../domains/artwork/components/ArtworkCarousel";
@@ -49,6 +50,7 @@ export default function ArtworkDetailScreen() {
   const route = useRoute<any>();
   const insets = useSafeAreaInsets();
   const { hidden, setHidden, height: tabHeight } = useTabBarVisibility();
+  const { currentUser } = useAuth();
   const scrollY = useRef(0);
   const initialHeaderHeight = Math.max(insets.top + 56, 56);
 
@@ -67,7 +69,6 @@ export default function ArtworkDetailScreen() {
   const [isResharing, setIsResharing] = useState(false);
   const [heroImageLoaded, setHeroImageLoaded] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(initialHeaderHeight);
-  const { currentUser } = useAuth();
 
   // Bottom Sheet Refs
   const optionsSheetRef = useRef<BottomSheetModal>(null);
@@ -104,6 +105,25 @@ export default function ArtworkDetailScreen() {
 
     fetchArtwork();
   }, [route.params?.id, currentUser?.uid]);
+
+  useEffect(() => {
+    if (!currentUser?.uid || !artwork?.id) {
+      setSavedBoardId(null);
+      return;
+    }
+    let isActive = true;
+    findMoodboardForArtwork(currentUser.uid, artwork.id)
+      .then((boardId) => {
+        if (isActive) setSavedBoardId(boardId);
+      })
+      .catch((err) => {
+        console.warn("Failed to load moodboard selection:", err);
+        if (isActive) setSavedBoardId(null);
+      });
+    return () => {
+      isActive = false;
+    };
+  }, [currentUser?.uid, artwork?.id]);
 
 
   const reshareTarget: FeedPost | null = useMemo(() => {
@@ -146,6 +166,8 @@ export default function ArtworkDetailScreen() {
       metrics: { likes: 0, comments: 0, shares: 0 },
     };
   }, [artwork]);
+
+  const isSold = artwork?.status === "sold" || artwork?.isActive === false;
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -358,6 +380,7 @@ export default function ArtworkDetailScreen() {
           onReshare={handleOpenReshareSheet}
           onSave={handleOpenSaveSheet}
           onBuy={() => navigation.navigate("Checkout", { artwork })}
+          buyDisabled={isSold}
         />
 
         {/* Reshare Sheet */}
@@ -397,12 +420,12 @@ export default function ArtworkDetailScreen() {
                   quote: reshareTarget.quote || {
                     id: reshareTarget.id,
                     authorId: reshareTarget.author?.id,
-                    authorName: reshareTarget.author?.name,
-                    handle: reshareTarget.author?.handle,
+                    authorName: reshareTarget.author?.name || "",
+                    handle: reshareTarget.author?.handle || "",
                     avatar: reshareTarget.author?.avatar,
-                    title: reshareTarget.quote?.title ?? artwork?.title,
-                    subtitle: reshareTarget.quote?.subtitle ?? reshareTarget.author?.name,
-                    priceLabel: reshareTarget.quote?.priceLabel ?? artwork?.price,
+                    title: artwork?.title,
+                    subtitle: reshareTarget.author?.name,
+                    priceLabel: artwork?.price,
                     content: reshareTarget.content,
                     createdAt: reshareTarget.createdAt,
                     media: reshareTarget.media,
@@ -446,10 +469,33 @@ export default function ArtworkDetailScreen() {
             handleCloseSheet();
           }}
           initialSelectedId={savedBoardId}
-          onSelect={(id) => {
-            setSavedBoardId(id);
-            setShowSaveSheet(false);
-            handleCloseSheet();
+          userId={currentUser?.uid}
+          onSelect={async (id) => {
+            if (!id || !artwork) {
+              setSavedBoardId(null);
+              setShowSaveSheet(false);
+              handleCloseSheet();
+              return;
+            }
+            if (!currentUser) {
+              Alert.alert("Sign in required", "Please sign in to save to a moodboard.");
+              return;
+            }
+            try {
+              await addArtworkToMoodboard(currentUser.uid, id, {
+                id: artwork.id,
+                title: artwork.title,
+                image: artwork.images?.[0],
+                price: artwork.price,
+              });
+              setSavedBoardId(id);
+            } catch (err) {
+              console.error("Failed to save to moodboard:", err);
+              Alert.alert("Error", "Could not save to moodboard. Please try again.");
+            } finally {
+              setShowSaveSheet(false);
+              handleCloseSheet();
+            }
           }}
         />
 

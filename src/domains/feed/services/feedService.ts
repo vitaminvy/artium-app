@@ -178,9 +178,35 @@ type CreatePostInput = {
   resharedFrom?: any;
 };
 
+const isPlainObject = (value: any) => {
+  if (!value || typeof value !== "object") return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+};
+
+const sanitizeForFirestore = (value: any): any => {
+  if (value === undefined) return undefined;
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => sanitizeForFirestore(item))
+      .filter((item) => item !== undefined);
+  }
+  if (isPlainObject(value)) {
+    const result: Record<string, any> = {};
+    Object.entries(value).forEach(([key, val]) => {
+      const sanitized = sanitizeForFirestore(val);
+      if (sanitized !== undefined) {
+        result[key] = sanitized;
+      }
+    });
+    return result;
+  }
+  return value;
+};
+
 export const createPost = async (params: CreatePostInput) => {
   try {
-    const docRef = await addDoc(collection(firestore, POSTS_COLLECTION), {
+    const payload = sanitizeForFirestore({
       authorId: params.authorId,
       authorSnapshot: params.authorSnapshot,
       content: params.content,
@@ -191,6 +217,10 @@ export const createPost = async (params: CreatePostInput) => {
       metrics: { likes: 0, comments: 0, shares: 0 },
       createdAt: serverTimestamp(),
     });
+    const docRef = await addDoc(
+      collection(firestore, POSTS_COLLECTION),
+      payload
+    );
     return docRef.id;
   } catch (error) {
     console.error("Error creating post:", error);
@@ -207,7 +237,7 @@ export const addCommentToPost = async (postId: string, params: { authorSnapshot:
 
   try {
     await addDoc(commentsRef, {
-      author: params.authorSnapshot,
+      author: sanitizeForFirestore(params.authorSnapshot),
       content: params.content,
       createdAt: serverTimestamp(),
     });

@@ -264,6 +264,7 @@ export default function FeedScreen() {
       <ScreenHeader
         title={FEED_STRINGS.HEADER_TITLE}
         badgeLabel="Blog"
+        onPressBadge={() => navigation.navigate("Blog")}
         actionType="notifications"
         onPressAction={() => {
           rootNavigate("Notifications");

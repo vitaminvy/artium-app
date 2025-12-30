@@ -17,6 +17,7 @@ import {
   getCountFromServer,
   runTransaction,
   setDoc,
+  deleteDoc,
 } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 import { EventItem } from "../types";
@@ -110,25 +111,23 @@ const countRsvpByStatus = async (
   return snapshot.data().count;
 };
 
-const fetchEventAttendeeCount = async (eventId: string) => {
+const fetchEventAttendeeCount = async (eventId: string, excludeOrganizerId?: string) => {
   try {
-    const [going, invited] = await Promise.all([
-      countRsvpByStatus(eventId, "going"),
-      countRsvpByStatus(eventId, "invited"),
-    ]);
-    return going + invited;
+    // Use fetchEventGuestCounts which already has the exclude logic
+    const counts = await fetchEventGuestCounts(eventId, excludeOrganizerId);
+    return counts.going + counts.invited;
   } catch (error) {
     console.error(`Error counting attendees for event ${eventId}:`, error);
     return 0;
   }
 };
 
-const attachAttendeeCounts = async (events: EventItem[]) => {
+const attachAttendeeCounts = async (events: EventItem[], excludeOrganizerId?: string) => {
   if (!events.length) return events;
   const enriched = await Promise.all(
     events.map(async (event) => ({
       ...event,
-      attendees: await fetchEventAttendeeCount(event.id),
+      attendees: await fetchEventAttendeeCount(event.id, excludeOrganizerId),
     }))
   );
   return enriched;
@@ -178,9 +177,12 @@ export const getEventById = async (id: string): Promise<EventWithRaw | null> => 
     const snap = await getDoc(ref);
     if (!snap.exists()) return null;
     const baseEvent = mapEventDoc(snap as QueryDocumentSnapshot<DocumentData>);
-    const attendees = await fetchEventAttendeeCount(baseEvent.id);
+    const rawData = snap.data();
+    const organizerId = rawData?.organizerId;
+    // Exclude organizer from attendee count
+    const attendees = await fetchEventAttendeeCount(baseEvent.id, organizerId);
     const event = { ...baseEvent, attendees };
-    return { event, raw: snap.data() };
+    return { event, raw: rawData };
   } catch (error) {
     console.error("Error getting event by id:", error);
     throw error;
@@ -279,8 +281,10 @@ export const getEventsByOrganizer = async (
         );
 
     const snapshot = await getDocs(eventsQuery);
+    // Pass organizerId to exclude them from attendee counts
     const events = await attachAttendeeCounts(
-      snapshot.docs.map((doc) => mapEventDoc(doc))
+      snapshot.docs.map((doc) => mapEventDoc(doc)),
+      organizerId
     );
     return {
       events,
@@ -361,17 +365,43 @@ export const toggleEventRsvp = async (
   }
 };
 
-export const fetchEventGuestCounts = async (eventId: string) => {
+export const fetchEventGuestCounts = async (eventId: string, excludeOrganizerId?: string) => {
   try {
     const [going, maybe, invited] = await Promise.all([
       countRsvpByStatus(eventId, "going"),
       countRsvpByStatus(eventId, "maybe"),
       countRsvpByStatus(eventId, "invited"),
     ]);
+
+    // If excludeOrganizerId is provided, check if organizer has RSVP and subtract them
+    let adjustedGoing = going;
+    let adjustedMaybe = maybe;
+    let adjustedInvited = invited;
+
+    if (excludeOrganizerId) {
+      try {
+        const organizerRsvpRef = doc(firestore, "users", excludeOrganizerId, "event_rsvps", eventId);
+        const organizerRsvpSnap = await getDoc(organizerRsvpRef);
+
+        if (organizerRsvpSnap.exists()) {
+          const organizerStatus = organizerRsvpSnap.data()?.status;
+          if (organizerStatus === "going" && adjustedGoing > 0) {
+            adjustedGoing -= 1;
+          } else if (organizerStatus === "maybe" && adjustedMaybe > 0) {
+            adjustedMaybe -= 1;
+          } else if (organizerStatus === "invited" && adjustedInvited > 0) {
+            adjustedInvited -= 1;
+          }
+        }
+      } catch (error) {
+        console.error("Error checking organizer RSVP:", error);
+      }
+    }
+
     return {
-      going,
-      maybe,
-      invited,
+      going: adjustedGoing,
+      maybe: adjustedMaybe,
+      invited: adjustedInvited,
     };
   } catch (error) {
     console.error("Error counting guests:", error);
@@ -379,25 +409,25 @@ export const fetchEventGuestCounts = async (eventId: string) => {
   }
 };
 
-export const fetchEventGuests = async (eventId: string): Promise<EventGuest[]> => {
+export const fetchEventGuests = async (eventId: string, excludeOrganizerId?: string): Promise<EventGuest[]> => {
   try {
     const rsvpsRef = collectionGroup(firestore, "event_rsvps");
     const q = query(rsvpsRef, where("eventId", "==", eventId));
-    
+
     // Limit to 50 guests for performance in this demo
     // In a real app, we would paginate this
     const snapshot = await getDocs(query(q, limit(50)));
-    
+
     // We need to fetch user details for each RSVP
     // Using promise.all with map might trigger too many reads at once if 50+
     // But for <50 it's fine.
-    
+
     const userPromises = snapshot.docs.map(async (rsvpDoc) => {
       const data = rsvpDoc.data();
       // The parent of 'event_rsvps' is the user doc
       // Path: users/{uid}/event_rsvps/{eventId}
       const userRef = rsvpDoc.ref.parent.parent;
-      
+
       if (userRef) {
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
@@ -407,7 +437,7 @@ export const fetchEventGuests = async (eventId: string): Promise<EventGuest[]> =
              name: userData.displayName || "Unknown User",
              status: data.status,
              // Fallbacks for missing schema fields
-             ticketType: "General", 
+             ticketType: "General",
              quantity: 1,
              avatar: userData.photoURL
            } as EventGuest;
@@ -417,10 +447,65 @@ export const fetchEventGuests = async (eventId: string): Promise<EventGuest[]> =
     });
 
     const results = await Promise.all(userPromises);
-    return results.filter(Boolean) as EventGuest[];
+    const guests = results.filter(Boolean) as EventGuest[];
+
+    // Filter out organizer if excludeOrganizerId is provided
+    if (excludeOrganizerId) {
+      return guests.filter(guest => guest.id !== excludeOrganizerId);
+    }
+
+    return guests;
 
   } catch (error) {
     console.error("Error fetching event guests:", error);
     return [];
+  }
+};
+
+/**
+ * Delete organizer's RSVP for an event if it exists.
+ * This should be called when a user becomes an organizer of an event.
+ */
+export const deleteOrganizerRsvp = async (organizerId: string, eventId: string): Promise<void> => {
+  try {
+    const rsvpRef = doc(firestore, "users", organizerId, "event_rsvps", eventId);
+    const rsvpSnap = await getDoc(rsvpRef);
+
+    if (rsvpSnap.exists()) {
+      await deleteDoc(rsvpRef);
+      console.log(`[deleteOrganizerRsvp] Deleted RSVP for organizer ${organizerId} on event ${eventId}`);
+    }
+  } catch (error) {
+    console.error("Error deleting organizer RSVP:", error);
+    throw error;
+  }
+};
+
+export const deleteEvent = async (eventId: string, organizerId: string): Promise<void> => {
+  try {
+    // Verify the event exists and user is the organizer
+    const eventRef = doc(firestore, EVENTS_COLLECTION, eventId);
+    const eventSnap = await getDoc(eventRef);
+
+    if (!eventSnap.exists()) {
+      throw new Error("Event not found");
+    }
+
+    const eventData = eventSnap.data();
+    if (eventData.organizerId !== organizerId) {
+      throw new Error("Only the event organizer can delete this event");
+    }
+
+    // Delete the event document
+    await deleteDoc(eventRef);
+
+    // Note: In a production app, you might also want to:
+    // 1. Delete all RSVPs for this event (from users/{uid}/event_rsvps/{eventId})
+    // 2. Send notifications to attendees
+    // 3. Use Cloud Functions to handle cleanup
+
+  } catch (error) {
+    console.error("Error deleting event:", error);
+    throw error;
   }
 };

@@ -53,6 +53,12 @@ const ITEMS: SidebarItem[] = [
     icon: "notifications-outline",
   },
   {
+    key: "invoices",
+    label: "Invoices",
+    icon: "document-text-outline",
+    subtitle: "Create and send invoices",
+  },
+  {
     key: "messages",
     label: "Messages",
     icon: "chatbox-ellipses-outline",

@@ -2,9 +2,11 @@ import {
   ArtistProfile,
   Artwork,
   DiscoverData,
+  DiscoverMoment,
   EventItem,
   InspirationArticle,
 } from "./types";
+import type { FeedPost, FeedMedia } from "../feed/types";
 
 const artworks: Artwork[] = [
   {
@@ -52,7 +54,7 @@ const artworks: Artwork[] = [
   },
 ];
 
-const moments: Artwork[] = [
+const mockMomentSeed: Artwork[] = [
   {
     id: "mo-1",
     title: "Studio prep for August drop",
@@ -81,6 +83,43 @@ const moments: Artwork[] = [
       "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1000&q=80",
   },
 ];
+
+const moments: DiscoverMoment[] = mockMomentSeed.map((m) => {
+  const authorHandle = m.artist.replace(/\s+/g, "").toLowerCase();
+  const media: FeedMedia = { type: "image", items: [m.image] };
+  const metrics = { likes: 24, comments: 3, shares: 1 };
+  const post: FeedPost = {
+    id: m.id,
+    author: {
+      id: m.id,
+      name: m.artist,
+      handle: authorHandle,
+      avatar: m.artistAvatar,
+      verified: true,
+    },
+    content: m.title,
+    createdAt: Date.now(),
+    media,
+    metrics,
+    liked: false,
+    relativeTime: "1m",
+  };
+
+  return {
+    id: m.id,
+    card: {
+      id: m.id,
+      author: post.author,
+      title: m.title,
+      content: m.title,
+      media,
+      metrics,
+      liked: false,
+      relativeTime: "1m",
+    },
+    post,
+  };
+});
 
 const profiles: ArtistProfile[] = [
   {

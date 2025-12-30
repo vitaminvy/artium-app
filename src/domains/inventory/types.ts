@@ -43,6 +43,7 @@ export type Artwork = {
   year: number;
   price: string;
   status: InventoryStatus;
+  isActive?: boolean;
   folder: string;
   thumbnail: string;
   dimensions: string;
