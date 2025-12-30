@@ -19,6 +19,8 @@ import { PROFILE_ACCENT } from "../constants/profile";
 import { profileMockData } from "../mockData";
 import { EditProfileFormValues, ProfileViewModel } from "../types";
 import { fetchMoodboards } from "@/domains/artwork/services/moodboardService";
+import { useFeedContext } from "@/domains/feed/contexts/FeedContext";
+import { updateUserPostsAuthorSnapshot } from "@/domains/feed/services/feedService";
 
 type ProfileContextValue = {
   profile: ProfileViewModel;
@@ -225,6 +227,7 @@ const ProfileContext = createContext<ProfileContextValue>({
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const { currentUser, status, setCurrentUser } = useAuth();
+  const { refreshFeed } = useFeedContext();
   const [profile, setProfile] = useState<ProfileViewModel>(baseProfile);
   const [editProfile, setEditProfile] = useState<EditProfileFormValues>(
     defaultEditProfile
@@ -367,10 +370,33 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // Build the new profile values using the same logic as buildProfileFromForm
+      const updatedProfile = buildProfileFromForm(profile, nextValues);
+
       setEditProfile(nextValues);
-      setProfile((prev) => buildProfileFromForm(prev, nextValues));
+      setProfile(updatedProfile);
+
+      // Update authorSnapshot in all user's posts with the exact same data
+      // IMPORTANT: Remove @ prefix from handle to match the format in useFeed authorSnapshot
+      const handleForSnapshot = updatedProfile.user.handle.startsWith("@")
+        ? updatedProfile.user.handle.slice(1)
+        : updatedProfile.user.handle;
+
+      try {
+        await updateUserPostsAuthorSnapshot(currentUser.uid, {
+          id: currentUser.uid,
+          name: updatedProfile.user.name,
+          handle: handleForSnapshot,
+          avatar: updatedProfile.user.avatarUri || undefined,
+        });
+      } catch (error) {
+        console.warn("Failed to update posts author snapshot:", error);
+      }
+
+      // Refresh feed to update posts with new profile info
+      await refreshFeed();
     },
-    [currentUser, setCurrentUser]
+    [currentUser, setCurrentUser, refreshFeed]
   );
 
   const isFollowing = useCallback((userId: string) => {

@@ -10,6 +10,7 @@ import Loader from "../shared/components/Loader";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import ProfileOnboardingModal from "../domains/user/components/onboarding/ProfileOnboardingModal";
 import { navigate } from "./navigation/navigationRef";
+import { FeedProvider } from "../domains/feed/contexts/FeedContext";
 
 function NavigationWrapper() {
   const auth = useAuth();
@@ -52,9 +53,11 @@ export default function AppEntry() {
   return (
     <AuthProvider>
       <ProfileCompletionProvider>
-        <ProfileProvider>
-          <NavigationWrapper />
-        </ProfileProvider>
+        <FeedProvider>
+          <ProfileProvider>
+            <NavigationWrapper />
+          </ProfileProvider>
+        </FeedProvider>
       </ProfileCompletionProvider>
     </AuthProvider>
   );
