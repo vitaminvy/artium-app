@@ -148,7 +148,8 @@ export default function FeedExploreTab({
     []
   );
 
-  const showSkeleton = !!isTabActive && (isLoading || !avatarsReady);
+  // Only show skeleton on initial load, not on refresh or avatar loading
+  const showSkeleton = !!isTabActive && isLoading && data.length === 0;
 
   return (
     <View className="flex-1">

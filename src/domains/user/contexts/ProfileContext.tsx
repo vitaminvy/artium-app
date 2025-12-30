@@ -19,6 +19,8 @@ import { PROFILE_ACCENT } from "../constants/profile";
 import { profileMockData } from "../mockData";
 import { EditProfileFormValues, ProfileViewModel } from "../types";
 import { fetchMoodboards } from "@/domains/artwork/services/moodboardService";
+import { useFeedContext } from "@/domains/feed/contexts/FeedContext";
+import { updateUserPostsAuthorSnapshot } from "@/domains/feed/services/feedService";
 
 type ProfileContextValue = {
   profile: ProfileViewModel;
@@ -227,12 +229,14 @@ const ProfileContext = createContext<ProfileContextValue>({
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const { currentUser, status, setCurrentUser } = useAuth();
+  const { refreshFeed } = useFeedContext();
   const [profile, setProfile] = useState<ProfileViewModel>(baseProfile);
   const [editProfile, setEditProfile] = useState<EditProfileFormValues>(
     defaultEditProfile
   );
   const [isLoading, setIsLoading] = useState(true);
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
   const refreshProfile = useCallback(async () => {
     setIsLoading(true);
@@ -295,6 +299,9 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onSnapshot(
       userRef,
       (snap) => {
+        // Skip realtime updates when we're actively updating profile to avoid conflicts
+        if (isUpdatingProfile) return;
+
         const data = (snap.data() ?? {}) as UserDoc;
         setProfile((prev) =>
           buildProfileFromUserDoc(
@@ -309,7 +316,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       }
     );
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, isUpdatingProfile]);
 
   const updateProfile = useCallback(
     async (values: EditProfileFormValues) => {
@@ -319,64 +326,97 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      await upsertUserProfile(currentUser);
-      const userRef = doc(firestore, "users", currentUser.uid);
+      // Set flag to prevent realtime listener from interfering
+      setIsUpdatingProfile(true);
 
-      const usernameInput = values.username?.trim() ?? "";
-      const username = usernameInput.replace(/^@/, "");
-      const firstName = values.firstName?.trim() ?? "";
-      const lastName = values.lastName?.trim() ?? "";
-      const displayName = [firstName, lastName].filter(Boolean).join(" ").trim();
-      let avatarUri = values.avatar;
+      try {
+        await upsertUserProfile(currentUser);
+        const userRef = doc(firestore, "users", currentUser.uid);
 
-      if (typeof avatarUri === "string" && isLocalUri(avatarUri)) {
-        avatarUri = await uploadIfLocal(avatarUri, "avatars");
-      }
+        const usernameInput = values.username?.trim() ?? "";
+        const username = usernameInput.replace(/^@/, "");
+        const firstName = values.firstName?.trim() ?? "";
+        const lastName = values.lastName?.trim() ?? "";
+        const displayName = [firstName, lastName].filter(Boolean).join(" ").trim();
+        let avatarUri = values.avatar;
 
-      const nextValues = { ...values, avatar: avatarUri };
-
-      const payload: Record<string, any> = {
-        username,
-        firstName,
-        lastName,
-        phoneNumber: values.phoneNumber?.trim() ?? "",
-        address: values.address?.trim() ?? "",
-        countryCode: values.countryCode,
-        updatedAt: serverTimestamp(),
-      };
-
-      if (values.avatar !== undefined) {
-        payload.avatarUri = avatarUri;
-      }
-
-      if (displayName) {
-        payload.displayName = displayName;
-      }
-
-      await setDoc(userRef, payload, { merge: true });
-
-      const authUser = auth.currentUser;
-      const authUpdates: { displayName?: string | null; photoURL?: string | null } = {};
-      if (displayName) {
-        authUpdates.displayName = displayName;
-      }
-      if (values.avatar !== undefined) {
-        authUpdates.photoURL = avatarUri ?? null;
-      }
-      if (authUser && Object.keys(authUpdates).length > 0) {
-        try {
-          await updateAuthProfile(authUser, authUpdates);
-          await authUser.reload();
-          setCurrentUser({ ...authUser });
-        } catch (error) {
-          console.warn("Failed to sync auth profile:", error);
+        if (typeof avatarUri === "string" && isLocalUri(avatarUri)) {
+          avatarUri = await uploadIfLocal(avatarUri, "avatars");
         }
-      }
 
-      setEditProfile(nextValues);
-      setProfile((prev) => buildProfileFromForm(prev, nextValues));
+        const nextValues = { ...values, avatar: avatarUri };
+
+        const payload: Record<string, any> = {
+          username,
+          firstName,
+          lastName,
+          phoneNumber: values.phoneNumber?.trim() ?? "",
+          address: values.address?.trim() ?? "",
+          countryCode: values.countryCode,
+          updatedAt: serverTimestamp(),
+        };
+
+        if (values.avatar !== undefined) {
+          payload.avatarUri = avatarUri;
+        }
+
+        if (displayName) {
+          payload.displayName = displayName;
+        }
+
+        await setDoc(userRef, payload, { merge: true });
+
+        const authUser = auth.currentUser;
+        const authUpdates: { displayName?: string | null; photoURL?: string | null } = {};
+        if (displayName) {
+          authUpdates.displayName = displayName;
+        }
+        if (values.avatar !== undefined) {
+          authUpdates.photoURL = avatarUri ?? null;
+        }
+        if (authUser && Object.keys(authUpdates).length > 0) {
+          try {
+            await updateAuthProfile(authUser, authUpdates);
+            await authUser.reload();
+            setCurrentUser({ ...authUser });
+          } catch (error) {
+            console.warn("Failed to sync auth profile:", error);
+          }
+        }
+
+        // Build the new profile values using the same logic as buildProfileFromForm
+        const updatedProfile = buildProfileFromForm(profile, nextValues);
+
+        setEditProfile(nextValues);
+        setProfile(updatedProfile);
+
+        // Update authorSnapshot in all user's posts with the exact same data
+        // IMPORTANT: Remove @ prefix from handle to match the format in useFeed authorSnapshot
+        const handleForSnapshot = updatedProfile.user.handle.startsWith("@")
+          ? updatedProfile.user.handle.slice(1)
+          : updatedProfile.user.handle;
+
+        const newAuthorSnapshot = {
+          id: currentUser.uid,
+          name: updatedProfile.user.name,
+          handle: handleForSnapshot,
+          avatar: updatedProfile.user.avatarUri || undefined,
+        };
+
+        try {
+          await updateUserPostsAuthorSnapshot(currentUser.uid, newAuthorSnapshot);
+        } catch (error) {
+          console.warn("Failed to update posts author snapshot:", error);
+        }
+
+        // Refresh feed to update posts with new profile info
+        await refreshFeed();
+      } finally {
+        // Re-enable realtime listener
+        setIsUpdatingProfile(false);
+      }
     },
-    [currentUser, setCurrentUser]
+    [currentUser, setCurrentUser, refreshFeed, profile]
   );
 
   const isFollowing = useCallback((userId: string) => {
