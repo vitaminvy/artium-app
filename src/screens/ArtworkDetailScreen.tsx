@@ -280,6 +280,14 @@ export default function ArtworkDetailScreen() {
     }
   }, [artwork]);
 
+  const handleEditArtwork = useCallback(() => {
+    if (!artwork) return;
+    optionsSheetRef.current?.dismiss();
+    setTimeout(() => {
+      navigation.navigate("EditArtwork", { artwork });
+    }, 300);
+  }, [artwork, navigation]);
+
   const handleDeleteArtwork = useCallback(() => {
     if (!artwork || !currentUser) return;
 
@@ -529,7 +537,7 @@ export default function ArtworkDetailScreen() {
         {/* Options Sheet */}
         <BottomSheetModal
           ref={optionsSheetRef}
-          snapPoints={artwork?.artistId === currentUser?.uid ? [260] : [200]}
+          snapPoints={artwork?.artistId === currentUser?.uid ? [320] : [200]}
           backdropComponent={renderBackdrop}
           enablePanDownToClose
           handleIndicatorStyle={{ backgroundColor: "#CBD5E1", width: 40, height: 4 }}
@@ -542,14 +550,24 @@ export default function ArtworkDetailScreen() {
               Options
             </Text>
             {artwork?.artistId === currentUser?.uid && (
-              <Pressable
-                onPress={handleDeleteArtwork}
-                className="flex-row items-center gap-3 px-5 py-4 active:bg-slate-50"
-                style={{ backgroundColor: 'transparent' }}
-              >
-                <Ionicons name="trash-outline" size={24} color="#EF4444" />
-                <Text className="text-base font-semibold text-red-500">Delete</Text>
-              </Pressable>
+              <>
+                <Pressable
+                  onPress={handleEditArtwork}
+                  className="flex-row items-center gap-3 px-5 py-4 active:bg-slate-50"
+                  style={{ backgroundColor: 'transparent' }}
+                >
+                  <Ionicons name="create-outline" size={24} color="#0F172A" />
+                  <Text className="text-base font-semibold text-slate-900">Edit Artwork</Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleDeleteArtwork}
+                  className="flex-row items-center gap-3 px-5 py-4 active:bg-slate-50"
+                  style={{ backgroundColor: 'transparent' }}
+                >
+                  <Ionicons name="trash-outline" size={24} color="#EF4444" />
+                  <Text className="text-base font-semibold text-red-500">Delete</Text>
+                </Pressable>
+              </>
             )}
             <Pressable
               onPress={handleOpenReportSheet}

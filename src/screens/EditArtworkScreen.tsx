@@ -1,0 +1,259 @@
+import React, { useCallback, useEffect, useRef } from "react";
+import {
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
+
+import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
+import { useEditArtwork } from "../domains/inventory/hooks/useEditArtwork";
+import { StepIndicator } from "../domains/inventory/components/ui/StepIndicator";
+import { UploadImagesStep } from "../domains/inventory/components/UploadImagesStep";
+import { ArtworkDetailsStep, FieldKey } from "../domains/inventory/components/ArtworkDetailsStep";
+import { TagsStep } from "../domains/inventory/components/TagsStep";
+import { STEPS } from "../domains/inventory/constants";
+
+export default function EditArtworkScreen() {
+  const insets = useSafeAreaInsets();
+  const { setHidden } = useTabBarVisibility();
+
+  const {
+    step,
+    setStep,
+    images,
+    details,
+    setDetails,
+    showExitConfirm,
+    setShowExitConfirm,
+    canContinue,
+    canSubmit,
+    handlePickImages,
+    handleRemoveImage,
+    handleCancel,
+    handleNextFromDetails,
+    handleSubmit,
+    goBack,
+    errors,
+    clearFieldError,
+    scrollToError,
+    setScrollToError,
+    selectedTags,
+    handleToggleTag,
+  } = useEditArtwork();
+  const scrollRef = useRef<ScrollView>(null);
+  const fieldPositions = useRef<Record<FieldKey, number>>({} as any);
+
+  // Hide tab bar immediately when component mounts
+  useEffect(() => {
+    setHidden(true);
+    return () => setHidden(false);
+  }, [setHidden]);
+
+  // Also hide tab bar when this screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      setHidden(true);
+      return () => setHidden(false);
+    }, [setHidden])
+  );
+
+  useEffect(() => {
+    if (!scrollToError || !errors || !scrollRef.current) return;
+    const firstKey = Object.keys(errors)[0] as FieldKey | undefined;
+    if (firstKey) {
+      const y = fieldPositions.current[firstKey];
+      if (typeof y === "number") {
+        scrollRef.current.scrollTo({ y: Math.max(y - 20, 0), animated: true });
+      }
+    }
+    setScrollToError(false);
+  }, [errors, scrollToError, setScrollToError]);
+
+  return (
+    <View className="flex-1 bg-[#F8FAFC]">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        className="flex-1"
+      >
+        <View
+          className="px-6 pb-2 items-center"
+          style={{ paddingTop: Math.max(insets.top, 24) }}
+        >
+          <Text className="text-2xl font-semibold text-slate-900 text-center">
+            Edit Artwork
+          </Text>
+          <Text className="text-sm text-slate-500 mt-1 text-center">
+            Update images and details for your artwork.
+          </Text>
+        </View>
+
+        <StepIndicator step={step} steps={STEPS} />
+
+        <ScrollView
+          ref={scrollRef}
+          className="flex-1"
+          contentContainerStyle={{
+            paddingBottom: 20 + insets.bottom,
+          }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {step === 0 ? (
+            <UploadImagesStep
+              images={images}
+              onPickImages={handlePickImages}
+              onRemoveImage={handleRemoveImage}
+            />
+          ) : step === 1 ? (
+            <ArtworkDetailsStep
+              details={details}
+              onChangeDetails={setDetails}
+              errors={errors}
+              onFieldLayout={(key, y) => {
+                fieldPositions.current[key] = y;
+              }}
+              onFieldChange={(key) => {
+                if (errors?.[key]) {
+                  clearFieldError(key);
+                }
+              }}
+            />
+          ) : (
+            <TagsStep
+              selectedTags={selectedTags}
+              onToggleTag={handleToggleTag}
+            />
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* Footer Actions */}
+      <View
+        className="border-t border-slate-200 bg-white px-6 pt-4"
+        style={{ paddingBottom: Math.max(insets.bottom + 80, 16) }}
+      >
+        <View className="flex-row items-center gap-3">
+          {step === 0 ? (
+            <Pressable
+              onPress={handleCancel}
+              className="flex-1 rounded-full border border-slate-200 py-3 items-center active:opacity-80"
+            >
+              <Text className="text-sm font-semibold text-slate-600">
+                Cancel
+              </Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => setStep((prev) => Math.max(prev - 1, 0))}
+              className="flex-1 rounded-full border border-slate-200 py-3 items-center active:opacity-80"
+            >
+              <Text className="text-sm font-semibold text-slate-600">
+                Previous
+              </Text>
+            </Pressable>
+          )}
+
+          {step === 0 ? (
+            <Pressable
+              onPress={() => setStep(1)}
+              disabled={!canContinue}
+              className={`flex-1 rounded-full py-3 items-center ${
+                canContinue ? "bg-[#0B73FF]" : "bg-slate-200"
+              }`}
+            >
+              <Text
+                className={`text-sm font-semibold ${
+                  canContinue ? "text-white" : "text-slate-500"
+                }`}
+              >
+                Continue
+              </Text>
+            </Pressable>
+          ) : step === 1 ? (
+            <Pressable
+              onPress={handleNextFromDetails}
+              className="flex-1 rounded-full py-3 items-center bg-[#0B73FF]"
+            >
+              <Text className="text-sm font-semibold text-white">Next</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={handleSubmit}
+              disabled={!canSubmit}
+              className={`flex-1 rounded-full py-3 items-center ${
+                canSubmit ? "bg-[#0B73FF]" : "bg-slate-200"
+              }`}
+            >
+              <Text
+                className={`text-sm font-semibold ${
+                  canSubmit ? "text-white" : "text-slate-500"
+                }`}
+              >
+                Update
+              </Text>
+            </Pressable>
+          )}
+        </View>
+      </View>
+
+      {/* Exit Confirmation Modal */}
+      <Modal
+        visible={showExitConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowExitConfirm(false)}
+      >
+        <View className="flex-1 bg-black/40 items-center justify-center px-6">
+          <View className="w-full rounded-[28px] bg-white p-6">
+            <View className="flex-row justify-end">
+              <Pressable
+                onPress={() => setShowExitConfirm(false)}
+                hitSlop={12}
+                className="h-10 w-10 items-center justify-center rounded-full"
+              >
+                <Ionicons name="close" size={22} color="#0F172A" />
+              </Pressable>
+            </View>
+
+            <View className="mt-2 mb-5">
+              <Text className="text-2xl font-bold text-slate-900 text-center">
+                Discard changes?
+              </Text>
+              <Text className="mt-3 text-base text-slate-500 text-center">
+                All your changes will be lost if you exit now.
+              </Text>
+            </View>
+
+            <View className="gap-3">
+              <Pressable
+                onPress={() => {
+                  setShowExitConfirm(false);
+                  goBack();
+                }}
+                className="rounded-full border border-rose-500 py-3 items-center active:opacity-80"
+              >
+                <Text className="text-base font-semibold text-rose-500">
+                  Discard changes
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setShowExitConfirm(false)}
+                className="rounded-full border border-slate-200 py-3 items-center active:opacity-80"
+              >
+                <Text className="text-base font-semibold text-slate-700">
+                  Continue editing
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}

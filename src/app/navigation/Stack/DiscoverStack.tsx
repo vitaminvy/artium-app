@@ -6,6 +6,7 @@ import DiscoverScreen from "../../../screens/DiscoverScreen";
 import ArtworkDetailScreen from "../../../screens/ArtworkDetailScreen";
 import CheckoutScreen from "../../../screens/CheckoutScreen";
 import EventDetailScreen from "../../../screens/EventDetailScreen";
+import EditArtworkScreen from "../../../screens/EditArtworkScreen";
 import type { ArtworkDetail } from "../../../domains/artwork/types";
 import type { EventItem } from "../../../domains/discover/types";
 
@@ -19,6 +20,7 @@ export type DiscoverStackParamList = {
     onRsvpChange?: (status: "none" | "going" | "maybe" | "notGoing") => void;
     event?: EventItem;
   };
+  EditArtwork: { artwork: ArtworkDetail };
 };
 
 const Stack = createNativeStackNavigator<DiscoverStackParamList>();
@@ -30,6 +32,7 @@ export default function DiscoverStack() {
       <Stack.Screen name="ArtworkDetail" component={ArtworkDetailScreen} />
       <Stack.Screen name="Checkout" component={CheckoutScreen} />
       <Stack.Screen name="EventDetail" component={EventDetailScreen} />
+      <Stack.Screen name="EditArtwork" component={EditArtworkScreen} />
     </Stack.Navigator>
   );
 }

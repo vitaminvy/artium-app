@@ -337,6 +337,57 @@ export const getArtworkById = async (id: string, userId?: string): Promise<Artwo
 };
 
 /**
+ * Update an artwork
+ */
+export const updateArtwork = async (
+  artworkId: string,
+  userId: string,
+  updates: {
+    title?: string;
+    description?: string;
+    year?: number;
+    edition?: number;
+    materials?: string;
+    price?: string | { amount?: number; currency?: string };
+    images?: string[];
+    tags?: string[];
+    dimension?: {
+      h: number;
+      w: number;
+      d: number;
+      unit: string;
+    };
+    weight?: string | { value: number; unit: string };
+    status?: string;
+  }
+) => {
+  try {
+    const artworkRef = doc(firestore, ARTWORKS_COLLECTION, artworkId);
+    const artworkSnap = await getDoc(artworkRef);
+
+    if (!artworkSnap.exists()) {
+      throw new Error("Artwork not found");
+    }
+
+    const artworkData = artworkSnap.data();
+    const artistId = artworkData.artistId;
+
+    // Check permission: must be artist owner
+    if (artistId !== userId) {
+      throw new Error("You don't have permission to edit this artwork");
+    }
+
+    // Update the artwork
+    await updateDoc(artworkRef, updates);
+
+    return true;
+  } catch (error) {
+    console.error("Error updating artwork:", error);
+    throw error;
+  }
+};
+
+/**
  * Delete an artwork and all its subcollections (likes)
  */
 export const deleteArtwork = async (artworkId: string, userId: string) => {
