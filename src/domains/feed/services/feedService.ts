@@ -335,7 +335,6 @@ export const updateUserPostsAuthorSnapshot = async (
     const snapshot = await getDocs(q);
 
     if (snapshot.empty) {
-      console.log("No posts found for user:", userId);
       return;
     }
 
@@ -367,8 +366,6 @@ export const updateUserPostsAuthorSnapshot = async (
 
     // Commit all batches
     await Promise.all(batches.map((batch) => batch.commit()));
-
-    console.log(`Updated authorSnapshot for ${snapshot.docs.length} posts`);
   } catch (error) {
     console.error("Error updating user posts author snapshot:", error);
     throw error;
