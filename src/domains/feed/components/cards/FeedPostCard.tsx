@@ -11,6 +11,8 @@ import { formatDuration } from "../../utils";
 import { ANIMATION_CONFIG, MEDIA_CONFIG } from "../../constants/media";
 import { FEED_MESSAGES } from "../../constants/messages";
 import { usePostLike } from "../../hooks/usePostLike";
+import { usePostMetrics } from "../../hooks/usePostMetrics";
+import { navigateToUserProfile } from "../../../../shared/utils/navigateToUserProfile";
 
 type Props = {
   post: FeedPost;
@@ -36,6 +38,7 @@ function FeedPostCard({
   onAvatarLoad,
 }: Props) {
   const { isLiked, toggleOptimistic } = usePostLike(post.id, post.liked);
+  const metrics = usePostMetrics(post.id, post.metrics);
   const authorName = post.author?.name?.trim() || "User";
   const authorHandle = normalizeHandle(post.author?.handle, authorName);
   const authorAvatar =
@@ -140,7 +143,11 @@ function FeedPostCard({
         </View>
       ) : null}
 
-      <View className="flex-row items-center gap-3 mb-2">
+      <Pressable
+        className="flex-row items-center gap-3 mb-2"
+        onPress={() => navigateToUserProfile(post.author.id)}
+        hitSlop={4}
+      >
         <View className="h-10 w-10 rounded-full bg-slate-200 overflow-hidden items-center justify-center">
           {hasAvatar ? (
             <ExpoImage
@@ -175,7 +182,7 @@ function FeedPostCard({
           </View>
           <Text className="text-xs text-slate-500">@{authorHandle}</Text>
         </View>
-      </View>
+      </Pressable>
 
       {post.content ? (
         <Text className="text-[14px] text-slate-900 leading-5 mb-3">
@@ -333,7 +340,7 @@ function FeedPostCard({
             color={isLiked ? FEED_COLORS.LIKE_ACTIVE : FEED_COLORS.ICON}
           />
           <Text className="text-[13px] text-slate-600">
-            {post.metrics.likes}
+            {metrics.likes}
           </Text>
         </Pressable>
 
@@ -348,7 +355,7 @@ function FeedPostCard({
             color={post.reshared ? FEED_COLORS.SHARE_ACTIVE : FEED_COLORS.ICON}
           />
           <Text className="text-[13px] text-slate-600">
-            {post.metrics.shares}
+            {metrics.shares}
           </Text>
         </Pressable>
 
@@ -363,7 +370,7 @@ function FeedPostCard({
             color={FEED_COLORS.ICON}
           />
           <Text className="text-[13px] text-slate-600">
-            {post.metrics.comments}
+            {metrics.comments}
           </Text>
         </Pressable>
 

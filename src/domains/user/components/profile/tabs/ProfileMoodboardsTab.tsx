@@ -1,92 +1,42 @@
 import React from "react";
-import { View, Text, Pressable } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { PROFILE_ACCENT } from "../../../constants/profile";
+import { View } from "react-native";
 import { ProfileMoodboard, ProfileViewModel } from "../../../types";
+import ProfileEmptyState from "../ProfileEmptyState";
+import { PROFILE_STRINGS } from "../../../constants/profile";
+import MoodboardCard from "../MoodboardCard";
+import MasonryLayout from "../../../../../shared/components/MasonryLayout";
 
 type Props = {
   profile: ProfileViewModel;
-  onPressMoodboard?: (id: string) => void;
+  onPressMoodboard?: (moodboard: ProfileMoodboard) => void;
 };
 
 export default function ProfileMoodboardsTab({ profile, onPressMoodboard }: Props) {
-  return (
-    <View className="pt-3 px-4 pb-6">
-      <View className="mt-5" style={{ rowGap: 14 }}>
-        {profile.moodboards.map((mb) => (
-          <MoodboardCard
-            key={mb.id}
-            moodboard={mb}
-            onPress={onPressMoodboard ? () => onPressMoodboard(mb.id) : undefined}
-          />
-        ))}
+  if (!profile.moodboards.length) {
+    return (
+      <View className="pt-3">
+        <ProfileEmptyState message={PROFILE_STRINGS.moodboardsEmpty} />
       </View>
-    </View>
-  );
-}
-
-function MoodboardCard({ moodboard, onPress }: { moodboard: ProfileMoodboard; onPress?: () => void }) {
-  const ownerInitial =
-    moodboard.ownerName?.charAt(0)?.toUpperCase?.() ?? "A";
-
-  const CardContainer = onPress ? Pressable : View;
+    );
+  }
 
   return (
-    <View className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <View className="flex-row items-center justify-between mb-3">
-        <View className="flex-row items-center" style={{ columnGap: 8 }}>
-          {moodboard.visibility === "private" ? (
-            <Badge icon="lock-closed-outline" label="Private" />
-          ) : (
-            <Badge icon="globe-outline" label="Public" />
-          )}
-        </View>
-        <Ionicons name="ellipsis-horizontal" size={18} color="#94A3B8" />
-      </View>
-
-      <CardContainer
-        className="h-36 mb-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 overflow-hidden active:opacity-90"
-        onPress={onPress}
-      >
-        <View
-          className="flex-1 m-3 rounded-xl"
-          style={{ backgroundColor: moodboard.previewColor ?? "#F1F5F9" }}
-        />
-      </CardContainer>
-
-      <View className="flex-row items-center" style={{ columnGap: 10 }}>
-        <View
-          className="h-8 w-8 rounded-full items-center justify-center"
-          style={{ backgroundColor: PROFILE_ACCENT }}
-        >
-          <Text className="font-semibold text-slate-900 text-sm">
-            {ownerInitial}
-          </Text>
-        </View>
-        <View>
-          <Text className="text-base font-semibold text-slate-900">
-            {moodboard.title}
-          </Text>
-          <Text className="text-xs text-slate-500">by {moodboard.ownerName}</Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function Badge({
-  icon,
-  label,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-}) {
-  return (
-    <View className="flex-row items-center rounded-full bg-slate-900 px-3 py-1.5">
-      <Ionicons name={icon} size={14} color="#FFFFFF" />
-      <Text className="ml-2 text-[11px] font-semibold text-white uppercase tracking-[0.5px]">
-        {label}
-      </Text>
+    <View className="pt-3 pb-6">
+      <MasonryLayout
+        data={profile.moodboards}
+        numColumns={2}
+        keyExtractor={(item) => item.id}
+        columnGap={12}
+        contentContainerStyle={{ paddingBottom: 20, paddingTop: 12 }}
+        renderItem={(item, index) => (
+          <View style={{ marginBottom: 16 }}>
+            <MoodboardCard
+              moodboard={item}
+              onPress={onPressMoodboard ? () => onPressMoodboard(item) : undefined}
+            />
+          </View>
+        )}
+      />
     </View>
   );
 }

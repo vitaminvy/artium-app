@@ -8,6 +8,7 @@ import { useHome } from "../domains/home/hooks/useHome";
 import HomeFollowingCard from "../domains/home/components/cards/HomeFollowingCard";
 import { useProfileContext } from "../domains/user/contexts/ProfileContext";
 import type { HomeFollowingProfile } from "../domains/home/types";
+import { navigateToUserProfile } from "../shared/utils/navigateToUserProfile";
 import { useAuth } from "../domains/auth/contexts/AuthContext";
 
 export default function PopularArtistsScreen() {
@@ -26,6 +27,7 @@ export default function PopularArtistsScreen() {
           item={item}
           isFollowing={isFollowing(item.id)}
           onToggleFollow={toggleFollow}
+          onPress={() => navigateToUserProfile(item.id)}
         />
       </View>
     ),
