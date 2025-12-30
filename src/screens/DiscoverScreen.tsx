@@ -98,6 +98,10 @@ export default function DiscoverScreen() {
       navigation.navigate("Home", { screen: "Events" } as any);
       return;
     }
+    if (key === "invoices") {
+      navigation.navigate("Home", { screen: "Invoices" } as any);
+      return;
+    }
     if (key === "home") {
       // Navigate to Home tab
       navigation.navigate("Home", {} as any);

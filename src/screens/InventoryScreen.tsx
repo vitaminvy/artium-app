@@ -486,6 +486,10 @@ export default function InventoryScreen() {
             navigation.navigate("Events");
             return;
           }
+          if (key === "invoices") {
+            navigation.navigate("Invoices");
+            return;
+          }
         }}
         topOffset={headerHeight}
         activeKey={activeKey}

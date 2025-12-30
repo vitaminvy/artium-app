@@ -156,6 +156,11 @@ export default function ProfileScreen() {
       return;
     }
 
+    if (key === "invoices") {
+      navigation.navigate("Invoices");
+      return;
+    }
+
     if (key === "profile") return;
     
     // console.log("Sidebar selected:", key);

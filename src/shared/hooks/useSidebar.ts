@@ -47,6 +47,12 @@ const ITEMS: SidebarItem[] = [
     subtitle: "Manage your events",
   },
   {
+    key: "invoices",
+    label: "Invoices",
+    icon: "document-text-outline",
+    subtitle: "Create and send invoices",
+  },
+  {
     key: "messages",
     label: "Messages",
     icon: "chatbox-ellipses-outline",

@@ -107,6 +107,11 @@ export default function BlogScreen() {
       navigation.navigate("Profile");
       return;
     }
+
+    if (key === "invoices") {
+      navigation.navigate("Invoices");
+      return;
+    }
   };
 
   const handleShowMore = useCallback(async () => {

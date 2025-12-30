@@ -38,6 +38,11 @@
         return diffKeys.hasOnly(["metrics"]);
       }
 
+      function invoicePaymentUnchanged() {
+        let diffKeys = request.resource.data.diff(resource.data).changedKeys();
+        return !diffKeys.hasAny(["payment"]);
+      }
+
       // Allow public read on artworks, artists, events, and posts
       match /artworks/{artworkId} {
         allow read: if true;
@@ -84,6 +89,15 @@
         }
       }
 
+      match /invoices/{invoiceId} {
+        allow read, delete: if isOwner(resource.data.sellerId);
+        allow create: if isOwner(request.resource.data.sellerId)
+          && !request.resource.data.keys().hasAny(["payment"]);
+        allow update: if isOwner(resource.data.sellerId)
+          && request.resource.data.sellerId == resource.data.sellerId
+          && invoicePaymentUnchanged();
+      }
+
       // Users can read their own data, and public profiles can be read by anyone
       match /users/{userId} {
         allow read: if true;
@@ -115,6 +129,12 @@
           match /items/{itemId} {
             allow read, create, update, delete: if isOwner(userId);
           }
+        }
+
+        // Notifications - allow users to read/manage their own notifications
+        match /notifications/{notificationId} {
+          allow read: if isSignedIn() && request.auth.uid == userId;
+          allow create, update, delete: if isSignedIn() && request.auth.uid == userId;
         }
       }
 
