@@ -31,12 +31,16 @@ import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import { useAuth } from "../domains/auth/contexts/AuthContext";
 import { getArtworkById } from "../domains/artwork/services/artworkService";
 import { navigate as rootNavigate } from "../app/navigation/navigationRef";
+import { useFeedContext } from "../domains/feed/contexts/FeedContext";
+import { useUnreadNotificationsCount } from "../domains/notifications/hooks/useUnreadCount";
 
 export default function FeedScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<FeedStackParamList>>();
   const route = useRoute<RouteProp<FeedStackParamList, "FeedMain">>();
   const { currentUser: user } = useAuth();
+  const { registerRefresh, unregisterRefresh } = useFeedContext();
+  const unreadCount = useUnreadNotificationsCount();
   const {
     tab,
     setTab,
@@ -46,7 +50,7 @@ export default function FeedScreen() {
     onRefresh,
     explorePosts,
     followingPosts,
-    myPosts, // Add this
+    myPosts,
     loadMorePosts,
     hasMorePosts,
     isMorePostsLoading,
@@ -54,6 +58,7 @@ export default function FeedScreen() {
     createReshare,
     addComment,
     addMomentPost,
+    handleDeletePost,
   } = useFeed(user);
   const postMoment = usePostMoment({
     onPublish: async (post) => {
@@ -85,6 +90,11 @@ export default function FeedScreen() {
     lastRefreshKey.current = refreshKey;
     onRefresh();
   }, [onRefresh, refreshKey]);
+
+  useEffect(() => {
+    registerRefresh(onRefresh);
+    return () => unregisterRefresh();
+  }, [onRefresh, registerRefresh, unregisterRefresh]);
 
   const openReshare = React.useCallback((post: FeedPost) => {
     setSelectedPost(post);
@@ -149,6 +159,16 @@ export default function FeedScreen() {
     Keyboard.dismiss();
   }, [addComment, commentTarget]);
 
+  const handleDeleteComment = React.useCallback(async (commentId: string) => {
+    if (!commentTarget || !user) return;
+    try {
+      const { deleteComment } = await import("../domains/feed/services/feedService");
+      await deleteComment(commentTarget.id, commentId, user.uid, false); // TODO: check if user is admin
+    } catch (error) {
+      console.error("Failed to delete comment:", error);
+    }
+  }, [commentTarget, user]);
+
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       const y = event.contentOffset.y;
@@ -210,6 +230,7 @@ export default function FeedScreen() {
             onPressCard={openDetail}
             onPressQuote={openQuote}
             onPressImage={handleOpenViewer}
+            onPressDelete={handleDeletePost}
             scrollHandler={scrollHandler}
             isTabActive={tab === "explore"}
             onEndReached={loadMorePosts}
@@ -217,6 +238,7 @@ export default function FeedScreen() {
             onRefresh={onRefresh}
             isRefreshing={isRefreshing}
             isLoading={loading}
+            currentUserId={user?.uid}
           />
         </View>
         <View style={{ flex: 1, display: tab === "following" ? "flex" : "none" }}>
@@ -228,11 +250,13 @@ export default function FeedScreen() {
             onPressCard={openDetail}
             onPressQuote={openQuote}
             onPressImage={handleOpenViewer}
+            onPressDelete={handleDeletePost}
             scrollHandler={scrollHandler}
             isTabActive={tab === "following"}
             onRefresh={onRefresh}
             isRefreshing={isRefreshing}
             isLoading={loading}
+            currentUserId={user?.uid}
           />
         </View>
         <View style={{ flex: 1, display: tab === "myFeed" ? "flex" : "none" }}>
@@ -244,13 +268,15 @@ export default function FeedScreen() {
             onPressCard={openDetail}
             onPressQuote={openQuote}
             onPressImage={handleOpenViewer}
+            onPressDelete={handleDeletePost}
             scrollHandler={scrollHandler}
             isTabActive={tab === "myFeed"}
-            onEndReached={loadMorePosts} // Or a new function if my feed has separate pagination
+            onEndReached={loadMorePosts}
             isFetchingNextPage={isMorePostsLoading}
             onRefresh={onRefresh}
             isRefreshing={isRefreshing}
             isLoading={loading}
+            currentUserId={user?.uid}
           />
         </View>
       </View>
@@ -262,11 +288,13 @@ export default function FeedScreen() {
       <ScreenHeader
         title={FEED_STRINGS.HEADER_TITLE}
         badgeLabel="Blog"
+        onPressBadge={() => navigation.navigate("Blog")}
         actionType="notifications"
         onPressAction={() => {
-          // TODO: Navigate to notifications screen
+          rootNavigate("Notifications");
         }}
         underlineSource={UnderlineHome}
+        notificationCount={unreadCount}
       />
 
       <Animated.View style={[{ overflow: "hidden" }, tabAnimatedStyle]}>
@@ -287,6 +315,8 @@ export default function FeedScreen() {
         target={commentTarget}
         onClose={closeComments}
         onSubmit={submitComment}
+        onDeleteComment={handleDeleteComment}
+        currentUserId={user?.uid}
       />
 
       <PostMomentSheet

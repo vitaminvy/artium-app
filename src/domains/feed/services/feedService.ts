@@ -17,7 +17,9 @@ import {
   QueryDocumentSnapshot,
   DocumentData,
   getDoc,
-  runTransaction
+  runTransaction,
+  where,
+  writeBatch
 } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 import { FeedPost, FeedComment } from "../types";
@@ -337,5 +339,167 @@ export const getPostById = async (id: string): Promise<FeedPost | null> => {
   } catch (error) {
     console.error("Error fetching post by id:", error);
     return null;
+  }
+};
+
+/**
+ * Delete a post and all its subcollections (likes, comments)
+ */
+export const deletePost = async (postId: string, userId: string, isAdmin: boolean = false) => {
+  try {
+    const postRef = doc(firestore, POSTS_COLLECTION, postId);
+    const postSnap = await getDoc(postRef);
+
+    if (!postSnap.exists()) {
+      throw new Error("Post not found");
+    }
+
+    const postData = postSnap.data();
+    const authorId = postData.authorId ?? postData.authorSnapshot?.id;
+
+    // Check permission: must be author or admin
+    if (authorId !== userId && !isAdmin) {
+      throw new Error("You don't have permission to delete this post");
+    }
+
+    // Delete all likes
+    const likesRef = collection(firestore, POSTS_COLLECTION, postId, "likes");
+    const likesSnap = await getDocs(likesRef);
+    const likesDeletePromises = likesSnap.docs.map((likeDoc) => deleteDoc(likeDoc.ref));
+    await Promise.all(likesDeletePromises);
+
+    // Delete all comments
+    const commentsRef = collection(firestore, POSTS_COLLECTION, postId, "comments");
+    const commentsSnap = await getDocs(commentsRef);
+    const commentsDeletePromises = commentsSnap.docs.map((commentDoc) => deleteDoc(commentDoc.ref));
+    await Promise.all(commentsDeletePromises);
+
+    // Delete the post itself
+    await deleteDoc(postRef);
+
+    return true;
+  } catch (error) {
+    console.error("Error deleting post:", error);
+    throw error;
+  }
+};
+
+export const deleteComment = async (
+  postId: string,
+  commentId: string,
+  userId: string,
+  isAdmin: boolean = false
+) => {
+  try {
+    const commentRef = doc(firestore, POSTS_COLLECTION, postId, "comments", commentId);
+    const commentSnap = await getDoc(commentRef);
+
+    if (!commentSnap.exists()) {
+      throw new Error("Comment not found");
+    }
+
+    const commentData = commentSnap.data();
+    // Comment is stored with 'author' field (from addCommentToPost)
+    const authorId = commentData.author?.id || commentData.authorSnapshot?.id || commentData.authorId;
+
+    console.log('[deleteComment] Debug info:', {
+      commentId,
+      authorId,
+      userId,
+      isAdmin,
+      hasAuthor: !!commentData.author,
+      authorKeys: commentData.author ? Object.keys(commentData.author) : []
+    });
+
+    // Check permission: must be comment author, post author, or admin
+    const postRef = doc(firestore, POSTS_COLLECTION, postId);
+    const postSnap = await getDoc(postRef);
+    const postAuthorId = postSnap.exists() ? postSnap.data().authorId : null;
+
+    console.log('[deleteComment] Permission check:', {
+      authorId,
+      userId,
+      postAuthorId,
+      isAdmin,
+      isCommentAuthor: authorId === userId,
+      isPostAuthor: postAuthorId === userId
+    });
+
+    if (authorId !== userId && postAuthorId !== userId && !isAdmin) {
+      throw new Error("You don't have permission to delete this comment");
+    }
+
+    // Delete the comment
+    await deleteDoc(commentRef);
+
+    // Decrement comment count on post
+    await updateDoc(postRef, {
+      "metrics.comments": increment(-1),
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error deleting comment:", error);
+    throw error;
+  }
+};
+
+/**
+ * Updates authorSnapshot for all posts by a specific user
+ * Used when user updates their profile (avatar, username, etc.)
+ */
+export const updateUserPostsAuthorSnapshot = async (
+  userId: string,
+  newAuthorSnapshot: {
+    id: string;
+    name: string;
+    handle: string;
+    avatar?: string;
+  }
+) => {
+  try {
+    // Query all posts by this user
+    const q = query(
+      collection(firestore, POSTS_COLLECTION),
+      where("authorId", "==", userId)
+    );
+
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      return;
+    }
+
+    // Firestore batch write limit is 500 operations
+    const batchSize = 500;
+    const batches: any[] = [];
+    let currentBatch = writeBatch(firestore);
+    let operationCount = 0;
+
+    snapshot.docs.forEach((docSnapshot) => {
+      currentBatch.update(docSnapshot.ref, {
+        authorSnapshot: sanitizeForFirestore(newAuthorSnapshot),
+        updatedAt: serverTimestamp(),
+      });
+      operationCount++;
+
+      // If we reach batch size limit, start a new batch
+      if (operationCount === batchSize) {
+        batches.push(currentBatch);
+        currentBatch = writeBatch(firestore);
+        operationCount = 0;
+      }
+    });
+
+    // Add the last batch if it has operations
+    if (operationCount > 0) {
+      batches.push(currentBatch);
+    }
+
+    // Commit all batches
+    await Promise.all(batches.map((batch) => batch.commit()));
+  } catch (error) {
+    console.error("Error updating user posts author snapshot:", error);
+    throw error;
   }
 };

@@ -14,11 +14,14 @@ type Props = {
   onPressCard?: (post: FeedPost) => void;
   onPressQuote?: (quoteId: string) => void;
   onPressImage?: (images: { uri: string }[], index: number) => void;
+  onPressDelete?: (post: FeedPost) => void;
   scrollHandler?: any;
   isTabActive?: boolean;
   isRefreshing?: boolean;
   onRefresh?: () => void;
   isLoading?: boolean;
+  currentUserId?: string;
+  isAdmin?: boolean;
 };
 
 export default function FeedFollowingTab({
@@ -29,11 +32,14 @@ export default function FeedFollowingTab({
   onPressCard,
   onPressQuote,
   onPressImage,
+  onPressDelete,
   scrollHandler,
   isTabActive = true,
   isRefreshing,
   onRefresh,
   isLoading,
+  currentUserId,
+  isAdmin = false,
 }: Props) {
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   const [avatarExpected, setAvatarExpected] = useState(0);
@@ -129,6 +135,7 @@ export default function FeedFollowingTab({
           onPressCard={onPressCard}
           onPressQuote={onPressQuote}
           onPressImage={onPressImage}
+          onPressDelete={onPressDelete}
           isVisible={hasVideo ? (isTabActive && isActive) : true}
           onAvatarLoad={(postId) => {
             if (!avatarExpected) return;
@@ -136,7 +143,9 @@ export default function FeedFollowingTab({
             loadedAvatarIds.current.add(postId);
             setAvatarLoaded((prev) => Math.min(prev + 1, avatarExpected));
           }}
-          disableRealtime={!isViewable} // Enable real-time only for viewable posts
+          disableRealtime={!isViewable}
+          currentUserId={currentUserId}
+          isAdmin={isAdmin}
         />
       );
     },
@@ -146,11 +155,14 @@ export default function FeedFollowingTab({
       onPressComment,
       onPressCard,
       onPressImage,
+      onPressDelete,
       activeVideoId,
       avatarExpected,
       isTabActive,
       onPressQuote,
       viewablePostIds,
+      currentUserId,
+      isAdmin,
     ]
   );
 
@@ -159,7 +171,8 @@ export default function FeedFollowingTab({
     []
   );
 
-  const showSkeleton = !!isTabActive && (isLoading || !avatarsReady);
+  // Only show skeleton on initial load, not on refresh or avatar loading
+  const showSkeleton = !!isTabActive && isLoading && data.length === 0;
 
   return (
     <View className="flex-1">

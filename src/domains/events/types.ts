@@ -39,6 +39,7 @@ export type EventExhibitor = {
 };
 
 export type EventOrganizer = {
+  id?: string; // User ID for navigation
   name: string;
   handle?: string;
   avatar?: string;
