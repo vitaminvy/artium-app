@@ -6,6 +6,9 @@ import {
   useColorScheme,
   useWindowDimensions,
   Keyboard,
+  Alert,
+  ActionSheetIOS,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated from "react-native-reanimated";
@@ -34,6 +37,9 @@ type Props = {
   loading?: boolean;
   onSubmit: (text: string) => void;
   onClose: () => void;
+  onDeleteComment?: (commentId: string) => void;
+  currentUserId?: string;
+  isAdmin?: boolean;
 };
 
 type FooterExtraProps = {
@@ -124,6 +130,9 @@ export default function CommentsSheet({
   loading: loadingProp,
   onClose,
   onSubmit,
+  onDeleteComment,
+  currentUserId,
+  isAdmin = false,
 }: Props) {
   const { comments: liveComments, loading: loadingLive } = usePostComments(target?.id);
   const comments = commentsProp ?? liveComments;
@@ -171,34 +180,83 @@ export default function CommentsSheet({
     []
   );
 
-  const renderItem = useCallback(({ item }: { item: FeedComment }) => (
-    <View className="flex-row gap-3 px-4 py-3">
-      <View className="h-9 w-9 rounded-full bg-slate-200 overflow-hidden items-center justify-center">
-        {item.author.avatar ? (
-          <Animated.Image
-            source={{ uri: item.author.avatar }}
-            className="h-full w-full"
-          />
-        ) : (
-          <Text className="text-xs font-semibold text-slate-700">
-            {item.author.name[0]}
-          </Text>
-        )}
-      </View>
-      <View className="flex-1">
-        <View className="flex-row items-center gap-2">
-          <Text className="text-sm font-semibold text-slate-900">
-            {item.author.name}
-          </Text>
-          <Text className="text-[11px] text-slate-500">@{item.author.handle}</Text>
-          <Text className="text-[11px] text-slate-400">· {item.relativeTime}</Text>
+  const handleDeleteComment = useCallback((comment: FeedComment) => {
+    if (!onDeleteComment) return;
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Delete comment'],
+          destructiveButtonIndex: 1,
+          cancelButtonIndex: 0,
+          title: 'Delete comment?',
+          message: 'If you delete this comment, you won\'t be able to restore it.',
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            onDeleteComment(comment.id);
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Delete comment?',
+        'If you delete this comment, you won\'t be able to restore it.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Delete', style: 'destructive', onPress: () => onDeleteComment(comment.id) },
+        ]
+      );
+    }
+  }, [onDeleteComment]);
+
+  const renderItem = useCallback(({ item }: { item: FeedComment }) => {
+    const commentAuthorId = item.author?.id;
+    const postAuthorId = target?.author?.id || target?.authorId;
+    const canDelete = currentUserId && (
+      commentAuthorId === currentUserId ||
+      postAuthorId === currentUserId ||
+      isAdmin
+    );
+
+    return (
+      <View className="flex-row gap-3 px-4 py-3">
+        <View className="h-9 w-9 rounded-full bg-slate-200 overflow-hidden items-center justify-center">
+          {item.author.avatar ? (
+            <Animated.Image
+              source={{ uri: item.author.avatar }}
+              className="h-full w-full"
+            />
+          ) : (
+            <Text className="text-xs font-semibold text-slate-700">
+              {item.author.name[0]}
+            </Text>
+          )}
         </View>
-        <Text className="text-sm text-slate-800 mt-1 leading-5">
-          {item.content}
-        </Text>
+        <View className="flex-1">
+          <View className="flex-row items-center gap-2">
+            <Text className="text-sm font-semibold text-slate-900">
+              {item.author.name}
+            </Text>
+            <Text className="text-[11px] text-slate-500">@{item.author.handle}</Text>
+            <Text className="text-[11px] text-slate-400">· {item.relativeTime}</Text>
+          </View>
+          <Text className="text-sm text-slate-800 mt-1 leading-5">
+            {item.content}
+          </Text>
+        </View>
+        {canDelete && onDeleteComment ? (
+          <Pressable
+            onPress={() => handleDeleteComment(item)}
+            hitSlop={8}
+            className="active:opacity-60"
+          >
+            <Ionicons name="ellipsis-horizontal" size={18} color="#64748B" />
+          </Pressable>
+        ) : null}
       </View>
-    </View>
-  ), []);
+    );
+  }, [currentUserId, isAdmin, target, onDeleteComment, handleDeleteComment]);
 
   const ListEmptyComponent = useCallback(() => (
     <View className="px-4 py-8">

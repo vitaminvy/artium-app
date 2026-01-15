@@ -159,6 +159,16 @@ export default function FeedScreen() {
     Keyboard.dismiss();
   }, [addComment, commentTarget]);
 
+  const handleDeleteComment = React.useCallback(async (commentId: string) => {
+    if (!commentTarget || !user) return;
+    try {
+      const { deleteComment } = await import("../domains/feed/services/feedService");
+      await deleteComment(commentTarget.id, commentId, user.uid, false); // TODO: check if user is admin
+    } catch (error) {
+      console.error("Failed to delete comment:", error);
+    }
+  }, [commentTarget, user]);
+
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       const y = event.contentOffset.y;
@@ -305,6 +315,8 @@ export default function FeedScreen() {
         target={commentTarget}
         onClose={closeComments}
         onSubmit={submitComment}
+        onDeleteComment={handleDeleteComment}
+        currentUserId={user?.uid}
       />
 
       <PostMomentSheet

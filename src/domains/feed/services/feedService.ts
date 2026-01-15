@@ -384,6 +384,66 @@ export const deletePost = async (postId: string, userId: string, isAdmin: boolea
   }
 };
 
+export const deleteComment = async (
+  postId: string,
+  commentId: string,
+  userId: string,
+  isAdmin: boolean = false
+) => {
+  try {
+    const commentRef = doc(firestore, POSTS_COLLECTION, postId, "comments", commentId);
+    const commentSnap = await getDoc(commentRef);
+
+    if (!commentSnap.exists()) {
+      throw new Error("Comment not found");
+    }
+
+    const commentData = commentSnap.data();
+    // Comment is stored with 'author' field (from addCommentToPost)
+    const authorId = commentData.author?.id || commentData.authorSnapshot?.id || commentData.authorId;
+
+    console.log('[deleteComment] Debug info:', {
+      commentId,
+      authorId,
+      userId,
+      isAdmin,
+      hasAuthor: !!commentData.author,
+      authorKeys: commentData.author ? Object.keys(commentData.author) : []
+    });
+
+    // Check permission: must be comment author, post author, or admin
+    const postRef = doc(firestore, POSTS_COLLECTION, postId);
+    const postSnap = await getDoc(postRef);
+    const postAuthorId = postSnap.exists() ? postSnap.data().authorId : null;
+
+    console.log('[deleteComment] Permission check:', {
+      authorId,
+      userId,
+      postAuthorId,
+      isAdmin,
+      isCommentAuthor: authorId === userId,
+      isPostAuthor: postAuthorId === userId
+    });
+
+    if (authorId !== userId && postAuthorId !== userId && !isAdmin) {
+      throw new Error("You don't have permission to delete this comment");
+    }
+
+    // Delete the comment
+    await deleteDoc(commentRef);
+
+    // Decrement comment count on post
+    await updateDoc(postRef, {
+      "metrics.comments": increment(-1),
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error deleting comment:", error);
+    throw error;
+  }
+};
+
 /**
  * Updates authorSnapshot for all posts by a specific user
  * Used when user updates their profile (avatar, username, etc.)
