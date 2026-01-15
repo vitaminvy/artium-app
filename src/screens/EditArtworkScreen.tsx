@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
 import { useEditArtwork } from "../domains/inventory/hooks/useEditArtwork";
@@ -22,6 +22,7 @@ import { STEPS } from "../domains/inventory/constants";
 
 export default function EditArtworkScreen() {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
   const { setHidden } = useTabBarVisibility();
 
   const {
@@ -50,18 +51,17 @@ export default function EditArtworkScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const fieldPositions = useRef<Record<FieldKey, number>>({} as any);
 
-  // Hide tab bar immediately when component mounts
-  useEffect(() => {
-    setHidden(true);
-    return () => setHidden(false);
-  }, [setHidden]);
-
-  // Also hide tab bar when this screen is focused
+  // Hide tab bar when this screen is focused
   useFocusEffect(
     useCallback(() => {
       setHidden(true);
-      return () => setHidden(false);
-    }, [setHidden])
+      const parent = navigation.getParent();
+      parent?.setOptions({ tabBarStyle: { display: "none" } });
+      return () => {
+        setHidden(false);
+        parent?.setOptions({ tabBarStyle: undefined });
+      };
+    }, [navigation, setHidden])
   );
 
   useEffect(() => {
@@ -136,7 +136,7 @@ export default function EditArtworkScreen() {
       {/* Footer Actions */}
       <View
         className="border-t border-slate-200 bg-white px-6 pt-4"
-        style={{ paddingBottom: Math.max(insets.bottom + 80, 16) }}
+        style={{ paddingBottom: Math.max(insets.bottom + 20, 16) }}
       >
         <View className="flex-row items-center gap-3">
           {step === 0 ? (
