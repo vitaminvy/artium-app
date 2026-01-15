@@ -50,7 +50,7 @@ export default function FeedScreen() {
     onRefresh,
     explorePosts,
     followingPosts,
-    myPosts, // Add this
+    myPosts,
     loadMorePosts,
     hasMorePosts,
     isMorePostsLoading,
@@ -58,6 +58,7 @@ export default function FeedScreen() {
     createReshare,
     addComment,
     addMomentPost,
+    handleDeletePost,
   } = useFeed(user);
   const postMoment = usePostMoment({
     onPublish: async (post) => {
@@ -219,6 +220,7 @@ export default function FeedScreen() {
             onPressCard={openDetail}
             onPressQuote={openQuote}
             onPressImage={handleOpenViewer}
+            onPressDelete={handleDeletePost}
             scrollHandler={scrollHandler}
             isTabActive={tab === "explore"}
             onEndReached={loadMorePosts}
@@ -226,6 +228,7 @@ export default function FeedScreen() {
             onRefresh={onRefresh}
             isRefreshing={isRefreshing}
             isLoading={loading}
+            currentUserId={user?.uid}
           />
         </View>
         <View style={{ flex: 1, display: tab === "following" ? "flex" : "none" }}>
@@ -237,11 +240,13 @@ export default function FeedScreen() {
             onPressCard={openDetail}
             onPressQuote={openQuote}
             onPressImage={handleOpenViewer}
+            onPressDelete={handleDeletePost}
             scrollHandler={scrollHandler}
             isTabActive={tab === "following"}
             onRefresh={onRefresh}
             isRefreshing={isRefreshing}
             isLoading={loading}
+            currentUserId={user?.uid}
           />
         </View>
         <View style={{ flex: 1, display: tab === "myFeed" ? "flex" : "none" }}>
@@ -253,13 +258,15 @@ export default function FeedScreen() {
             onPressCard={openDetail}
             onPressQuote={openQuote}
             onPressImage={handleOpenViewer}
+            onPressDelete={handleDeletePost}
             scrollHandler={scrollHandler}
             isTabActive={tab === "myFeed"}
-            onEndReached={loadMorePosts} // Or a new function if my feed has separate pagination
+            onEndReached={loadMorePosts}
             isFetchingNextPage={isMorePostsLoading}
             onRefresh={onRefresh}
             isRefreshing={isRefreshing}
             isLoading={loading}
+            currentUserId={user?.uid}
           />
         </View>
       </View>

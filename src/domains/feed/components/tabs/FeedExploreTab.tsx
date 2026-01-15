@@ -14,6 +14,7 @@ type Props = {
   onPressCard?: (post: FeedPost) => void;
   onPressQuote?: (quoteId: string) => void;
   onPressImage?: (images: { uri: string }[], index: number) => void;
+  onPressDelete?: (post: FeedPost) => void;
   scrollHandler?: any;
   isTabActive?: boolean;
   isRefreshing?: boolean;
@@ -21,6 +22,8 @@ type Props = {
   isLoading?: boolean;
   onEndReached: () => void;
   isFetchingNextPage: boolean;
+  currentUserId?: string;
+  isAdmin?: boolean;
 };
 
 export default function FeedExploreTab({
@@ -31,6 +34,7 @@ export default function FeedExploreTab({
   onPressCard,
   onPressQuote,
   onPressImage,
+  onPressDelete,
   scrollHandler,
   isTabActive = true,
   isRefreshing,
@@ -38,6 +42,8 @@ export default function FeedExploreTab({
   isLoading,
   onEndReached,
   isFetchingNextPage,
+  currentUserId,
+  isAdmin = false,
 }: Props) {
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   const [avatarExpected, setAvatarExpected] = useState(0);
@@ -131,6 +137,7 @@ export default function FeedExploreTab({
           onPressCard={onPressCard}
           onPressQuote={onPressQuote}
           onPressImage={onPressImage}
+          onPressDelete={onPressDelete}
           isVisible={hasVideo ? (isTabActive && isActive) : true}
           onAvatarLoad={(postId) => {
             if (!avatarExpected) return;
@@ -138,7 +145,9 @@ export default function FeedExploreTab({
             loadedAvatarIds.current.add(postId);
             setAvatarLoaded((prev) => Math.min(prev + 1, avatarExpected));
           }}
-          disableRealtime={!isViewable} // Enable real-time only for viewable posts
+          disableRealtime={!isViewable}
+          currentUserId={currentUserId}
+          isAdmin={isAdmin}
         />
       );
     },
