@@ -12,6 +12,7 @@ import { ANIMATION_CONFIG, MEDIA_CONFIG } from "../../constants/media";
 import { FEED_MESSAGES } from "../../constants/messages";
 import { usePostLike } from "../../hooks/usePostLike";
 import { usePostMetrics } from "../../hooks/usePostMetrics";
+import { navigateToUserProfile } from "../../../../shared/utils/navigateToUserProfile";
 
 type Props = {
   post: FeedPost;
@@ -199,7 +200,11 @@ function FeedPostCard({
         </View>
       ) : null}
 
-      <View className="flex-row items-center gap-3 mb-2">
+      <Pressable
+        className="flex-row items-center gap-3 mb-2"
+        onPress={() => navigateToUserProfile(post.author.id)}
+        hitSlop={4}
+      >
         <View className="h-10 w-10 rounded-full bg-slate-200 overflow-hidden items-center justify-center">
           {hasAvatar ? (
             <ExpoImage
@@ -243,7 +248,7 @@ function FeedPostCard({
             <Ionicons name="ellipsis-horizontal" size={20} color="#64748B" />
           </Pressable>
         ) : null}
-      </View>
+      </Pressable>
 
       {post.content ? (
         <Text className="text-[14px] text-slate-900 leading-5 mb-3">

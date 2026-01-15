@@ -10,6 +10,7 @@ import {
   increment,
   updateDoc,
   runTransaction,
+  limit,
 } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 
@@ -36,6 +37,7 @@ export const fetchMoodboards = async (userId: string): Promise<Moodboard[]> => {
       const data = docSnap.data();
       const boardRef = doc(boardsCol, docSnap.id);
       let count = data.count ?? 0;
+      let cover: string | null | undefined = data.cover ?? null;
       try {
         const itemsCol = collection(boardRef, "items");
         const countSnap = await getCountFromServer(itemsCol);
@@ -47,6 +49,10 @@ export const fetchMoodboards = async (userId: string): Promise<Moodboard[]> => {
           });
           count = actualCount;
         }
+        if (!cover) {
+          const firstItemSnap = await getDocs(query(itemsCol, limit(1)));
+          cover = firstItemSnap.docs[0]?.data()?.image ?? null;
+        }
       } catch (err) {
         console.warn("Failed to sync moodboard count:", err);
       }
@@ -54,7 +60,7 @@ export const fetchMoodboards = async (userId: string): Promise<Moodboard[]> => {
         id: docSnap.id,
         name: data.name ?? "Untitled",
         count,
-        cover: data.cover,
+        cover: cover ?? undefined,
         isPrivate: data.isPrivate ?? false,
       };
     })
@@ -155,13 +161,62 @@ export const fetchMoodboardItems = async (
   const boardRef = doc(firestore, "users", userId, "moodboards", moodboardId);
   const itemsCol = collection(boardRef, "items");
   const snapshot = await getDocs(itemsCol);
-  return snapshot.docs.map((docSnap) => {
+
+  const items = snapshot.docs.map((docSnap) => {
     const data = docSnap.data();
     return {
+      docId: docSnap.id,
       artworkId: data.artworkId ?? docSnap.id,
       title: data.title ?? "Untitled",
       image: data.image ?? null,
       price: data.price ?? null,
-    } as MoodboardItem;
+    };
   });
+
+  const checkedItems = await Promise.all(
+    items.map(async (item) => {
+      if (!item.artworkId) {
+        return { ...item, exists: false };
+      }
+      try {
+        const artworkSnap = await getDoc(doc(firestore, "artworks", item.artworkId));
+        return { ...item, exists: artworkSnap.exists() };
+      } catch (err) {
+        console.warn("Failed to verify artwork for moodboard item:", err);
+        return { ...item, exists: true };
+      }
+    })
+  );
+
+  const missingItems = checkedItems.filter((item) => !item.exists);
+  const validItems: MoodboardItem[] = checkedItems
+    .filter((item) => item.exists)
+    .map(({ docId, exists, ...rest }) => rest);
+
+  if (missingItems.length > 0) {
+    try {
+      // Clean up stale items that point to deleted artworks and fix the board count.
+      await runTransaction(firestore, async (tx) => {
+        const boardSnap = await tx.get(boardRef);
+        missingItems.forEach((item) => {
+          const itemRef = doc(itemsCol, item.docId);
+          tx.delete(itemRef);
+        });
+        if (boardSnap.exists()) {
+          const boardData = boardSnap.data();
+          const currentCount =
+            typeof boardData?.count === "number" ? boardData.count : 0;
+          const nextCount = Math.max(0, currentCount - missingItems.length);
+          tx.update(boardRef, {
+            count: nextCount,
+            updatedAt: serverTimestamp(),
+          });
+        }
+      });
+    } catch (err) {
+      console.warn("Failed to clean up missing moodboard items:", err);
+    }
+  }
+
+  return validItems;
 };
