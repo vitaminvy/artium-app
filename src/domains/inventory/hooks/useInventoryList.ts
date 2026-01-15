@@ -51,9 +51,11 @@ export function useInventoryList() {
     const dim = data.dimension || {};
     const dimensionStr = `${dim.h || 0} × ${dim.w || 0} × ${dim.d || 0} ${dim.unit || "in"}`;
 
+    const normalizedStatus =
+      typeof data.status === "string" ? data.status.toLowerCase() : undefined;
     let status: InventoryStatus = "Available";
-    if (data.status === "sold") status = "Sold";
-    if (data.status === "inquire") status = "On Hold";
+    if (normalizedStatus === "sold" || data.isActive === false) status = "Sold";
+    if (normalizedStatus === "inquire") status = "On Hold";
 
     const rawPrice = data.price;
     const priceLabel = rawPrice
@@ -71,6 +73,7 @@ export function useInventoryList() {
       year: parseInt(data.year) || new Date().getFullYear(),
       price: priceLabel,
       status: status,
+      isActive: data.isActive,
       folder: data.folder || "Unsorted",
       thumbnail: data.images?.[0] || "",
       dimensions: dimensionStr,

@@ -17,7 +17,9 @@ import {
   QueryDocumentSnapshot,
   DocumentData,
   getDoc,
-  runTransaction
+  runTransaction,
+  where,
+  writeBatch
 } from "firebase/firestore";
 import { firestore } from "@/configs/firebase";
 import { FeedPost, FeedComment } from "../types";
@@ -378,6 +380,66 @@ export const deletePost = async (postId: string, userId: string, isAdmin: boolea
     return true;
   } catch (error) {
     console.error("Error deleting post:", error);
+    throw error;
+  }
+};
+
+/**
+ * Updates authorSnapshot for all posts by a specific user
+ * Used when user updates their profile (avatar, username, etc.)
+ */
+export const updateUserPostsAuthorSnapshot = async (
+  userId: string,
+  newAuthorSnapshot: {
+    id: string;
+    name: string;
+    handle: string;
+    avatar?: string;
+  }
+) => {
+  try {
+    // Query all posts by this user
+    const q = query(
+      collection(firestore, POSTS_COLLECTION),
+      where("authorId", "==", userId)
+    );
+
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      return;
+    }
+
+    // Firestore batch write limit is 500 operations
+    const batchSize = 500;
+    const batches: any[] = [];
+    let currentBatch = writeBatch(firestore);
+    let operationCount = 0;
+
+    snapshot.docs.forEach((docSnapshot) => {
+      currentBatch.update(docSnapshot.ref, {
+        authorSnapshot: sanitizeForFirestore(newAuthorSnapshot),
+        updatedAt: serverTimestamp(),
+      });
+      operationCount++;
+
+      // If we reach batch size limit, start a new batch
+      if (operationCount === batchSize) {
+        batches.push(currentBatch);
+        currentBatch = writeBatch(firestore);
+        operationCount = 0;
+      }
+    });
+
+    // Add the last batch if it has operations
+    if (operationCount > 0) {
+      batches.push(currentBatch);
+    }
+
+    // Commit all batches
+    await Promise.all(batches.map((batch) => batch.commit()));
+  } catch (error) {
+    console.error("Error updating user posts author snapshot:", error);
     throw error;
   }
 };

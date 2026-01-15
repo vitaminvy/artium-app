@@ -1,42 +1,41 @@
 import React from "react";
-import { FlatList, ListRenderItemInfo, NativeScrollEvent, NativeSyntheticEvent, ActivityIndicator } from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import { Artwork } from "../../types";
-import MomentCard from "../cards/MomentCard";
+import { ActivityIndicator, NativeScrollEvent, NativeSyntheticEvent } from "react-native";
+import { DiscoverMoment } from "../../types";
+import MasonryFlatList from "../../../../shared/components/MasonryFlatList";
+import MasonryMomentCard from "../../../user/components/profile/MasonryMomentCard";
 
 type Props = {
-  data: Artwork[];
-  onCardPress?: (item: Artwork) => void;
+  data: DiscoverMoment[];
+  onCardPress?: (item: DiscoverMoment) => void;
   onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
   onEndReached: () => void;
   isFetchingNextPage: boolean;
 };
 
 export default function DiscoverMomentsTab({ data, onCardPress, onScroll, onEndReached, isFetchingNextPage }: Props) {
-  const navigation = useNavigation();
-
   return (
-    <FlatList
+    <MasonryFlatList
       data={data}
+      numColumns={2}
+      columnGap={8}
       keyExtractor={(item) => item.id}
-      renderItem={({ item }) => (
-        <MomentCard
-          item={item}
-          onPress={() =>
-            onCardPress
-              ? onCardPress(item)
-              : (navigation.navigate as any)("ArtworkDetail", { id: item.id })
-          }
+      renderItem={(item) => (
+        <MasonryMomentCard
+          item={item.card}
+          onPress={() => onCardPress?.(item)}
+          onPressAuthor={() => {}}
         />
       )}
       onEndReached={onEndReached}
       onEndReachedThreshold={0.5}
-      ListFooterComponent={isFetchingNextPage ? <ActivityIndicator size="large" color="#94A3B8" style={{ marginVertical: 20 }} /> : null}
+      ListFooterComponent={
+        isFetchingNextPage ? (
+          <ActivityIndicator size="large" color="#94A3B8" style={{ marginVertical: 20 }} />
+        ) : null
+      }
       contentContainerStyle={{
-        paddingHorizontal: 12,
         paddingTop: 12,
         paddingBottom: 120,
-        rowGap: 16,
       }}
       showsVerticalScrollIndicator={false}
       onScroll={onScroll}
