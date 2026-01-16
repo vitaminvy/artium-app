@@ -21,6 +21,7 @@ import { EditProfileFormValues, ProfileViewModel } from "../types";
 import { fetchMoodboards } from "@/domains/artwork/services/moodboardService";
 import { useFeedContext } from "@/domains/feed/contexts/FeedContext";
 import { updateUserPostsAuthorSnapshot } from "@/domains/feed/services/feedService";
+import { updateUserArtworksArtistSnapshot } from "@/domains/artwork/services/artworkService";
 
 type ProfileContextValue = {
   profile: ProfileViewModel;
@@ -98,11 +99,11 @@ const buildHandle = (
     profileCompleted ||
     Boolean(
       username ||
-        data.firstName ||
-        data.lastName ||
-        data.phoneNumber ||
-        data.address ||
-        data.avatarUri
+      data.firstName ||
+      data.lastName ||
+      data.phoneNumber ||
+      data.address ||
+      data.avatarUri
     );
 
   if (hasCustomProfile && username) {
@@ -220,11 +221,11 @@ const ProfileContext = createContext<ProfileContextValue>({
   profile: baseProfile,
   editProfile: defaultEditProfile,
   isLoading: true,
-  updateProfile: async () => {},
+  updateProfile: async () => { },
   isFollowing: () => false,
-  toggleFollow: () => {},
-  resetProfile: () => {},
-  refreshProfile: async () => {},
+  toggleFollow: () => { },
+  resetProfile: () => { },
+  refreshProfile: async () => { },
 });
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
@@ -407,6 +408,18 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
           await updateUserPostsAuthorSnapshot(currentUser.uid, newAuthorSnapshot);
         } catch (error) {
           console.warn("Failed to update posts author snapshot:", error);
+        }
+
+        // Update artistSnapshot in all user's artworks
+        const newArtistSnapshot = {
+          name: updatedProfile.user.name,
+          avatar: updatedProfile.user.avatarUri || undefined,
+        };
+
+        try {
+          await updateUserArtworksArtistSnapshot(currentUser.uid, newArtistSnapshot);
+        } catch (error) {
+          console.warn("Failed to update artworks artist snapshot:", error);
         }
 
         // Refresh feed to update posts with new profile info
