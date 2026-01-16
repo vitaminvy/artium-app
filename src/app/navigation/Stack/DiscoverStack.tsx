@@ -6,7 +6,11 @@ import DiscoverScreen from "../../../screens/DiscoverScreen";
 import ArtworkDetailScreen from "../../../screens/ArtworkDetailScreen";
 import CheckoutScreen from "../../../screens/CheckoutScreen";
 import UserProfileScreen from "../../../screens/UserProfileScreen";
+import ProfileScreen from "../../../screens/ProfileScreen";
+import EditProfileScreen from "../../../screens/EditProfileScreen";
+import FollowsScreen from "../../../screens/FollowsScreen";
 import FeedDetailScreen from "../../../screens/FeedDetailScreen";
+import MoodboardDetailScreen from "../../../screens/MoodboardDetailScreen";
 import type { FeedPost } from "../../../domains/feed/types";
 import EventDetailScreen from "../../../screens/EventDetailScreen";
 import EditArtworkScreen from "../../../screens/EditArtworkScreen";
@@ -20,7 +24,11 @@ export type DiscoverStackParamList = {
   ArtworkDetail: { id: string };
   Checkout: { artwork?: ArtworkDetail };
   UserProfile: { userId: string };
+  Profile: undefined;
+  EditProfile: undefined;
+  Follows: { type: "followers" | "following" };
   MomentDetail: { post: FeedPost };
+  MoodboardDetail: { id: string; ownerId?: string; title?: string; cover?: string | null; ownerName?: string };
   EventDetail: {
     id?: string;
     initialRsvp?: "none" | "going" | "maybe" | "notGoing";
@@ -41,7 +49,11 @@ export default function DiscoverStack() {
       <Stack.Screen name="ArtworkDetail" component={ArtworkDetailScreen} />
       <Stack.Screen name="Checkout" component={CheckoutScreen} />
       <Stack.Screen name="UserProfile" component={UserProfileScreen} />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      <Stack.Screen name="Follows" component={FollowsScreen} />
       <Stack.Screen name="MomentDetail" component={FeedDetailScreen} />
+      <Stack.Screen name="MoodboardDetail" component={MoodboardDetailScreen} />
       <Stack.Screen name="EventDetail" component={EventDetailScreen} />
       <Stack.Screen name="EditArtwork" component={EditArtworkScreen} />
       <Stack.Screen name="Blog" component={BlogScreen} />
@@ -49,3 +61,4 @@ export default function DiscoverStack() {
     </Stack.Navigator>
   );
 }
+
