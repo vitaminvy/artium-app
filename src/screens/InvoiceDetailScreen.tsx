@@ -290,6 +290,9 @@ export default function InvoiceDetailScreen() {
     []
   );
 
+  const isPaid =
+    invoice?.status === "paid" || invoice?.payment?.status === "paid";
+
   const handlePayWithCard = useCallback(async () => {
     if (!invoiceId || isPaid) return;
     setPaying(true);
@@ -324,9 +327,6 @@ export default function InvoiceDetailScreen() {
     if (!invoice?.id) return "";
     return invoice.invoiceNumber || formatInvoiceNumber(invoice.id);
   }, [invoice?.id, invoice?.invoiceNumber]);
-
-  const isPaid =
-    invoice?.status === "paid" || invoice?.payment?.status === "paid";
 
   useEffect(() => {
     if (!invoice || !isPaid || paidHandledRef.current) return;
