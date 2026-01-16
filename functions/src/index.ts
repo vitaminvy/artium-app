@@ -353,8 +353,10 @@ export const createPayosPaymentLink = onCall(
     const hostingBase =
       process.env.PAYOS_HOSTING_BASE_URL || `https://${projectId}.web.app`;
     const normalizedBase = hostingBase.replace(/\/+$/, "");
-    const baseReturnUrl = `${normalizedBase}/payos/return`;
-    const baseCancelUrl = `${normalizedBase}/payos/cancel`;
+    const requestReturnBase = request.data?.returnUrlBase as string | undefined;
+    const requestCancelBase = request.data?.cancelUrlBase as string | undefined;
+    const baseReturnUrl = requestReturnBase || `${normalizedBase}/payos/return`;
+    const baseCancelUrl = requestCancelBase || `${normalizedBase}/payos/cancel`;
 
     if (invoice.payment?.checkoutUrl && invoice.payment?.orderCode) {
       const existingReturnUrl = buildRedirectUrl(baseReturnUrl, {
@@ -376,6 +378,8 @@ export const createPayosPaymentLink = onCall(
           checkoutUrl: invoice.payment.checkoutUrl,
           orderCode: invoice.payment.orderCode,
           paymentLinkId: invoice.payment.paymentLinkId,
+          returnUrl: invoice.payment.returnUrl,
+          cancelUrl: invoice.payment.cancelUrl,
         };
       }
     }
@@ -447,9 +451,65 @@ export const createPayosPaymentLink = onCall(
       checkoutUrl: paymentData.checkoutUrl,
       orderCode: paymentData.orderCode ?? orderCode,
       paymentLinkId: paymentData.paymentLinkId,
+      returnUrl,
+      cancelUrl,
     };
   }
 );
+
+export const finalizePayosPayment = onCall(async (request) => {
+  const invoiceId = request.data?.invoiceId as string | undefined;
+  if (!invoiceId) {
+    throw new HttpsError("invalid-argument", "invoiceId is required.");
+  }
+
+  const invoiceRef = db.collection("invoices").doc(invoiceId);
+  const invoiceSnap = await invoiceRef.get();
+  if (!invoiceSnap.exists) {
+    throw new HttpsError("not-found", "Invoice not found.");
+  }
+
+  const invoiceData = invoiceSnap.data() as admin.firestore.DocumentData;
+  const isAlreadyPaid =
+    invoiceData?.payment?.status === "paid" || invoiceData?.status === "paid";
+  if (isAlreadyPaid) {
+    return {status: "paid"};
+  }
+
+  const batch = db.batch();
+  batch.update(invoiceRef, {
+    "payment.status": "paid",
+    "payment.paidAt": admin.firestore.FieldValue.serverTimestamp(),
+    "status": "paid",
+    "isActive": false,
+    "paidAt": admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  const artworkIds = new Set<string>();
+  if (invoiceData?.artworkId) {
+    artworkIds.add(String(invoiceData.artworkId));
+  }
+  if (Array.isArray(invoiceData?.items)) {
+    invoiceData.items.forEach((item: { artworkId?: string }) => {
+      if (item?.artworkId) {
+        artworkIds.add(String(item.artworkId));
+      }
+    });
+  }
+
+  artworkIds.forEach((artworkId) => {
+    const artworkRef = db.collection("artworks").doc(artworkId);
+    batch.update(artworkRef, {
+      status: "sold",
+      isActive: false,
+      soldAt: admin.firestore.FieldValue.serverTimestamp(),
+      soldByInvoiceId: invoiceRef.id,
+    });
+  });
+
+  await batch.commit();
+  return {status: "paid"};
+});
 
 export const payosWebhook = onRequest(
   {
