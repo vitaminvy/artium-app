@@ -55,6 +55,32 @@ export function useEditArtwork() {
       }
     }
 
+    // Parse weight
+    let weightValue = "";
+    let weightUnit: "lbs" | "kg" = "lbs";
+    if (artwork.weightValue !== undefined) {
+      weightValue = artwork.weightValue.toString();
+      weightUnit = (artwork.weightUnit === "kg" ? "kg" : "lbs");
+    } else if (typeof artwork.weight === "string" && artwork.weight) {
+      // Parse from string format like "5 lbs" or "10 kg"
+      const weightMatch = artwork.weight.match(/([\d.]+)\s*(lbs?|kgs?)/i);
+      if (weightMatch) {
+        weightValue = weightMatch[1];
+        const unit = weightMatch[2].toLowerCase();
+        weightUnit = unit.startsWith("kg") ? "kg" : "lbs";
+      }
+    }
+
+    // Parse dimension unit
+    const dimensionUnit: "in" | "cm" =
+      artwork.dimension?.unit === "cm" ? "cm" : "in";
+
+    // Parse status
+    const artworkStatus: "for_sale" | "inquire" | "sold" =
+      artwork.status === "sold" ? "sold" :
+      artwork.status === "for_sale" ? "for_sale" :
+      "for_sale";
+
     // Set details
     setDetails({
       title: artwork.title || "",
@@ -65,16 +91,17 @@ export function useEditArtwork() {
         height: artwork.dimension?.h?.toString() || "",
         width: artwork.dimension?.w?.toString() || "",
         depth: artwork.dimension?.d?.toString() || "",
-        unit: artwork.dimension?.unit || "in",
+        unit: dimensionUnit,
       },
       weight: {
-        value: artwork.weightValue?.toString() || "",
-        unit: artwork.weightUnit || "lbs",
+        value: weightValue,
+        unit: weightUnit,
       },
       materials: artwork.materials || "",
       price: priceValue,
       quantity: "1",
-      status: artwork.status || "available",
+      status: artworkStatus,
+      hasFrame: false,
     });
 
     // Set tags
