@@ -55,6 +55,10 @@ export default function UploadInventoryScreen() {
   useFocusEffect(
     useCallback(() => {
       setHidden(true);
+
+      // Scroll to top when screen is focused
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+
       return () => setHidden(false);
     }, [setHidden])
   );

@@ -382,5 +382,6 @@ export function useEditArtwork() {
     setScrollToError,
     selectedTags,
     handleToggleTag,
+    submitting,
   };
 }

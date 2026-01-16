@@ -7,6 +7,7 @@ import {
   ScrollView,
   Text,
   View,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -47,6 +48,7 @@ export default function EditArtworkScreen() {
     setScrollToError,
     selectedTags,
     handleToggleTag,
+    submitting,
   } = useEditArtwork();
   const scrollRef = useRef<ScrollView>(null);
   const fieldPositions = useRef<Record<FieldKey, number>>({} as any);
@@ -57,6 +59,10 @@ export default function EditArtworkScreen() {
       setHidden(true);
       const parent = navigation.getParent();
       parent?.setOptions({ tabBarStyle: { display: "none" } });
+
+      // Scroll to top when screen is focused
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+
       return () => {
         setHidden(false);
         parent?.setOptions({ tabBarStyle: undefined });
@@ -185,18 +191,22 @@ export default function EditArtworkScreen() {
           ) : (
             <Pressable
               onPress={handleSubmit}
-              disabled={!canSubmit}
+              disabled={!canSubmit || submitting}
               className={`flex-1 rounded-full py-3 items-center ${
-                canSubmit ? "bg-[#0B73FF]" : "bg-slate-200"
+                canSubmit && !submitting ? "bg-[#0B73FF]" : "bg-slate-200"
               }`}
             >
-              <Text
-                className={`text-sm font-semibold ${
-                  canSubmit ? "text-white" : "text-slate-500"
-                }`}
-              >
-                Update
-              </Text>
+              {submitting ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <Text
+                  className={`text-sm font-semibold ${
+                    canSubmit ? "text-white" : "text-slate-500"
+                  }`}
+                >
+                  Update
+                </Text>
+              )}
             </Pressable>
           )}
         </View>

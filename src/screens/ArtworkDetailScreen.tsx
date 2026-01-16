@@ -6,6 +6,7 @@ import {
   Animated as RNAnimated,
   FlatList,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   View,
@@ -58,6 +59,7 @@ export default function ArtworkDetailScreen() {
   // States
   const [artwork, setArtwork] = useState<ArtworkDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [liked, setLiked] = useState(false);
   const [savedBoardId, setSavedBoardId] = useState<string | null>(null);
@@ -75,7 +77,7 @@ export default function ArtworkDetailScreen() {
   const optionsSheetRef = useRef<BottomSheetModal>(null);
 
   // --- DATA FETCHING & VIEW COUNT LOGIC ---
-  useEffect(() => {
+  const fetchArtwork = useCallback(async (showLoader = true) => {
     const artworkId = route.params?.id;
     if (!artworkId) {
       setError("No artwork ID provided.");
@@ -83,29 +85,40 @@ export default function ArtworkDetailScreen() {
       return;
     }
 
-    const fetchArtwork = async () => {
-      try {
+    try {
+      if (showLoader) {
         setLoading(true);
         setHeroImageLoaded(false);
-        const artworkData: any = await getArtworkById(artworkId, currentUser?.uid);
-        setArtwork(artworkData);
-        setLiked(Boolean(artworkData?.liked));
-        if (!artworkData?.images?.length) {
-          setHeroImageLoaded(true);
-        }
-        // Increment view count after successfully fetching artwork
-        if (artworkData) {
-          await incrementArtworkView(artworkId);
-        }
-      } catch (err: any) {
-        setError(err.message || "An error occurred while fetching the artwork.");
-      } finally {
+      }
+      const artworkData: any = await getArtworkById(artworkId, currentUser?.uid);
+      setArtwork(artworkData);
+      setLiked(Boolean(artworkData?.liked));
+      if (!artworkData?.images?.length) {
+        setHeroImageLoaded(true);
+      }
+      // Increment view count after successfully fetching artwork
+      if (artworkData) {
+        await incrementArtworkView(artworkId);
+      }
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || "An error occurred while fetching the artwork.");
+    } finally {
+      if (showLoader) {
         setLoading(false);
       }
-    };
-
-    fetchArtwork();
+    }
   }, [route.params?.id, currentUser?.uid]);
+
+  useEffect(() => {
+    fetchArtwork();
+  }, [fetchArtwork]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchArtwork(false);
+    setRefreshing(false);
+  }, [fetchArtwork]);
 
   useEffect(() => {
     if (!currentUser?.uid || !artwork?.id) {
@@ -391,6 +404,14 @@ export default function ArtworkDetailScreen() {
           onScroll={handleScroll}
           scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#0B73FF"
+              colors={["#0B73FF"]}
+            />
+          }
           contentContainerStyle={{
             paddingBottom: Math.max(insets.bottom + tabHeight + 10, 80),
           }}
