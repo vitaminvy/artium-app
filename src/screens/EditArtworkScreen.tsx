@@ -7,21 +7,23 @@ import {
   ScrollView,
   Text,
   View,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 import { useTabBarVisibility } from "../app/navigation/TabBarVisibilityContext";
-import { useUploadInventory } from "../domains/inventory/hooks/useUploadInventory";
+import { useEditArtwork } from "../domains/inventory/hooks/useEditArtwork";
 import { StepIndicator } from "../domains/inventory/components/ui/StepIndicator";
 import { UploadImagesStep } from "../domains/inventory/components/UploadImagesStep";
 import { ArtworkDetailsStep, FieldKey } from "../domains/inventory/components/ArtworkDetailsStep";
 import { TagsStep } from "../domains/inventory/components/TagsStep";
 import { STEPS } from "../domains/inventory/constants";
 
-export default function UploadInventoryScreen() {
+export default function EditArtworkScreen() {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
   const { setHidden } = useTabBarVisibility();
 
   const {
@@ -39,15 +41,15 @@ export default function UploadInventoryScreen() {
     handleCancel,
     handleNextFromDetails,
     handleSubmit,
-    resetForm,
-    goToPreviousTab,
+    goBack,
     errors,
     clearFieldError,
     scrollToError,
     setScrollToError,
     selectedTags,
     handleToggleTag,
-  } = useUploadInventory();
+    submitting,
+  } = useEditArtwork();
   const scrollRef = useRef<ScrollView>(null);
   const fieldPositions = useRef<Record<FieldKey, number>>({} as any);
 
@@ -55,12 +57,17 @@ export default function UploadInventoryScreen() {
   useFocusEffect(
     useCallback(() => {
       setHidden(true);
+      const parent = navigation.getParent();
+      parent?.setOptions({ tabBarStyle: { display: "none" } });
 
       // Scroll to top when screen is focused
       scrollRef.current?.scrollTo({ y: 0, animated: false });
 
-      return () => setHidden(false);
-    }, [setHidden])
+      return () => {
+        setHidden(false);
+        parent?.setOptions({ tabBarStyle: undefined });
+      };
+    }, [navigation, setHidden])
   );
 
   useEffect(() => {
@@ -86,10 +93,10 @@ export default function UploadInventoryScreen() {
           style={{ paddingTop: Math.max(insets.top, 24) }}
         >
           <Text className="text-2xl font-semibold text-slate-900 text-center">
-            Upload Artwork
+            Edit Artwork
           </Text>
           <Text className="text-sm text-slate-500 mt-1 text-center">
-            Add images and details to your inventory listing.
+            Update images and details for your artwork.
           </Text>
         </View>
 
@@ -135,7 +142,7 @@ export default function UploadInventoryScreen() {
       {/* Footer Actions */}
       <View
         className="border-t border-slate-200 bg-white px-6 pt-4"
-        style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+        style={{ paddingBottom: Math.max(insets.bottom + 20, 16) }}
       >
         <View className="flex-row items-center gap-3">
           {step === 0 ? (
@@ -184,18 +191,22 @@ export default function UploadInventoryScreen() {
           ) : (
             <Pressable
               onPress={handleSubmit}
-              disabled={!canSubmit}
+              disabled={!canSubmit || submitting}
               className={`flex-1 rounded-full py-3 items-center ${
-                canSubmit ? "bg-[#0B73FF]" : "bg-slate-200"
+                canSubmit && !submitting ? "bg-[#0B73FF]" : "bg-slate-200"
               }`}
             >
-              <Text
-                className={`text-sm font-semibold ${
-                  canSubmit ? "text-white" : "text-slate-500"
-                }`}
-              >
-                Submit
-              </Text>
+              {submitting ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <Text
+                  className={`text-sm font-semibold ${
+                    canSubmit ? "text-white" : "text-slate-500"
+                  }`}
+                >
+                  Update
+                </Text>
+              )}
             </Pressable>
           )}
         </View>
@@ -222,10 +233,10 @@ export default function UploadInventoryScreen() {
 
             <View className="mt-2 mb-5">
               <Text className="text-2xl font-bold text-slate-900 text-center">
-                Are you sure{"\n"}you want to exit?
+                Discard changes?
               </Text>
               <Text className="mt-3 text-base text-slate-500 text-center">
-                All your process will be lost if you exit the uploading process now.
+                All your changes will be lost if you exit now.
               </Text>
             </View>
 
@@ -233,13 +244,12 @@ export default function UploadInventoryScreen() {
               <Pressable
                 onPress={() => {
                   setShowExitConfirm(false);
-                  resetForm();
-                  goToPreviousTab();
+                  goBack();
                 }}
                 className="rounded-full border border-rose-500 py-3 items-center active:opacity-80"
               >
                 <Text className="text-base font-semibold text-rose-500">
-                  Exit uploading
+                  Discard changes
                 </Text>
               </Pressable>
               <Pressable
@@ -247,7 +257,7 @@ export default function UploadInventoryScreen() {
                 className="rounded-full border border-slate-200 py-3 items-center active:opacity-80"
               >
                 <Text className="text-base font-semibold text-slate-700">
-                  Continue uploading
+                  Continue editing
                 </Text>
               </Pressable>
             </View>

@@ -10,6 +10,7 @@ import CheckoutScreen from "../../../screens/CheckoutScreen";
 import PopularArtistsScreen from "../../../screens/PopularArtistsScreen";
 import SimilarSavedScreen from "../../../screens/SimilarSavedScreen";
 import EventDetailScreen from "../../../screens/EventDetailScreen";
+import EditArtworkScreen from "../../../screens/EditArtworkScreen";
 import type { ArtworkDetail } from "../../../domains/artwork/types";
 import type { EventItem } from "../../../domains/discover/types";
 import BlogDetailScreen from "../../../screens/BlogDetailScreen"; // Renamed import
@@ -52,6 +53,7 @@ export type HomeStackParamList = {
     event?: EventItem;
   };
   Blog: undefined;
+  EditArtwork: { artwork: ArtworkDetail };
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -84,6 +86,7 @@ export default function HomeStack() {
       />
       <Stack.Screen name="Checkout" component={CheckoutScreen} />
       <Stack.Screen name="EventDetail" component={EventDetailScreen} />
+      <Stack.Screen name="EditArtwork" component={EditArtworkScreen} />
     </Stack.Navigator>
   );
 }

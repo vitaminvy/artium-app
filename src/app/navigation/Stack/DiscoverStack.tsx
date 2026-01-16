@@ -9,6 +9,7 @@ import UserProfileScreen from "../../../screens/UserProfileScreen";
 import FeedDetailScreen from "../../../screens/FeedDetailScreen";
 import type { FeedPost } from "../../../domains/feed/types";
 import EventDetailScreen from "../../../screens/EventDetailScreen";
+import EditArtworkScreen from "../../../screens/EditArtworkScreen";
 import BlogScreen from "../../../screens/BlogScreen";
 import BlogDetailScreen from "../../../screens/BlogDetailScreen";
 import type { ArtworkDetail } from "../../../domains/artwork/types";
@@ -26,6 +27,7 @@ export type DiscoverStackParamList = {
     onRsvpChange?: (status: "none" | "going" | "maybe" | "notGoing") => void;
     event?: EventItem;
   };
+  EditArtwork: { artwork: ArtworkDetail };
   Blog: undefined;
   BlogDetail: { blogId: string };
 };
@@ -41,6 +43,7 @@ export default function DiscoverStack() {
       <Stack.Screen name="UserProfile" component={UserProfileScreen} />
       <Stack.Screen name="MomentDetail" component={FeedDetailScreen} />
       <Stack.Screen name="EventDetail" component={EventDetailScreen} />
+      <Stack.Screen name="EditArtwork" component={EditArtworkScreen} />
       <Stack.Screen name="Blog" component={BlogScreen} />
       <Stack.Screen name="BlogDetail" component={BlogDetailScreen} />
     </Stack.Navigator>
