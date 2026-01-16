@@ -119,6 +119,62 @@ export default function CheckoutScreen() {
     .filter(Boolean)
     .join(", ");
 
+  // Calculate total price
+  const totalPrice = useMemo(() => {
+    // Use priceSnapshot if available, otherwise parse from price string
+    if (detail.priceSnapshot?.amount) {
+      return detail.priceSnapshot.amount;
+    }
+    const priceRaw = detail.price || "0";
+    // Handle European format (1.083,09) - dots as thousands, comma as decimal
+    // Also handle US format (1,083.09) - commas as thousands, dot as decimal
+    let cleaned = priceRaw.replace(/[^0-9.,]/g, "");
+    // If has both dot and comma, determine which is decimal separator
+    if (cleaned.includes(".") && cleaned.includes(",")) {
+      // If comma comes after dot, it's European format (1.083,09)
+      if (cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".")) {
+        cleaned = cleaned.replace(/\./g, "").replace(",", ".");
+      } else {
+        // US format (1,083.09)
+        cleaned = cleaned.replace(/,/g, "");
+      }
+    } else if (cleaned.includes(",")) {
+      // Only comma - could be European decimal (1083,09) or US thousands (1,083)
+      const parts = cleaned.split(",");
+      if (parts.length === 2 && parts[1].length === 2) {
+        // Likely European decimal
+        cleaned = cleaned.replace(",", ".");
+      } else {
+        // Likely US thousands separator
+        cleaned = cleaned.replace(/,/g, "");
+      }
+    }
+    return parseFloat(cleaned) || 0;
+  }, [detail.price, detail.priceSnapshot]);
+
+  // Promo code logic - 5% discount for valid codes
+  const VALID_PROMO_CODES = ["ARTIUM5", "WELCOME5", "SAVE5"];
+  const isPromoValid = useMemo(() => {
+    return VALID_PROMO_CODES.includes(promoCode.toUpperCase().trim());
+  }, [promoCode]);
+
+  const discountAmount = useMemo(() => {
+    if (!isPromoValid) return 0;
+    return totalPrice * 0.05; // 5% discount
+  }, [isPromoValid, totalPrice]);
+
+  const finalTotal = useMemo(() => {
+    return totalPrice - discountAmount;
+  }, [totalPrice, discountAmount]);
+
+  const formattedDiscount = useMemo(() => {
+    return `-$${discountAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }, [discountAmount]);
+
+  const formattedTotal = useMemo(() => {
+    return `$${finalTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }, [finalTotal]);
+
   // --- Handle Buy Logic ---
   const handleBuy = async () => {
     if (!currentUser) {
@@ -150,10 +206,6 @@ export default function CheckoutScreen() {
         photoURL: sellerProfile?.photoURL || detail.artist?.avatar,
       };
 
-      // Parse price from string (e.g. "USD $1,200" -> 1200)
-      const priceRaw = detail.price || "0";
-      const priceNum = parseFloat(priceRaw.replace(/[^0-9.]/g, "")) || 0;
-
       // Build buyer info from current user and address
       const buyerName = [currentAddress.firstName, currentAddress.lastName]
         .filter(Boolean)
@@ -169,13 +221,21 @@ export default function CheckoutScreen() {
           type: "artwork" as const,
           title: detail.title,
           quantity: 1,
-          unitPrice: priceNum,
+          unitPrice: totalPrice,
           artworkId: detail.id,
           image: detail.images?.[0],
         },
       ];
 
       // Create invoice draft with buyerId for permissions
+      const totals: { subtotal: number; total: number; discount?: number } = {
+        subtotal: totalPrice,
+        total: finalTotal,
+      };
+      if (discountAmount > 0) {
+        totals.discount = discountAmount;
+      }
+
       const { invoiceId } = await createInvoiceDraft({
         sellerId,
         sellerSnapshot,
@@ -183,10 +243,7 @@ export default function CheckoutScreen() {
         buyerId: currentUser.uid,
         items,
         currency: "USD",
-        totals: {
-          subtotal: priceNum,
-          total: priceNum,
-        },
+        totals,
       });
 
       // Update invoice with delivery method and shipping address
@@ -369,21 +426,37 @@ export default function CheckoutScreen() {
               <Text className="text-sm text-slate-600 mb-3">
                 Have a promo code?
               </Text>
-              <View className="rounded-2xl border border-slate-200 px-4 py-3">
+              <View className={`rounded-2xl border px-4 py-3 ${isPromoValid ? "border-green-500 bg-green-50" : "border-slate-200"}`}>
                 <TextInput
                   value={promoCode}
                   onChangeText={setPromoCode}
-                  placeholder="Enter code"
+                  placeholder="Enter code (e.g. ARTIUM5)"
                   placeholderTextColor="#94A3B8"
                   returnKeyType="done"
                   onSubmitEditing={() => Keyboard.dismiss()}
                   style={{ fontSize: 15, color: "#0F172A", padding: 0 }}
+                  autoCapitalize="characters"
                 />
               </View>
+              {isPromoValid && (
+                <View className="flex-row items-center gap-1 mt-2">
+                  <Ionicons name="checkmark-circle" size={14} color="#16A34A" />
+                  <Text className="text-xs text-green-600">5% discount applied!</Text>
+                </View>
+              )}
             </View>
 
             <View className="mt-5 gap-3">
               <SummaryRow label="Artwork price" value={detail.price} />
+              {isPromoValid && (
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center gap-2">
+                    <Text className="text-sm text-green-600">Discount (5%)</Text>
+                    <Ionicons name="pricetag" size={14} color="#16A34A" />
+                  </View>
+                  <Text className="text-sm text-green-600">{formattedDiscount}</Text>
+                </View>
+              )}
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-2">
                   <Text className="text-sm text-slate-600">Shipping Fee</Text>
@@ -408,7 +481,7 @@ export default function CheckoutScreen() {
               <Text className="text-base font-semibold text-slate-900">
                 Total
               </Text>
-              <Text className="text-base font-semibold text-slate-900">-</Text>
+              <Text className="text-base font-semibold text-slate-900">{formattedTotal}</Text>
             </View>
           </View>
         </ScrollView>
@@ -421,7 +494,7 @@ export default function CheckoutScreen() {
           <View className="flex-row items-center justify-between px-4 py-3">
             <View>
               <Text className="text-sm text-slate-500">Total</Text>
-              <Text className="text-lg font-semibold text-slate-900">-</Text>
+              <Text className="text-lg font-semibold text-slate-900">{formattedTotal}</Text>
             </View>
             <Pressable 
               onPress={handleBuy}

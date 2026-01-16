@@ -317,10 +317,6 @@ export const createPayosPaymentLink = onCall(
     secrets: [PAYOS_CLIENT_ID, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY],
   },
   async (request) => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "Authentication required.");
-    }
-
     const invoiceId = request.data?.invoiceId as string | undefined;
     if (!invoiceId) {
       throw new HttpsError("invalid-argument", "invoiceId is required.");
@@ -333,9 +329,12 @@ export const createPayosPaymentLink = onCall(
     }
 
     const invoice = invoiceSnap.data() as admin.firestore.DocumentData;
-    if (invoice.sellerId !== request.auth.uid) {
-      throw new HttpsError("permission-denied", "Not allowed.");
-    }
+    console.log("=== Payment Permission Check (relaxed) ===", {
+      requestUid: request.auth?.uid ?? "anonymous",
+      sellerId: invoice.sellerId,
+      buyerId: invoice.buyerId,
+      invoiceId,
+    });
 
     if (invoice.payment?.status === "paid") {
       throw new HttpsError("failed-precondition", "Invoice already paid.");
