@@ -58,6 +58,7 @@ export type Invoice = {
   isActive: boolean;
   paidAt?: number;
   sellerId: string;
+  buyerId?: string; // Set when buyer creates invoice (checkout flow)
   sellerSnapshot: SellerSnapshot;
   buyer: InvoiceBuyer;
   items: InvoiceItem[];

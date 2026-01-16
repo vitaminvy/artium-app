@@ -29,7 +29,9 @@ import { useReservationTimer } from "../domains/checkout/hooks/useReservationTim
 
 // --- Integration Imports ---
 import { useAuth } from "../domains/auth/contexts/AuthContext";
-import { createOrder } from "../domains/checkout/services/orderService";
+import { createInvoiceDraft, updateInvoice } from "../domains/invoices/services/invoiceService";
+import { getUserProfile } from "../domains/user/services/userService";
+import type { InvoiceDeliveryMethod } from "../domains/invoices/types";
 
 type CheckoutRouteParams = {
   artwork?: ArtworkDetail;
@@ -124,49 +126,87 @@ export default function CheckoutScreen() {
       return;
     }
 
-    if (deliveryMethod === "artium" && !hasAddress) {
+    if (!hasAddress) {
       Alert.alert("Missing Information", "Please enter a shipping address.");
       openAddressSheet();
+      return;
+    }
+
+    // Get seller ID from artwork
+    const sellerId = detail.artistId || detail.artist?.id;
+    if (!sellerId) {
+      Alert.alert("Error", "Cannot identify the seller for this artwork.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
+      // Get seller profile for snapshot
+      const sellerProfile = await getUserProfile(sellerId);
+      const sellerSnapshot = {
+        uid: sellerId,
+        displayName: sellerProfile?.displayName || detail.artist?.name || "Seller",
+        photoURL: sellerProfile?.photoURL || detail.artist?.avatar,
+      };
+
       // Parse price from string (e.g. "USD $1,200" -> 1200)
-      // This is a temporary parse because UI passes string. 
-      // Ideally pass the raw object from previous screen.
       const priceRaw = detail.price || "0";
       const priceNum = parseFloat(priceRaw.replace(/[^0-9.]/g, "")) || 0;
-      
-      const result = await createOrder({
+
+      // Build buyer info from current user and address
+      const buyerName = [currentAddress.firstName, currentAddress.lastName]
+        .filter(Boolean)
+        .join(" ") || currentUser.displayName || "";
+      const buyer = {
+        name: buyerName,
+        email: currentAddress.email || currentUser.email || "",
+      };
+
+      // Build invoice item from artwork
+      const items = [
+        {
+          type: "artwork" as const,
+          title: detail.title,
+          quantity: 1,
+          unitPrice: priceNum,
+          artworkId: detail.id,
+          image: detail.images?.[0],
+        },
+      ];
+
+      // Create invoice draft with buyerId for permissions
+      const { invoiceId } = await createInvoiceDraft({
+        sellerId,
+        sellerSnapshot,
+        buyer,
         buyerId: currentUser.uid,
-        artwork: detail,
-        deliveryMethod,
-        shippingAddress: currentAddress,
-        amount: {
+        items,
+        currency: "USD",
+        totals: {
           subtotal: priceNum,
-          shipping: 0, // TODO: Calculate real shipping
-          total: priceNum, // TODO: Add tax/shipping
-          currency: "USD",
+          total: priceNum,
         },
       });
 
-      if (result.success) {
-        Alert.alert("Order Placed!", "Thank you for your purchase.", [
-          { 
-            text: "OK", 
-            onPress: () => {
-              // Navigate to Home or Orders list
-              navigation.getParent()?.navigate("Home"); 
-            }
-          }
-        ]);
-      } else {
-        Alert.alert("Purchase Failed", result.error || "Please try again.");
-      }
+      // Update invoice with delivery method and shipping address
+      await updateInvoice(invoiceId, {
+        deliveryMethod: deliveryMethod as InvoiceDeliveryMethod,
+        shippingAddress: currentAddress,
+        status: "sent",
+      });
+
+      // Navigate to InvoiceDetail screen
+      navigation.navigate("Tabs", {
+        screen: "Home",
+        params: {
+          screen: "InvoiceDetail",
+          params: { invoiceId },
+        },
+      });
     } catch (err) {
-      Alert.alert("Error", "An unexpected error occurred.");
+      console.error("Failed to create invoice:", err);
+      Alert.alert("Error", "Failed to create invoice. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

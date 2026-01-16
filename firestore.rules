@@ -120,12 +120,25 @@
       }
 
       match /invoices/{invoiceId} {
-        allow read, delete: if isOwner(resource.data.sellerId);
-        allow create: if isOwner(request.resource.data.sellerId)
-          && request.resource.data.status == "draft"
+        // Seller can read/delete their own invoices
+        // Buyer can read invoices they created (where buyer.email matches)
+        allow read: if isSignedIn() && (
+          resource.data.sellerId == request.auth.uid ||
+          resource.data.buyerId == request.auth.uid
+        );
+        allow delete: if isOwner(resource.data.sellerId);
+
+        // Seller can create invoice (Quick Sell flow)
+        // Any authenticated user can create invoice for a seller (Checkout flow)
+        allow create: if isSignedIn()
+          && request.resource.data.status in ["draft", "sent"]
           && request.resource.data.isActive == true
           && !request.resource.data.keys().hasAny(["payment"]);
-        allow update: if isOwner(resource.data.sellerId)
+
+        // Seller can update their invoices
+        // Buyer can update invoices they created
+        allow update: if isSignedIn()
+          && (resource.data.sellerId == request.auth.uid || resource.data.buyerId == request.auth.uid)
           && request.resource.data.sellerId == resource.data.sellerId
           && invoicePaymentUnchanged()
           && invoiceServerFieldsUnchanged()
