@@ -21,6 +21,10 @@ type UserDoc = {
   followerCount?: number;
   followingCount?: number;
   profileCompleted?: boolean;
+  stats?: {
+    followers?: number;
+    following?: number;
+  };
 };
 
 type UseUserProfileResult = {
@@ -77,8 +81,8 @@ const buildUserProfile = (data: UserDoc, userId: string): ProfileViewModel => {
       avatarColor: PROFILE_ACCENT,
     },
     stats: {
-      followers: data.followerCount ?? 0,
-      following: data.followingCount ?? 0,
+      followers: data.stats?.followers ?? data.followerCount ?? 0,
+      following: data.stats?.following ?? data.followingCount ?? 0,
     },
     featuredArtworks: [],
     moodboards: [],
