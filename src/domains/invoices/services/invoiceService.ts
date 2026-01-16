@@ -26,6 +26,7 @@ type CreateInvoiceDraftParams = {
   sellerId: string;
   sellerSnapshot: SellerSnapshot;
   buyer: InvoiceBuyer;
+  buyerId?: string; // Optional: set when buyer creates invoice (checkout flow)
   items: InvoiceItem[];
   currency: string;
   totals: InvoiceTotals;
@@ -75,10 +76,10 @@ const buildInvoiceNumber = (id: string) => {
 export const createInvoiceDraft = async (
   params: CreateInvoiceDraftParams
 ): Promise<{ invoiceId: string }> => {
-  const { sellerId, sellerSnapshot, buyer, items, currency, totals } = params;
+  const { sellerId, sellerSnapshot, buyer, buyerId, items, currency, totals } = params;
   const docRef = doc(collection(firestore, INVOICES_COLLECTION));
   const invoiceNumber = buildInvoiceNumber(docRef.id);
-  await setDoc(docRef, {
+  const invoiceData: Record<string, any> = {
     status: "draft",
     invoiceNumber,
     isActive: true,
@@ -90,7 +91,12 @@ export const createInvoiceDraft = async (
     totals,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  });
+  };
+  // Add buyerId if provided (checkout flow where buyer creates invoice)
+  if (buyerId) {
+    invoiceData.buyerId = buyerId;
+  }
+  await setDoc(docRef, invoiceData);
   return { invoiceId: docRef.id };
 };
 
