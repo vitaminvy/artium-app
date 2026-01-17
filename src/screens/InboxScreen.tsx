@@ -8,6 +8,7 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  RefreshControl,
 } from "react-native";
 import { useInbox } from "@/domains/chat/hooks/useChat";
 import { useNavigation } from "@react-navigation/native";
@@ -41,7 +42,7 @@ type InboxNavigationProp = NativeStackNavigationProp<{
 
 export default function InboxScreen() {
   const { rooms, loading: roomsLoading, currentUser } = useInbox();
-  const { following } = useProfileContext();
+  const { following, refreshProfile } = useProfileContext();
   const navigation = useNavigation<InboxNavigationProp>();
   const insets = useSafeAreaInsets();
 
@@ -49,6 +50,7 @@ export default function InboxScreen() {
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
   const [searching, setSearching] = useState(false);
   const [creatingChat, setCreatingChat] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const listBottomInset = Math.max(insets.bottom + 24, 64);
 
@@ -79,6 +81,17 @@ export default function InboxScreen() {
     if ("avatarUrl" in user && user.avatarUrl) return user.avatarUrl;
     return undefined;
   };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refreshProfile();
+    } catch (error) {
+      console.error("Refresh failed", error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshProfile]);
 
   const handleSearch = useCallback(async (text: string) => {
     setSearchQuery(text);
@@ -336,30 +349,28 @@ export default function InboxScreen() {
                 )}
               </View>
 
-              {roomsLoading ? (
-                <View className="flex-1 items-center justify-center">
-                  <ActivityIndicator color="#0F172A" />
+          {roomsLoading ? (
+            <View className="flex-1 items-center justify-center">
+              <ActivityIndicator />
+            </View>
+          ) : (
+            <FlatList
+              data={rooms}
+              keyExtractor={(item) => item.id}
+              renderItem={renderRoomItem}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+              }
+              ListEmptyComponent={
+                <View className="mt-20 items-center px-6">
+                  <Ionicons name="chatbubbles-outline" size={64} color="#ccc" />
+                  <Text className="mt-4 text-center text-gray-500">
+                    No conversations yet.
+                  </Text>
                 </View>
-              ) : (
-                <FlatList
-                  data={rooms}
-                  keyExtractor={(item) => item.id}
-                  renderItem={renderRoomItem}
-                  ListEmptyComponent={
-                    <View className="mt-16 items-center px-6">
-                      <Ionicons
-                        name="chatbubbles-outline"
-                        size={64}
-                        color="#CBD5E1"
-                      />
-                      <Text className="mt-4 text-center text-slate-500">
-                        No conversations yet.
-                      </Text>
-                    </View>
-                  }
-                  contentContainerStyle={{ paddingBottom: listBottomInset }}
-                />
-              )}
+              }
+            />
+          )}
             </>
           )}
         </>
