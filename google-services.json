@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "300008030002",
+    "project_id": "euphoric-axon-480911-m6",
+    "storage_bucket": "euphoric-axon-480911-m6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:300008030002:android:cd0d4929211e2104e0a12b",
+        "android_client_info": {
+          "package_name": "com.anonymous.artium"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "300008030002-ri1epn1lmsvsvnuerdutcvilei6ifrd6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCNm7S48__L32thgID49-fdT3T93c8YWdk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "300008030002-cksju6b70slsec00rpsn6qsod4p91t6b.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "300008030002-39obokvd8jlv0k7pklb39h9vum8outmu.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.artium.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
