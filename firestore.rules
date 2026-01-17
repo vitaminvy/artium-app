@@ -145,6 +145,24 @@
           && invoiceStatusClientAllowed();
       }
 
+      // Chat Rules
+      match /chats/{chatId} {
+        // Cho phép đọc nếu document tồn tại và user là thành viên, 
+        // HOẶC nếu user đang kiểm tra một chat ID có chứa UID của họ (để tạo mới)
+        allow read: if isSignedIn() && (
+          (resource != null && request.auth.uid in resource.data.participants) ||
+          chatId.matches(".*" + request.auth.uid + ".*")
+        );
+        
+        allow create: if isSignedIn() && request.auth.uid in request.resource.data.participants;
+        allow update: if isSignedIn() && request.auth.uid in resource.data.participants;
+        
+        match /messages/{messageId} {
+          allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+          allow create: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        }
+      }
+
       // Users can read their own data, and public profiles can be read by anyone
       match /users/{userId} {
         allow read: if true;
