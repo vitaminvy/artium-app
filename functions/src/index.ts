@@ -3,7 +3,9 @@ import * as admin from "firebase-admin";
 import {onCall, onRequest, HttpsError} from "firebase-functions/v2/https";
 import {defineSecret} from "firebase-functions/params";
 import {createHmac} from "crypto";
+import {Expo, ExpoPushMessage} from "expo-server-sdk";
 
+const expo = new Expo();
 const PAYOS_CLIENT_ID = defineSecret("PAYOS_CLIENT_ID");
 const PAYOS_API_KEY = defineSecret("PAYOS_API_KEY");
 const PAYOS_CHECKSUM_KEY = defineSecret("PAYOS_CHECKSUM_KEY");
@@ -43,17 +45,44 @@ const createNotification = async (
   targetUserId: string,
   payload: NotificationPayload
 ) => {
-  const ref = db
-    .collection("users")
-    .doc(targetUserId)
-    .collection("notifications")
-    .doc();
+  const userRef = db.collection("users").doc(targetUserId);
+  const notifRef = userRef.collection("notifications").doc();
 
-  await ref.set({
+  await notifRef.set({
     ...payload,
     createdAt: FieldValue.serverTimestamp(),
     read: false,
   });
+
+  // Logic gửi Push Notification
+  try {
+    const userSnap = await userRef.get();
+    const userData = userSnap.data();
+    const pushToken = userData?.expoPushToken;
+
+    if (pushToken && Expo.isExpoPushToken(pushToken)) {
+      const messages: ExpoPushMessage[] = [
+        {
+          to: pushToken,
+          sound: "default",
+          title: "Artium",
+          body: payload.message,
+          data: {...payload},
+        },
+      ];
+
+      const chunks = expo.chunkPushNotifications(messages);
+      for (const chunk of chunks) {
+        try {
+          await expo.sendPushNotificationsAsync(chunk);
+        } catch (error) {
+          console.error("Error sending push notification chunk:", error);
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error processing push notification:", error);
+  }
 };
 
 const PAYOS_ENDPOINT = "https://api-merchant.payos.vn/v2/payment-requests";

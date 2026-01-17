@@ -36,3 +36,19 @@ export const getUserProfile = async (uid: string) => {
     return null;
   }
 };
+
+export const updateUserPushToken = async (uid: string, token: string) => {
+  try {
+    const userRef = doc(firestore, "users", uid);
+    await setDoc(
+      userRef,
+      {
+        expoPushToken: token,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error("Error updating push token:", error);
+  }
+};

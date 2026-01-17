@@ -3,6 +3,7 @@ import { View, Text, Pressable, FlatList } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Notifications from "expo-notifications";
 import {
   collection,
   onSnapshot,
@@ -49,6 +50,29 @@ export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const { currentUser } = useAuth();
   const [items, setItems] = useState<NotificationItem[]>([]);
+
+  const handleTestNotification = useCallback(async () => {
+    const { status: existingStatus } =
+      await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== "granted") {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== "granted") {
+      console.warn("Notification permission not granted");
+      return;
+    }
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Artium",
+        body: "Welcome to Artium! Tap to explore art and creations.",
+        data: { type: "test" },
+      },
+      trigger: null,
+    });
+  }, []);
 
   useEffect(() => {
     if (!currentUser) {
@@ -135,6 +159,16 @@ export default function NotificationsScreen() {
         <Text className="ml-3 text-base font-semibold text-slate-900">
           Notifications
         </Text>
+      </View>
+      <View className="px-4 pt-3">
+        <Pressable
+          onPress={handleTestNotification}
+          className="self-start rounded-full bg-slate-900 px-4 py-2"
+        >
+          <Text className="text-sm font-semibold text-white">
+            Test push notification
+          </Text>
+        </Pressable>
       </View>
 
       {!currentUser ? (
