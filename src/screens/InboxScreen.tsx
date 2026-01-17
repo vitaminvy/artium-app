@@ -246,18 +246,44 @@ export default function InboxScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      {/* Header */}
-      <View
-        className="flex-row items-center justify-between px-4 py-3 border-b border-slate-100"
-        style={{ paddingTop: insets.top }}
-      >
-        <View className="flex-row items-center">
-          <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
-            <Ionicons name="arrow-back-outline" size={22} color="#0F172A" />
+      {/* Header - giống Events */}
+      <View className="bg-white border-b border-slate-100">
+        <View
+          className="flex-row items-center justify-between px-4"
+          style={{ paddingTop: insets.top + 8, paddingBottom: 12 }}
+        >
+          {/* Back button */}
+          <Pressable
+            onPress={() => navigation.goBack()}
+            hitSlop={10}
+            className="h-10 w-10 items-center justify-center"
+          >
+            <Ionicons name="arrow-back" size={22} color="#0F172A" />
           </Pressable>
-          <Text className="ml-3 text-base font-semibold text-slate-900">
-            Messages
-          </Text>
+
+          {/* Title with accent strokes */}
+          <View className="items-center">
+            <Text className="text-xl font-extrabold tracking-[1px] text-slate-900">
+              MESSAGES
+            </Text>
+            <View className="flex-row items-center mt-1" style={{ gap: 4 }}>
+              <View
+                className="h-2 w-4 rounded-full"
+                style={{ backgroundColor: "#0084FF", transform: [{ rotate: "10deg" }] }}
+              />
+              <View
+                className="h-2 w-4 rounded-full"
+                style={{ backgroundColor: "#0084FF", transform: [{ rotate: "-10deg" }] }}
+              />
+              <View
+                className="h-2 w-4 rounded-full"
+                style={{ backgroundColor: "#0084FF", transform: [{ rotate: "10deg" }] }}
+              />
+            </View>
+          </View>
+
+          {/* Empty space for balance */}
+          <View className="h-10 w-10" />
         </View>
       </View>
 

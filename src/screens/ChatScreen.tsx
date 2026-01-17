@@ -217,28 +217,26 @@ export default function ChatScreen() {
       {/* Messenger-style Input Bar */}
       <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 8) }]}>
         <View style={styles.inputRow}>
-          {/* Left Actions - Collapsed into one menu button when input is focused */}
+          {/* Left Actions */}
           <View style={styles.inputActions}>
             {/* Plus/Menu button */}
             <Pressable style={styles.inputActionButton}>
-              <View style={styles.plusButton}>
-                <Ionicons name="add" size={22} color="#FFFFFF" />
-              </View>
+              <Ionicons name="add-circle-outline" size={24} color="#0084FF" />
             </Pressable>
 
             {/* Camera button */}
             <Pressable style={styles.inputActionButton}>
-              <Ionicons name="camera" size={22} color="#0084FF" />
+              <Ionicons name="camera-outline" size={24} color="#0084FF" />
             </Pressable>
 
             {/* Image/Gallery button */}
             <Pressable style={styles.inputActionButton}>
-              <Ionicons name="images" size={22} color="#0084FF" />
+              <Ionicons name="image-outline" size={24} color="#0084FF" />
             </Pressable>
 
             {/* Voice/Mic button */}
             <Pressable style={styles.inputActionButton}>
-              <Ionicons name="mic" size={22} color="#0084FF" />
+              <Ionicons name="mic-outline" size={24} color="#0084FF" />
             </Pressable>
           </View>
 
@@ -431,16 +429,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   inputActionButton: {
-    width: 34,
+    width: 36,
     height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  plusButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#0084FF",
     alignItems: "center",
     justifyContent: "center",
   },
