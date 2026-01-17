@@ -17,12 +17,17 @@ import type { ArtworkDetail } from "../../domains/artwork/types";
 import { getInvoiceIdByOrderCode } from "../../domains/invoices/services/invoicePaymentService";
 import { functions } from "../../configs/firebase";
 
+import InboxScreen from "../../screens/InboxScreen";
+import ChatScreen from "../../screens/ChatScreen";
+
 type AppStackParamList = {
   Tabs: { screen?: keyof TabParamList; params?: TabParamList[keyof TabParamList] } | undefined;
   ArtworkDetail: { id?: string };
   Checkout: { artwork?: ArtworkDetail };
   Upload: undefined;
   Notifications: undefined;
+  Inbox: undefined;
+  Chat: { chatId: string; otherUserName?: string };
 };
 
 type RootNavigatorProps = {
@@ -63,6 +68,16 @@ function AppStack() {
       <Stack.Screen
         name="Notifications"
         component={NotificationsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Inbox"
+        component={InboxScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Chat"
+        component={ChatScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

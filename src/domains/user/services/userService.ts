@@ -1,4 +1,4 @@
-import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, getDoc, serverTimestamp, collection, query, where, getDocs, limit } from "firebase/firestore";
 import { User } from "firebase/auth";
 import { firestore } from "@/configs/firebase";
 
@@ -50,5 +50,26 @@ export const updateUserPushToken = async (uid: string, token: string) => {
     );
   } catch (error) {
     console.error("Error updating push token:", error);
+  }
+};
+
+export const searchUsers = async (searchTerm: string) => {
+  if (!searchTerm || searchTerm.trim().length === 0) return [];
+  
+  try {
+    const usersRef = collection(firestore, "users");
+    // Simple prefix search
+    const q = query(
+      usersRef,
+      where("displayName", ">=", searchTerm),
+      where("displayName", "<=", searchTerm + "\uf8ff"),
+      limit(10)
+    );
+    
+    const snap = await getDocs(q);
+    return snap.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Error searching users:", error);
+    return [];
   }
 };
