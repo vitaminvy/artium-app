@@ -37,7 +37,7 @@ interface SearchUser {
 }
 
 type InboxNavigationProp = NativeStackNavigationProp<{
-  Chat: { chatId: string; otherUserName?: string };
+  Chat: { chatId: string; otherUserName?: string; otherUserAvatar?: string };
 }>;
 
 export default function InboxScreen() {
@@ -130,6 +130,7 @@ export default function InboxScreen() {
       navigation.navigate("Chat", {
         chatId,
         otherUserName: displayName,
+        otherUserAvatar: photoURL,
       });
     } catch (error) {
       console.error("Error creating chat:", error);
@@ -158,6 +159,7 @@ export default function InboxScreen() {
           navigation.navigate("Chat", {
             chatId: item.id,
             otherUserName: otherUserName,
+            otherUserAvatar: otherUserAvatar,
           })
         }
       >
@@ -349,28 +351,28 @@ export default function InboxScreen() {
                 )}
               </View>
 
-          {roomsLoading ? (
-            <View className="flex-1 items-center justify-center">
-              <ActivityIndicator />
-            </View>
-          ) : (
-            <FlatList
-              data={rooms}
-              keyExtractor={(item) => item.id}
-              renderItem={renderRoomItem}
-              refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-              }
-              ListEmptyComponent={
-                <View className="mt-20 items-center px-6">
-                  <Ionicons name="chatbubbles-outline" size={64} color="#ccc" />
-                  <Text className="mt-4 text-center text-gray-500">
-                    No conversations yet.
-                  </Text>
+              {roomsLoading ? (
+                <View className="flex-1 items-center justify-center">
+                  <ActivityIndicator />
                 </View>
-              }
-            />
-          )}
+              ) : (
+                <FlatList
+                  data={rooms}
+                  keyExtractor={(item) => item.id}
+                  renderItem={renderRoomItem}
+                  refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                  }
+                  ListEmptyComponent={
+                    <View className="mt-20 items-center px-6">
+                      <Ionicons name="chatbubbles-outline" size={64} color="#ccc" />
+                      <Text className="mt-4 text-center text-gray-500">
+                        No conversations yet.
+                      </Text>
+                    </View>
+                  }
+                />
+              )}
             </>
           )}
         </>
