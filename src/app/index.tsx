@@ -11,9 +11,11 @@ import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import ProfileOnboardingModal from "../domains/user/components/onboarding/ProfileOnboardingModal";
 import { navigate } from "./navigation/navigationRef";
 import { FeedProvider } from "../domains/feed/contexts/FeedContext";
+import { usePushNotifications } from "../shared/hooks/usePushNotifications";
 
 function NavigationWrapper() {
   const auth = useAuth();
+  usePushNotifications();
   const { shouldPrompt, dismissPrompt } = useProfileCompletion();
 
   useEffect(() => {
