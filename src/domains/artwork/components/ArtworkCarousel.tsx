@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Dimensions, ViewStyle } from "react-native";
+import { View, Dimensions, ViewStyle, Pressable } from "react-native";
 import { Image } from "expo-image";
 import Carousel from "react-native-reanimated-carousel";
 import Animated, {
@@ -23,16 +23,21 @@ const cardShadow: ViewStyle = {
 type ArtworkCarouselProps = {
   images: string[];
   onImageLoad?: () => void;
+  onPressImage?: (images: { uri: string }[], index: number) => void;
 };
 
 export default function ArtworkCarousel({
   images,
   onImageLoad,
+  onPressImage,
 }: ArtworkCarouselProps) {
   const progress = useSharedValue(0);
   const CAROUSEL_WIDTH = SCREEN_WIDTH - 32; // padding 16px each side
   const ITEM_WIDTH = CAROUSEL_WIDTH - 64; // minus padding and spacing
   const CAROUSEL_HEIGHT = ITEM_WIDTH * 1.1; // 1:1.1 ratio
+
+  // Prepare images array for viewer
+  const viewerImages = images.map((uri) => ({ uri }));
 
   return (
     <View
@@ -67,6 +72,11 @@ export default function ArtworkCarousel({
               width={ITEM_WIDTH}
               height={CAROUSEL_HEIGHT}
               onImageLoad={index === 0 ? onImageLoad : undefined}
+              onPress={
+                onPressImage
+                  ? () => onPressImage(viewerImages, index)
+                  : undefined
+              }
             />
           )}
         />
@@ -88,6 +98,7 @@ function CarouselItem({
   width,
   height,
   onImageLoad,
+  onPress,
 }: {
   item: string;
   index: number;
@@ -95,6 +106,7 @@ function CarouselItem({
   width: number;
   height: number;
   onImageLoad?: () => void;
+  onPress?: () => void;
 }) {
   const animatedStyle = useAnimatedStyle(() => {
     const distance = Math.abs(progress.value - index);
@@ -126,7 +138,9 @@ function CarouselItem({
         animatedStyle,
       ]}
     >
-      <View
+      <Pressable
+        onPress={onPress}
+        disabled={!onPress}
         style={{
           width,
           height,
@@ -143,7 +157,7 @@ function CarouselItem({
           transition={0}
           onLoadEnd={onImageLoad}
         />
-      </View>
+      </Pressable>
     </Animated.View>
   );
 }
