@@ -1,5 +1,12 @@
 import React from "react";
-import { View, Text, ActivityIndicator, Pressable } from "react-native";
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
 import {
   GiftedChat,
   Bubble,
@@ -88,51 +95,57 @@ export default function ChatScreen() {
       </View>
 
       {/* Gifted Chat UI */}
-      <GiftedChat
-        messages={messages as IMessage[]}
-        onSend={(messages) => onSend(messages as any)}
-        user={{
-          _id: currentUser.uid,
-          name: currentUser.displayName || "User",
-          avatar: currentUser.photoURL || undefined,
-        }}
-        renderBubble={(props) => (
-          <Bubble
-            {...props}
-            wrapperStyle={{
-              right: { backgroundColor: "#0B73FF" },
-              left: { backgroundColor: "#F1F5F9" },
-            }}
-            textStyle={{
-              right: { color: "#FFFFFF" },
-              left: { color: "#0F172A" },
-            }}
-          />
-        )}
-        renderInputToolbar={renderInputToolbar}
-        renderSend={renderSend}
-        textInputStyle={{
-          backgroundColor: "#F8FAFC",
-          borderWidth: 1,
-          borderColor: "#E2E8F0",
-          borderRadius: 999,
-          paddingHorizontal: 16,
-          paddingVertical: 8,
-          color: "#0F172A",
-          fontSize: 14,
-          marginLeft: 0,
-          marginRight: 6,
-        }}
-        textInputProps={{
-          placeholderTextColor: "#94A3B8",
-        }}
-        showUserAvatar
-        showAvatarForEveryMessage={false}
-        alwaysShowSend
-        scrollToBottom
-        placeholder="Type a message..."
-        bottomOffset={insets.bottom}
-      />
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <GiftedChat
+          messages={messages as IMessage[]}
+          onSend={(messages) => onSend(messages as any)}
+          user={{
+            _id: currentUser.uid,
+            name: currentUser.displayName || "User",
+            avatar: currentUser.photoURL || undefined,
+          }}
+          renderBubble={(props) => (
+            <Bubble
+              {...props}
+              wrapperStyle={{
+                right: { backgroundColor: "#0B73FF" },
+                left: { backgroundColor: "#F1F5F9" },
+              }}
+              textStyle={{
+                right: { color: "#FFFFFF" },
+                left: { color: "#0F172A" },
+              }}
+            />
+          )}
+          renderInputToolbar={renderInputToolbar}
+          renderSend={renderSend}
+          isKeyboardInternallyHandled={false}
+          textInputStyle={{
+            backgroundColor: "#F8FAFC",
+            borderWidth: 1,
+            borderColor: "#E2E8F0",
+            borderRadius: 999,
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            color: "#0F172A",
+            fontSize: 14,
+            marginLeft: 0,
+            marginRight: 6,
+          }}
+          textInputProps={{
+            placeholderTextColor: "#94A3B8",
+          }}
+          showUserAvatar
+          showAvatarForEveryMessage={false}
+          alwaysShowSend
+          scrollToBottom
+          placeholder="Type a message..."
+          bottomOffset={insets.bottom}
+        />
+      </KeyboardAvoidingView>
     </View>
   );
 }
