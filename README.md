@@ -1,106 +1,128 @@
-# Artium 🎨
+# Artium - Art Discovery & Marketplace App
 
-**Artium** is a modern mobile application for art discovery and community interaction, built with **React Native (Expo)**. The project adopts a scalable **Domain-Driven Design (DDD)** architecture to ensure maintainability and separation of concerns as the application grows.
+**Artium** is a comprehensive mobile application designed for art enthusiasts, collectors, and artists. It bridges the gap between art discovery, community interaction, and seamless commerce.
 
-##  Tech Stack
+Built with **React Native (Expo)** and backed by **Firebase**, Artium offers a polished, native experience for iOS and Android.
 
-- **Core:** [React Native](https://reactnative.dev/) (via [Expo](https://expo.dev/))
-- **Language:** [TypeScript](https://www.typescriptlang.org/)
-- **Styling:** [NativeWind v4](https://www.nativewind.dev/) (Tailwind CSS)
-- **Navigation:** [React Navigation](https://reactnavigation.org/) (Stack & Bottom Tabs)
-- **State Management:** [Jotai](https://jotai.org/)
-- **Networking:** [Axios](https://axios-http.com/)
-- **Forms & Validation:** [React Hook Form](https://react-hook-form.com/) + [Zod](https://zod.dev/)
-- **Animation:** [React Native Reanimated](https://docs.swmansion.com/react-native-reanimated/)
+## 🌟 Key Features
 
-##  Project Structure
+### 🎨 Discovery & Social
+*   **Immersive Feed:** Explore a curated stream of artworks, events, and blogs.
+*   **Social Interaction:** Follow artists, like/comment on posts, and reshare content.
+*   **Realtime Chat:** Built-in messaging system to connect artists and collectors directly.
+*   **Moodboards:** Save and organize inspirations into private or public collections.
+*   **Push Notifications:** Stay updated with likes, comments, and new messages.
 
-The codebase is organized by **Domain** (Feature) rather than by type, making it easier to scale.
+### 🛍️ Marketplace & Commerce
+*   **Inventory Management:** Artists can upload and manage their artwork portfolio.
+*   **Quick Invoicing:** Create professional invoices for artworks in seconds.
+*   **Secure Payments:** Integrated **PayOS** gateway for seamless checkout and order tracking.
+*   **Order Management:** Track sales, status (Pending/Paid), and transaction history.
 
-```text
-artium/
- ├── src/
- │    ├── app/                # Navigation configuration & Entry points
- │    │     ├── navigation/   # Root, Tab, and Stack Navigators
- │    │     └── index.tsx     # Main App Container
- │    │
- │    ├── domains/            # Feature Modules (Business Logic)
- │    │     ├── artwork/      # Logic specific to Artworks
- │    │     ├── discover/     # Logic specific to Search/Discovery
- │    │     ├── user/         # Logic specific to Users/Profiles
- │    │     ├── chat/         # Logic specific to Messaging
- │    │     └── auth/         # Logic specific to Authentication
- │    │     │── [module]/
- │    │         ├── components/ # Domain-specific UI
- │    │         ├── hooks/      # Domain-specific Logic/State
- │    │         ├── services/   # API calls for this domain
- │    │         └── types.ts    # Domain models
- │    │
- │    ├── shared/             # Reusable Layer (Generic)
- │    │     ├── components/   # Atoms/Molecules (Button, Input, Avatar)
- │    │     ├── services/     # Global services (Axios instance, Storage)
- │    │     ├── hooks/        # Generic hooks
- │    │     └── utils/        # Helper functions
- │    │
- │    ├── screens/            # 📱 Route Containers (The "Pages")
- │    │     # Screens compose components from 'domains' and 'shared'
- │    │
- │    ├── constants/          # Design tokens (Colors, Spacing)
- │    └── configs/            # Environment & Library configs (Firebase, S3)
- │
- ├── assets/                  # Static Assets (Images, Icons)
- ├── App.tsx                  # Root Component (Landing / Dev Switch)
- ├── babel.config.js          # Babel Config (NativeWind & Reanimated plugins)
- └── package.json
-```
+### 📅 Events & Content
+*   **Event Discovery:** Browse and RSVP to art exhibitions and workshops.
+*   **Editorial Blogs:** Read articles and news from the art world.
 
-##  Getting Started
+## 🛠️ Tech Stack
+
+### Mobile Application
+*   **Framework:** [React Native](https://reactnative.dev/) via [Expo](https://expo.dev/) (SDK 54)
+*   **Language:** TypeScript
+*   **Styling:** [NativeWind v4](https://www.nativewind.dev/) (Tailwind CSS)
+*   **Navigation:** React Navigation (Stack & Bottom Tabs)
+*   **State Management:** [Jotai](https://jotai.org/) (Atomic state)
+*   **Realtime Chat:** `react-native-gifted-chat` + Firestore
+*   **Notifications:** Expo Notifications
+
+### Backend & Cloud
+*   **Platform:** Firebase
+*   **Database:** Cloud Firestore (NoSQL)
+*   **Authentication:** Firebase Auth
+*   **Storage:** Cloud Storage for Firebase
+*   **Serverless:** Cloud Functions for Firebase (Node.js 20)
+*   **Payment Gateway:** PayOS
+
+## 🚀 Getting Started
 
 ### Prerequisites
-
-- [Node.js](https://nodejs.org/) (LTS recommended)
-- [Expo Go](https://expo.dev/client) app on your mobile device (iOS/Android) or an Emulator/Simulator.
+*   Node.js (v18+)
+*   npm or yarn
+*   iOS Simulator (Mac) or Android Emulator
+*   Expo Go app (for physical device testing)
 
 ### Installation
 
-1. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/your-username/artium.git
+    cd artium
+    ```
 
-2. **Start the development server:**
-   ```bash
-   npx expo start
-   ```
-   *Note: If you encounter styling or cache issues, run `npx expo start -c` to clear the bundler cache.*
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    # or
+    yarn install
+    ```
 
-3. **Run on Device/Emulator:**
-   - Scan the QR code with the **Expo Go** app (Android) or Camera (iOS).
-   - Press `a` for Android Emulator.
-   - Press `i` for iOS Simulator.
+3.  **Environment Setup:**
+    Create a `.env` file in the root directory (refer to `.env.example` if available) or ensure `src/configs/firebase.ts` is configured with your Firebase credentials.
 
-##  Troubleshooting
+4.  **Run the App:**
+    ```bash
+    # Start Metro Bundler
+    npx expo start
 
-### Common Issues
+    # Run on specific platform
+    npm run ios      # iOS Simulator
+    npm run android  # Android Emulator
+    ```
 
-**1. Styling not applying (NativeWind)**
-If you change `tailwind.config.js` or `global.css`, you often need to clear the Metro bundler cache:
+### Cloud Functions (Backend)
+
+To deploy backend logic (Notifications, Payment triggers):
+
 ```bash
-npx expo start -c
+cd functions
+npm install
+npm run build
+firebase deploy --only functions
 ```
 
-**2. Reanimated / Worklets Errors**
-If you see errors related to `react-native-worklets-core` or `UIImplementation`, ensure your `babel.config.js` has the plugins in the correct order:
-```javascript
-plugins: [
-  "react-native-reanimated/plugin",
-],
+## 📂 Project Structure
+
+The project follows a **Domain-Driven Design (DDD)** approach for scalability:
+
 ```
-And then run `npx expo start -c`.
+src/
+├── app/                # App entry, Navigation configuration
+├── domains/            # Feature modules (Business logic)
+│   ├── artwork/        # Artwork management
+│   ├── auth/           # Authentication & User Profile
+│   ├── chat/           # Realtime Chat logic
+│   ├── checkout/       # Cart & Payment flow
+│   ├── feed/           # Social Feed logic
+│   └── ...
+├── screens/            # Route containers (Pages)
+├── shared/             # Reusable UI components & hooks
+├── configs/            # Firebase & Env setup
+└── assets/             # Images, Fonts, Icons
+```
 
-## Contributing
+## 🔐 Security & Permissions
 
-1. **Domains:** When adding a new feature, try to encapsulate logic within `src/domains`.
-2. **Shared:** Only move code to `src/shared` if it is used by *multiple* domains.
-3. **Styling:** Use Tailwind utility classes via `className`.
+*   **Firestore Rules:** Strictly configured to ensure users can only modify their own data.
+*   **Chat Privacy:** Messages are secured so only participants can read/write.
+*   **Payment Security:** Server-side signature verification for PayOS webhooks.
 
+## 🤝 Contribution
+
+1.  Fork the repository.
+2.  Create a feature branch (`git checkout -b feature/NewFeature`).
+3.  Commit your changes (`git commit -m 'Add NewFeature'`).
+4.  Push to the branch (`git push origin feature/NewFeature`).
+5.  Open a Pull Request.
+
+## 📄 License
+
+This project is licensed under the MIT License.
