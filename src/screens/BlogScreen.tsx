@@ -148,6 +148,16 @@ export default function BlogScreen() {
       return;
     }
 
+    if (key === "notifications") {
+      navigation.navigate("Notifications" as never);
+      return;
+    }
+
+    if (key === "messages") {
+      navigation.navigate("Inbox" as never);
+      return;
+    }
+
     // Get current tab to determine navigation strategy
     const currentTabName = getActiveTab();
 

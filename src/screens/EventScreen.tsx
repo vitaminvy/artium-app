@@ -164,6 +164,16 @@ export default function EventScreen() {
       return;
     }
 
+    if (key === "notifications") {
+      navigation.navigate("Notifications" as never);
+      return;
+    }
+
+    if (key === "messages") {
+      navigation.navigate("Inbox" as never);
+      return;
+    }
+
     if (key === "profile") {
       navigation.navigate("Profile");
       return;

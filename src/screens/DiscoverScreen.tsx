@@ -106,6 +106,11 @@ export default function DiscoverScreen() {
       return;
     }
 
+    if (key === "messages") {
+      navigation.navigate("Inbox" as never);
+      return;
+    }
+
     if (key === "invoices") {
       navigation.navigate("Home", { screen: "Invoices" } as any);
       return;
