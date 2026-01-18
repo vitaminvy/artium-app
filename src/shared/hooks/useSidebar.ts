@@ -62,8 +62,7 @@ const ITEMS: SidebarItem[] = [
     key: "messages",
     label: "Messages",
     icon: "chatbox-ellipses-outline",
-    subtitle: "Leaving the app and redirecting to the web version",
-    trailing: "external",
+    subtitle: "Chat with artists and collectors",
   },
   // {
   //   key: "portfolio",

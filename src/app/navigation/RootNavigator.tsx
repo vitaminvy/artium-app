@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Linking } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { httpsCallable } from "firebase/functions";
 
 import ArtworkDetailScreen from "../../screens/ArtworkDetailScreen";
 import UploadInventoryScreen from "../../screens/UploadInventoryScreen";
@@ -14,6 +15,10 @@ import { AuthStatus } from "../../domains/auth/types";
 import { navigationRef } from "./navigationRef";
 import type { ArtworkDetail } from "../../domains/artwork/types";
 import { getInvoiceIdByOrderCode } from "../../domains/invoices/services/invoicePaymentService";
+import { functions } from "../../configs/firebase";
+
+import InboxScreen from "../../screens/InboxScreen";
+import ChatScreen from "../../screens/ChatScreen";
 
 type AppStackParamList = {
   Tabs: { screen?: keyof TabParamList; params?: TabParamList[keyof TabParamList] } | undefined;
@@ -21,6 +26,8 @@ type AppStackParamList = {
   Checkout: { artwork?: ArtworkDetail };
   Upload: undefined;
   Notifications: undefined;
+  Inbox: undefined;
+  Chat: { chatId: string; otherUserName?: string };
 };
 
 type RootNavigatorProps = {
@@ -63,6 +70,16 @@ function AppStack() {
         component={NotificationsScreen}
         options={{ headerShown: false }}
       />
+      <Stack.Screen
+        name="Inbox"
+        component={InboxScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Chat"
+        component={ChatScreen}
+        options={{ headerShown: false }}
+      />
     </Stack.Navigator>
   );
 }
@@ -70,6 +87,10 @@ function AppStack() {
 export default function RootNavigator({ authStatus }: RootNavigatorProps) {
   const [navReady, setNavReady] = useState(false);
   const pendingUrlRef = useRef<string | null>(null);
+  const finalizePayosPayment = useMemo(
+    () => httpsCallable(functions, "finalizePayosPayment"),
+    []
+  );
 
   const handlePayosUrl = useCallback(
     async (url?: string | null) => {
@@ -105,6 +126,14 @@ export default function RootNavigator({ authStatus }: RootNavigatorProps) {
         return;
       }
 
+      if (isPayosReturn) {
+        try {
+          await finalizePayosPayment({ invoiceId: resolvedInvoiceId });
+        } catch (err) {
+          console.warn("Failed to finalize PayOS payment:", err);
+        }
+      }
+
       navigationRef.navigate("Tabs", {
         screen: "Home",
         params: {
@@ -113,7 +142,7 @@ export default function RootNavigator({ authStatus }: RootNavigatorProps) {
         },
       });
     },
-    [authStatus]
+    [authStatus, finalizePayosPayment]
   );
 
   useEffect(() => {

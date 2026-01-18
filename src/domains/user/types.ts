@@ -16,6 +16,13 @@ export type ProfileUser = {
   avatarUri?: string | null;
 };
 
+export type FollowUser = {
+  id: string;
+  username: string;
+  displayName?: string;
+  avatarUrl?: string;
+};
+
 export type ProfileFeaturedArtwork = {
   id: string;
   title?: string;

@@ -29,7 +29,9 @@ import { useReservationTimer } from "../domains/checkout/hooks/useReservationTim
 
 // --- Integration Imports ---
 import { useAuth } from "../domains/auth/contexts/AuthContext";
-import { createOrder } from "../domains/checkout/services/orderService";
+import { createInvoiceDraft, updateInvoice } from "../domains/invoices/services/invoiceService";
+import { getUserProfile } from "../domains/user/services/userService";
+import type { InvoiceDeliveryMethod } from "../domains/invoices/types";
 
 type CheckoutRouteParams = {
   artwork?: ArtworkDetail;
@@ -117,6 +119,62 @@ export default function CheckoutScreen() {
     .filter(Boolean)
     .join(", ");
 
+  // Calculate total price
+  const totalPrice = useMemo(() => {
+    // Use priceSnapshot if available, otherwise parse from price string
+    if (detail.priceSnapshot?.amount) {
+      return detail.priceSnapshot.amount;
+    }
+    const priceRaw = detail.price || "0";
+    // Handle European format (1.083,09) - dots as thousands, comma as decimal
+    // Also handle US format (1,083.09) - commas as thousands, dot as decimal
+    let cleaned = priceRaw.replace(/[^0-9.,]/g, "");
+    // If has both dot and comma, determine which is decimal separator
+    if (cleaned.includes(".") && cleaned.includes(",")) {
+      // If comma comes after dot, it's European format (1.083,09)
+      if (cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".")) {
+        cleaned = cleaned.replace(/\./g, "").replace(",", ".");
+      } else {
+        // US format (1,083.09)
+        cleaned = cleaned.replace(/,/g, "");
+      }
+    } else if (cleaned.includes(",")) {
+      // Only comma - could be European decimal (1083,09) or US thousands (1,083)
+      const parts = cleaned.split(",");
+      if (parts.length === 2 && parts[1].length === 2) {
+        // Likely European decimal
+        cleaned = cleaned.replace(",", ".");
+      } else {
+        // Likely US thousands separator
+        cleaned = cleaned.replace(/,/g, "");
+      }
+    }
+    return parseFloat(cleaned) || 0;
+  }, [detail.price, detail.priceSnapshot]);
+
+  // Promo code logic - 5% discount for valid codes
+  const VALID_PROMO_CODES = ["ARTIUM5", "WELCOME5", "SAVE5"];
+  const isPromoValid = useMemo(() => {
+    return VALID_PROMO_CODES.includes(promoCode.toUpperCase().trim());
+  }, [promoCode]);
+
+  const discountAmount = useMemo(() => {
+    if (!isPromoValid) return 0;
+    return totalPrice * 0.05; // 5% discount
+  }, [isPromoValid, totalPrice]);
+
+  const finalTotal = useMemo(() => {
+    return totalPrice - discountAmount;
+  }, [totalPrice, discountAmount]);
+
+  const formattedDiscount = useMemo(() => {
+    return `-$${discountAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }, [discountAmount]);
+
+  const formattedTotal = useMemo(() => {
+    return `$${finalTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }, [finalTotal]);
+
   // --- Handle Buy Logic ---
   const handleBuy = async () => {
     if (!currentUser) {
@@ -124,49 +182,88 @@ export default function CheckoutScreen() {
       return;
     }
 
-    if (deliveryMethod === "artium" && !hasAddress) {
+    if (!hasAddress) {
       Alert.alert("Missing Information", "Please enter a shipping address.");
       openAddressSheet();
+      return;
+    }
+
+    // Get seller ID from artwork
+    const sellerId = detail.artistId || detail.artist?.id;
+    if (!sellerId) {
+      Alert.alert("Error", "Cannot identify the seller for this artwork.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Parse price from string (e.g. "USD $1,200" -> 1200)
-      // This is a temporary parse because UI passes string. 
-      // Ideally pass the raw object from previous screen.
-      const priceRaw = detail.price || "0";
-      const priceNum = parseFloat(priceRaw.replace(/[^0-9.]/g, "")) || 0;
-      
-      const result = await createOrder({
-        buyerId: currentUser.uid,
-        artwork: detail,
-        deliveryMethod,
-        shippingAddress: currentAddress,
-        amount: {
-          subtotal: priceNum,
-          shipping: 0, // TODO: Calculate real shipping
-          total: priceNum, // TODO: Add tax/shipping
-          currency: "USD",
+      // Get seller profile for snapshot
+      const sellerProfile = await getUserProfile(sellerId);
+      const sellerSnapshot = {
+        uid: sellerId,
+        displayName: sellerProfile?.displayName || detail.artist?.name || "Seller",
+        photoURL: sellerProfile?.photoURL || detail.artist?.avatar,
+      };
+
+      // Build buyer info from current user and address
+      const buyerName = [currentAddress.firstName, currentAddress.lastName]
+        .filter(Boolean)
+        .join(" ") || currentUser.displayName || "";
+      const buyer = {
+        name: buyerName,
+        email: currentAddress.email || currentUser.email || "",
+      };
+
+      // Build invoice item from artwork
+      const items = [
+        {
+          type: "artwork" as const,
+          title: detail.title,
+          quantity: 1,
+          unitPrice: totalPrice,
+          artworkId: detail.id,
+          image: detail.images?.[0],
         },
+      ];
+
+      // Create invoice draft with buyerId for permissions
+      const totals: { subtotal: number; total: number; discount?: number } = {
+        subtotal: totalPrice,
+        total: finalTotal,
+      };
+      if (discountAmount > 0) {
+        totals.discount = discountAmount;
+      }
+
+      const { invoiceId } = await createInvoiceDraft({
+        sellerId,
+        sellerSnapshot,
+        buyer,
+        buyerId: currentUser.uid,
+        items,
+        currency: "USD",
+        totals,
       });
 
-      if (result.success) {
-        Alert.alert("Order Placed!", "Thank you for your purchase.", [
-          { 
-            text: "OK", 
-            onPress: () => {
-              // Navigate to Home or Orders list
-              navigation.getParent()?.navigate("Home"); 
-            }
-          }
-        ]);
-      } else {
-        Alert.alert("Purchase Failed", result.error || "Please try again.");
-      }
+      // Update invoice with delivery method and shipping address
+      await updateInvoice(invoiceId, {
+        deliveryMethod: deliveryMethod as InvoiceDeliveryMethod,
+        shippingAddress: currentAddress,
+        status: "sent",
+      });
+
+      // Navigate to InvoiceDetail screen
+      navigation.navigate("Tabs", {
+        screen: "Home",
+        params: {
+          screen: "InvoiceDetail",
+          params: { invoiceId },
+        },
+      });
     } catch (err) {
-      Alert.alert("Error", "An unexpected error occurred.");
+      console.error("Failed to create invoice:", err);
+      Alert.alert("Error", "Failed to create invoice. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -329,21 +426,37 @@ export default function CheckoutScreen() {
               <Text className="text-sm text-slate-600 mb-3">
                 Have a promo code?
               </Text>
-              <View className="rounded-2xl border border-slate-200 px-4 py-3">
+              <View className={`rounded-2xl border px-4 py-3 ${isPromoValid ? "border-green-500 bg-green-50" : "border-slate-200"}`}>
                 <TextInput
                   value={promoCode}
                   onChangeText={setPromoCode}
-                  placeholder="Enter code"
+                  placeholder="Enter code (e.g. ARTIUM5)"
                   placeholderTextColor="#94A3B8"
                   returnKeyType="done"
                   onSubmitEditing={() => Keyboard.dismiss()}
                   style={{ fontSize: 15, color: "#0F172A", padding: 0 }}
+                  autoCapitalize="characters"
                 />
               </View>
+              {isPromoValid && (
+                <View className="flex-row items-center gap-1 mt-2">
+                  <Ionicons name="checkmark-circle" size={14} color="#16A34A" />
+                  <Text className="text-xs text-green-600">5% discount applied!</Text>
+                </View>
+              )}
             </View>
 
             <View className="mt-5 gap-3">
               <SummaryRow label="Artwork price" value={detail.price} />
+              {isPromoValid && (
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center gap-2">
+                    <Text className="text-sm text-green-600">Discount (5%)</Text>
+                    <Ionicons name="pricetag" size={14} color="#16A34A" />
+                  </View>
+                  <Text className="text-sm text-green-600">{formattedDiscount}</Text>
+                </View>
+              )}
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-2">
                   <Text className="text-sm text-slate-600">Shipping Fee</Text>
@@ -368,7 +481,7 @@ export default function CheckoutScreen() {
               <Text className="text-base font-semibold text-slate-900">
                 Total
               </Text>
-              <Text className="text-base font-semibold text-slate-900">-</Text>
+              <Text className="text-base font-semibold text-slate-900">{formattedTotal}</Text>
             </View>
           </View>
         </ScrollView>
@@ -381,7 +494,7 @@ export default function CheckoutScreen() {
           <View className="flex-row items-center justify-between px-4 py-3">
             <View>
               <Text className="text-sm text-slate-500">Total</Text>
-              <Text className="text-lg font-semibold text-slate-900">-</Text>
+              <Text className="text-lg font-semibold text-slate-900">{formattedTotal}</Text>
             </View>
             <Pressable 
               onPress={handleBuy}

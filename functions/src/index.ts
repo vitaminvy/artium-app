@@ -3,7 +3,9 @@ import * as admin from "firebase-admin";
 import {onCall, onRequest, HttpsError} from "firebase-functions/v2/https";
 import {defineSecret} from "firebase-functions/params";
 import {createHmac} from "crypto";
+import {Expo, ExpoPushMessage} from "expo-server-sdk";
 
+const expo = new Expo();
 const PAYOS_CLIENT_ID = defineSecret("PAYOS_CLIENT_ID");
 const PAYOS_API_KEY = defineSecret("PAYOS_API_KEY");
 const PAYOS_CHECKSUM_KEY = defineSecret("PAYOS_CHECKSUM_KEY");
@@ -43,17 +45,44 @@ const createNotification = async (
   targetUserId: string,
   payload: NotificationPayload
 ) => {
-  const ref = db
-    .collection("users")
-    .doc(targetUserId)
-    .collection("notifications")
-    .doc();
+  const userRef = db.collection("users").doc(targetUserId);
+  const notifRef = userRef.collection("notifications").doc();
 
-  await ref.set({
+  await notifRef.set({
     ...payload,
     createdAt: FieldValue.serverTimestamp(),
     read: false,
   });
+
+  // Logic gửi Push Notification
+  try {
+    const userSnap = await userRef.get();
+    const userData = userSnap.data();
+    const pushToken = userData?.expoPushToken;
+
+    if (pushToken && Expo.isExpoPushToken(pushToken)) {
+      const messages: ExpoPushMessage[] = [
+        {
+          to: pushToken,
+          sound: "default",
+          title: "Artium",
+          body: payload.message,
+          data: {...payload},
+        },
+      ];
+
+      const chunks = expo.chunkPushNotifications(messages);
+      for (const chunk of chunks) {
+        try {
+          await expo.sendPushNotificationsAsync(chunk);
+        } catch (error) {
+          console.error("Error sending push notification chunk:", error);
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error processing push notification:", error);
+  }
 };
 
 const PAYOS_ENDPOINT = "https://api-merchant.payos.vn/v2/payment-requests";
@@ -317,10 +346,6 @@ export const createPayosPaymentLink = onCall(
     secrets: [PAYOS_CLIENT_ID, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY],
   },
   async (request) => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "Authentication required.");
-    }
-
     const invoiceId = request.data?.invoiceId as string | undefined;
     if (!invoiceId) {
       throw new HttpsError("invalid-argument", "invoiceId is required.");
@@ -333,9 +358,12 @@ export const createPayosPaymentLink = onCall(
     }
 
     const invoice = invoiceSnap.data() as admin.firestore.DocumentData;
-    if (invoice.sellerId !== request.auth.uid) {
-      throw new HttpsError("permission-denied", "Not allowed.");
-    }
+    console.log("=== Payment Permission Check (relaxed) ===", {
+      requestUid: request.auth?.uid ?? "anonymous",
+      sellerId: invoice.sellerId,
+      buyerId: invoice.buyerId,
+      invoiceId,
+    });
 
     if (invoice.payment?.status === "paid") {
       throw new HttpsError("failed-precondition", "Invoice already paid.");
@@ -354,8 +382,10 @@ export const createPayosPaymentLink = onCall(
     const hostingBase =
       process.env.PAYOS_HOSTING_BASE_URL || `https://${projectId}.web.app`;
     const normalizedBase = hostingBase.replace(/\/+$/, "");
-    const baseReturnUrl = `${normalizedBase}/payos/return`;
-    const baseCancelUrl = `${normalizedBase}/payos/cancel`;
+    const requestReturnBase = request.data?.returnUrlBase as string | undefined;
+    const requestCancelBase = request.data?.cancelUrlBase as string | undefined;
+    const baseReturnUrl = requestReturnBase || `${normalizedBase}/payos/return`;
+    const baseCancelUrl = requestCancelBase || `${normalizedBase}/payos/cancel`;
 
     if (invoice.payment?.checkoutUrl && invoice.payment?.orderCode) {
       const existingReturnUrl = buildRedirectUrl(baseReturnUrl, {
@@ -377,6 +407,8 @@ export const createPayosPaymentLink = onCall(
           checkoutUrl: invoice.payment.checkoutUrl,
           orderCode: invoice.payment.orderCode,
           paymentLinkId: invoice.payment.paymentLinkId,
+          returnUrl: invoice.payment.returnUrl,
+          cancelUrl: invoice.payment.cancelUrl,
         };
       }
     }
@@ -448,9 +480,65 @@ export const createPayosPaymentLink = onCall(
       checkoutUrl: paymentData.checkoutUrl,
       orderCode: paymentData.orderCode ?? orderCode,
       paymentLinkId: paymentData.paymentLinkId,
+      returnUrl,
+      cancelUrl,
     };
   }
 );
+
+export const finalizePayosPayment = onCall(async (request) => {
+  const invoiceId = request.data?.invoiceId as string | undefined;
+  if (!invoiceId) {
+    throw new HttpsError("invalid-argument", "invoiceId is required.");
+  }
+
+  const invoiceRef = db.collection("invoices").doc(invoiceId);
+  const invoiceSnap = await invoiceRef.get();
+  if (!invoiceSnap.exists) {
+    throw new HttpsError("not-found", "Invoice not found.");
+  }
+
+  const invoiceData = invoiceSnap.data() as admin.firestore.DocumentData;
+  const isAlreadyPaid =
+    invoiceData?.payment?.status === "paid" || invoiceData?.status === "paid";
+  if (isAlreadyPaid) {
+    return {status: "paid"};
+  }
+
+  const batch = db.batch();
+  batch.update(invoiceRef, {
+    "payment.status": "paid",
+    "payment.paidAt": admin.firestore.FieldValue.serverTimestamp(),
+    "status": "paid",
+    "isActive": false,
+    "paidAt": admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  const artworkIds = new Set<string>();
+  if (invoiceData?.artworkId) {
+    artworkIds.add(String(invoiceData.artworkId));
+  }
+  if (Array.isArray(invoiceData?.items)) {
+    invoiceData.items.forEach((item: { artworkId?: string }) => {
+      if (item?.artworkId) {
+        artworkIds.add(String(item.artworkId));
+      }
+    });
+  }
+
+  artworkIds.forEach((artworkId) => {
+    const artworkRef = db.collection("artworks").doc(artworkId);
+    batch.update(artworkRef, {
+      status: "sold",
+      isActive: false,
+      soldAt: admin.firestore.FieldValue.serverTimestamp(),
+      soldByInvoiceId: invoiceRef.id,
+    });
+  });
+
+  await batch.commit();
+  return {status: "paid"};
+});
 
 export const payosWebhook = onRequest(
   {

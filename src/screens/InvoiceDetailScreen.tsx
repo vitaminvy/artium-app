@@ -33,6 +33,8 @@ import type { HomeStackParamList } from "../app/navigation/Stack/HomeStack";
 const DELIVERY_OPTION_SELLER = "Pick up / Ship by seller";
 const DELIVERY_OPTION_ARTIUM = "Ship by Artium";
 const DELIVERY_OPTION_INVOICE = "Invoice Only";
+const PAYOS_RETURN_URL_BASE = "artium://payos/return";
+const PAYOS_CANCEL_URL_BASE = "artium://payos/cancel";
 
 type DeliveryOption =
   | typeof DELIVERY_OPTION_SELLER
@@ -127,6 +129,7 @@ export default function InvoiceDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const paidHandledRef = useRef(false);
   const { setHidden } = useTabBarVisibility();
   const addressSheetRef = useRef<BottomSheetModal>(null);
@@ -289,6 +292,10 @@ export default function InvoiceDetailScreen() {
     () => httpsCallable(functions, "createPayosPaymentLink"),
     []
   );
+  const finalizePayosPayment = useMemo(
+    () => httpsCallable(functions, "finalizePayosPayment"),
+    []
+  );
 
   const isPaid =
     invoice?.status === "paid" || invoice?.payment?.status === "paid";
@@ -297,19 +304,37 @@ export default function InvoiceDetailScreen() {
     if (!invoiceId || isPaid) return;
     setPaying(true);
     try {
-      const result = await createPayosPaymentLink({ invoiceId });
-      const data = result.data as { checkoutUrl?: string };
+      const result = await createPayosPaymentLink({
+        invoiceId,
+        returnUrlBase: PAYOS_RETURN_URL_BASE,
+        cancelUrlBase: PAYOS_CANCEL_URL_BASE,
+      });
+      const data = result.data as {
+        checkoutUrl?: string;
+        returnUrl?: string;
+      };
       if (!data?.checkoutUrl) {
         throw new Error("Missing checkoutUrl");
       }
-      await WebBrowser.openBrowserAsync(data.checkoutUrl);
+      const returnUrl = data.returnUrl || PAYOS_RETURN_URL_BASE;
+      const authResult = await WebBrowser.openAuthSessionAsync(
+        data.checkoutUrl,
+        returnUrl
+      );
+      if (authResult.type === "success") {
+        const returnedUrl = authResult.url || "";
+        if (returnedUrl.includes("payos/cancel")) {
+          return;
+        }
+        await finalizePayosPayment({ invoiceId });
+      }
     } catch (err) {
       console.error("Failed to start payment:", err);
       Alert.alert("Payment failed", "Please try again.");
     } finally {
       setPaying(false);
     }
-  }, [createPayosPaymentLink, invoiceId, isPaid]);
+  }, [createPayosPaymentLink, finalizePayosPayment, invoiceId, isPaid]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -329,11 +354,15 @@ export default function InvoiceDetailScreen() {
   }, [invoice?.id, invoice?.invoiceNumber]);
 
   useEffect(() => {
-    if (!invoice || !isPaid || paidHandledRef.current) return;
-    paidHandledRef.current = true;
-    Alert.alert("Payment successful", "Invoice has been paid.");
-    navigation.navigate("Invoices");
-  }, [invoice, isPaid, navigation]);
+    if (!invoice || !isPaid || paidHandledRef.current || redirecting) return;
+    setRedirecting(true);
+    const timer = setTimeout(() => {
+      setRedirecting(false);
+      paidHandledRef.current = true;
+      navigation.navigate("Invoices");
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [invoice, isPaid, navigation, redirecting]);
 
   if (loading) {
     return (
@@ -650,6 +679,17 @@ export default function InvoiceDetailScreen() {
               <Text style={styles.poweredBrand}>ARTIUM</Text>
             </View>
           </ScrollView>
+          {redirecting ? (
+            <View style={styles.redirectOverlay}>
+              <View style={styles.redirectCard}>
+                <ActivityIndicator color="#0B73FF" />
+                <Text style={styles.redirectTitle}>Updating payment...</Text>
+                <Text style={styles.redirectSubtitle}>
+                  Please wait while we refresh your invoice.
+                </Text>
+              </View>
+            </View>
+          ) : null}
         </ImageBackground>
 
         <AddressSheet
@@ -740,6 +780,38 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     color: "#64748B",
+  },
+  redirectOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(15, 23, 42, 0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  redirectCard: {
+    width: "100%",
+    maxWidth: 320,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 18,
+    alignItems: "center",
+    gap: 8,
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  redirectTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#0F172A",
+  },
+  redirectSubtitle: {
+    fontSize: 12,
+    color: "#64748B",
+    textAlign: "center",
   },
   content: {
     paddingHorizontal: 20,
