@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import {
   Modal,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   Text,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
@@ -48,8 +48,13 @@ export default function UploadInventoryScreen() {
     selectedTags,
     handleToggleTag,
   } = useUploadInventory();
+
+  // Separate refs for different scroll views
   const scrollRef = useRef<ScrollView>(null);
+  const keyboardScrollRef = useRef<any>(null);
+  const tagsScrollRef = useRef<ScrollView>(null);
   const fieldPositions = useRef<Record<FieldKey, number>>({} as any);
+  const prevStep = useRef(step);
 
   // Hide tab bar when this screen is focused
   useFocusEffect(
@@ -63,38 +68,40 @@ export default function UploadInventoryScreen() {
     }, [setHidden])
   );
 
+  // Scroll to top when step changes
   useEffect(() => {
-    if (!scrollToError || !errors || !scrollRef.current) return;
+    if (prevStep.current !== step) {
+      // Use setTimeout to ensure the scroll view is rendered
+      setTimeout(() => {
+        if (step === 0) {
+          scrollRef.current?.scrollTo({ y: 0, animated: false });
+        } else if (step === 1) {
+          keyboardScrollRef.current?.scrollToPosition?.(0, 0, false);
+        } else if (step === 2) {
+          // Important: Scroll to top for Tags step (step 3)
+          tagsScrollRef.current?.scrollTo({ y: 0, animated: false });
+        }
+      }, 50);
+      prevStep.current = step;
+    }
+  }, [step]);
+
+  useEffect(() => {
+    if (!scrollToError || !errors || !keyboardScrollRef.current) return;
     const firstKey = Object.keys(errors)[0] as FieldKey | undefined;
     if (firstKey) {
       const y = fieldPositions.current[firstKey];
       if (typeof y === "number") {
-        scrollRef.current.scrollTo({ y: Math.max(y - 20, 0), animated: true });
+        keyboardScrollRef.current.scrollToPosition(0, Math.max(y - 20, 0), true);
       }
     }
     setScrollToError(false);
   }, [errors, scrollToError, setScrollToError]);
 
-  return (
-    <View className="flex-1 bg-[#F8FAFC]">
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        className="flex-1"
-      >
-        <View
-          className="px-6 pb-2 items-center"
-          style={{ paddingTop: Math.max(insets.top, 24) }}
-        >
-          <Text className="text-2xl font-semibold text-slate-900 text-center">
-            Upload Artwork
-          </Text>
-          <Text className="text-sm text-slate-500 mt-1 text-center">
-            Add images and details to your inventory listing.
-          </Text>
-        </View>
-
-        <StepIndicator step={step} steps={STEPS} />
-
+  // Render content based on step
+  const renderContent = () => {
+    if (step === 0) {
+      return (
         <ScrollView
           ref={scrollRef}
           className="flex-1"
@@ -103,34 +110,84 @@ export default function UploadInventoryScreen() {
           }}
           keyboardShouldPersistTaps="handled"
         >
-          {step === 0 ? (
-            <UploadImagesStep
-              images={images}
-              onPickImages={handlePickImages}
-              onRemoveImage={handleRemoveImage}
-            />
-          ) : step === 1 ? (
-            <ArtworkDetailsStep
-              details={details}
-              onChangeDetails={setDetails}
-              errors={errors}
-              onFieldLayout={(key, y) => {
-                fieldPositions.current[key] = y;
-              }}
-              onFieldChange={(key) => {
-                if (errors?.[key]) {
-                  clearFieldError(key);
-                }
-              }}
-            />
-          ) : (
-            <TagsStep
-              selectedTags={selectedTags}
-              onToggleTag={handleToggleTag}
-            />
-          )}
+          <UploadImagesStep
+            images={images}
+            onPickImages={handlePickImages}
+            onRemoveImage={handleRemoveImage}
+          />
         </ScrollView>
-      </KeyboardAvoidingView>
+      );
+    }
+
+    if (step === 1) {
+      return (
+        <KeyboardAwareScrollView
+          ref={keyboardScrollRef}
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            paddingBottom: 20 + insets.bottom,
+          }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          enableOnAndroid={true}
+          enableAutomaticScroll={true}
+          extraScrollHeight={Platform.OS === "ios" ? 120 : 80}
+          extraHeight={Platform.OS === "ios" ? 150 : 100}
+          keyboardOpeningTime={0}
+        >
+          <ArtworkDetailsStep
+            details={details}
+            onChangeDetails={setDetails}
+            errors={errors}
+            onFieldLayout={(key, y) => {
+              fieldPositions.current[key] = y;
+            }}
+            onFieldChange={(key) => {
+              if (errors?.[key]) {
+                clearFieldError(key);
+              }
+            }}
+          />
+        </KeyboardAwareScrollView>
+      );
+    }
+
+    // Step 2 (Tags step)
+    return (
+      <ScrollView
+        ref={tagsScrollRef}
+        className="flex-1"
+        contentContainerStyle={{
+          paddingBottom: 20 + insets.bottom,
+        }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <TagsStep
+          selectedTags={selectedTags}
+          onToggleTag={handleToggleTag}
+        />
+      </ScrollView>
+    );
+  };
+
+  return (
+    <View className="flex-1 bg-[#F8FAFC]">
+      <View
+        className="px-6 pb-2 items-center"
+        style={{ paddingTop: Math.max(insets.top, 24) }}
+      >
+        <Text className="text-2xl font-semibold text-slate-900 text-center">
+          Upload Artwork
+        </Text>
+        <Text className="text-sm text-slate-500 mt-1 text-center">
+          Add images and details to your inventory listing.
+        </Text>
+      </View>
+
+      <StepIndicator step={step} steps={STEPS} />
+
+      {renderContent()}
 
       {/* Footer Actions */}
       <View
@@ -162,14 +219,12 @@ export default function UploadInventoryScreen() {
             <Pressable
               onPress={() => setStep(1)}
               disabled={!canContinue}
-              className={`flex-1 rounded-full py-3 items-center ${
-                canContinue ? "bg-[#0B73FF]" : "bg-slate-200"
-              }`}
+              className={`flex-1 rounded-full py-3 items-center ${canContinue ? "bg-[#0B73FF]" : "bg-slate-200"
+                }`}
             >
               <Text
-                className={`text-sm font-semibold ${
-                  canContinue ? "text-white" : "text-slate-500"
-                }`}
+                className={`text-sm font-semibold ${canContinue ? "text-white" : "text-slate-500"
+                  }`}
               >
                 Continue
               </Text>
@@ -185,14 +240,12 @@ export default function UploadInventoryScreen() {
             <Pressable
               onPress={handleSubmit}
               disabled={!canSubmit}
-              className={`flex-1 rounded-full py-3 items-center ${
-                canSubmit ? "bg-[#0B73FF]" : "bg-slate-200"
-              }`}
+              className={`flex-1 rounded-full py-3 items-center ${canSubmit ? "bg-[#0B73FF]" : "bg-slate-200"
+                }`}
             >
               <Text
-                className={`text-sm font-semibold ${
-                  canSubmit ? "text-white" : "text-slate-500"
-                }`}
+                className={`text-sm font-semibold ${canSubmit ? "text-white" : "text-slate-500"
+                  }`}
               >
                 Submit
               </Text>

@@ -201,7 +201,7 @@ export type PaginatedArtworksResult = {
  * Fetches a paginated list of artworks.
  */
 export const getArtworks = async (
-  pageSize: number, 
+  pageSize: number,
   lastVisible: QueryDocumentSnapshot<DocumentData> | null = null
 ): Promise<PaginatedArtworksResult> => {
   try {
@@ -429,6 +429,84 @@ export const deleteArtwork = async (artworkId: string, userId: string) => {
     return true;
   } catch (error) {
     console.error("Error deleting artwork:", error);
+    throw error;
+  }
+};
+
+/**
+ * Updates artistSnapshot for all artworks by a specific user
+ * Used when user updates their profile (avatar, name, etc.)
+ */
+export const updateUserArtworksArtistSnapshot = async (
+  userId: string,
+  newArtistSnapshot: {
+    name: string;
+    avatar?: string;
+    verified?: boolean;
+  }
+) => {
+  try {
+    // Import writeBatch and deleteField dynamically to avoid circular deps
+    const { writeBatch, deleteField } = await import("firebase/firestore");
+
+    // Query all artworks by this user
+    const q = query(
+      collection(firestore, ARTWORKS_COLLECTION),
+      where("artistId", "==", userId)
+    );
+
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      console.log("No artworks found for user:", userId);
+      return;
+    }
+
+    console.log(`Updating artistSnapshot for ${snapshot.size} artworks`);
+
+    // Firestore batch write limit is 500 operations
+    const batchSize = 500;
+    const batches: any[] = [];
+    let currentBatch = writeBatch(firestore);
+    let operationCount = 0;
+
+
+    snapshot.docs.forEach((docSnapshot) => {
+      // Update artistSnapshot and clear legacy fields that resolveArtistSnapshot might read from
+      currentBatch.update(docSnapshot.ref, {
+        artistSnapshot: {
+          name: newArtistSnapshot.name,
+          avatar: newArtistSnapshot.avatar || "",
+          verified: newArtistSnapshot.verified ?? false,
+        },
+        // Clear legacy artist fields that might be read by resolveArtistSnapshot
+        artist: deleteField(),
+        artistsSnapshot: deleteField(),
+        authorName: deleteField(),
+        authorAvatar: deleteField(),
+        updatedAt: serverTimestamp(),
+      });
+      operationCount++;
+
+      // If we reach batch size limit, start a new batch
+      if (operationCount === batchSize) {
+        batches.push(currentBatch);
+        currentBatch = writeBatch(firestore);
+        operationCount = 0;
+      }
+    });
+
+    // Add the last batch if it has operations
+    if (operationCount > 0) {
+      batches.push(currentBatch);
+    }
+
+    // Commit all batches
+    await Promise.all(batches.map((batch) => batch.commit()));
+
+    console.log(`Successfully updated artistSnapshot for ${snapshot.size} artworks`);
+  } catch (error) {
+    console.error("Error updating user artworks artist snapshot:", error);
     throw error;
   }
 };

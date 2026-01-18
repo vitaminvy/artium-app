@@ -91,10 +91,10 @@ const mapInvoiceData = (id: string, data: any): Invoice => ({
   shippingAddress: data.shippingAddress,
   payment: data.payment
     ? {
-        ...data.payment,
-        createdAt: toMillis(data.payment.createdAt),
-        paidAt: toMillis(data.payment.paidAt),
-      }
+      ...data.payment,
+      createdAt: toMillis(data.payment.createdAt),
+      paidAt: toMillis(data.payment.paidAt),
+    }
     : undefined,
   isActive: data.isActive ?? true,
   paidAt: toMillis(data.paidAt),
@@ -251,10 +251,10 @@ export default function InvoiceDetailScreen() {
         setInvoice((prev) =>
           prev
             ? {
-                ...prev,
-                deliveryMethod,
-                shippingAddress: address,
-              }
+              ...prev,
+              deliveryMethod,
+              shippingAddress: address,
+            }
             : prev
         );
       } catch (err) {
@@ -275,9 +275,9 @@ export default function InvoiceDetailScreen() {
         setInvoice((prev) =>
           prev
             ? {
-                ...prev,
-                deliveryMethod: method,
-              }
+              ...prev,
+              deliveryMethod: method,
+            }
             : prev
         );
       } catch (err) {
@@ -296,6 +296,9 @@ export default function InvoiceDetailScreen() {
     () => httpsCallable(functions, "finalizePayosPayment"),
     []
   );
+
+  const isPaid =
+    invoice?.status === "paid" || invoice?.payment?.status === "paid";
 
   const handlePayWithCard = useCallback(async () => {
     if (!invoiceId || isPaid) return;
@@ -349,9 +352,6 @@ export default function InvoiceDetailScreen() {
     if (!invoice?.id) return "";
     return invoice.invoiceNumber || formatInvoiceNumber(invoice.id);
   }, [invoice?.id, invoice?.invoiceNumber]);
-
-  const isPaid =
-    invoice?.status === "paid" || invoice?.payment?.status === "paid";
 
   useEffect(() => {
     if (!invoice || !isPaid || paidHandledRef.current || redirecting) return;
@@ -410,18 +410,18 @@ export default function InvoiceDetailScreen() {
               </Pressable>
             </View>
 
-          <Text style={styles.title}>Invoice{"\n"}#{invoiceNumber}</Text>
-          {isPaid ? (
-            <View style={styles.paidBadge}>
-              <Ionicons name="checkmark-circle" size={14} color="#16A34A" />
-              <Text style={styles.paidBadgeText}>Paid</Text>
-            </View>
-          ) : null}
+            <Text style={styles.title}>Invoice{"\n"}#{invoiceNumber}</Text>
+            {isPaid ? (
+              <View style={styles.paidBadge}>
+                <Ionicons name="checkmark-circle" size={14} color="#16A34A" />
+                <Text style={styles.paidBadgeText}>Paid</Text>
+              </View>
+            ) : null}
 
-          <View style={styles.secureRow}>
-            <Ionicons name="lock-closed-outline" size={16} color="#94A3B8" />
-            <Text style={styles.secureText}>SECURE CHECKOUT</Text>
-          </View>
+            <View style={styles.secureRow}>
+              <Ionicons name="lock-closed-outline" size={16} color="#94A3B8" />
+              <Text style={styles.secureText}>SECURE CHECKOUT</Text>
+            </View>
 
             <View style={styles.actionsRow}>
               <Pressable style={styles.primaryPill}>
@@ -430,10 +430,10 @@ export default function InvoiceDetailScreen() {
               </Pressable>
 
               <View style={styles.iconRow}>
-                <IconButton icon="create-outline" onPress={() => {}} />
-                <IconButton icon="qr-code-outline" onPress={() => {}} />
-                <IconButton icon="link-outline" onPress={() => {}} />
-                <IconButton icon="trash-outline" onPress={() => {}} />
+                <IconButton icon="create-outline" onPress={() => { }} />
+                <IconButton icon="qr-code-outline" onPress={() => { }} />
+                <IconButton icon="link-outline" onPress={() => { }} />
+                <IconButton icon="trash-outline" onPress={() => { }} />
               </View>
             </View>
 
@@ -606,87 +606,90 @@ export default function InvoiceDetailScreen() {
               </View>
             </InvoiceCardSection>
 
-          <InvoiceCardSection title="ORDER SUMMARY">
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Subtotal</Text>
-              <Text style={styles.summaryValue}>
-                {formatCurrency(invoice.totals.subtotal, invoice.currency)}
-              </Text>
-            </View>
-            {typeof invoice.totals.discount === "number" ? (
+            <InvoiceCardSection title="ORDER SUMMARY">
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Discount</Text>
+                <Text style={styles.summaryLabel}>Subtotal</Text>
                 <Text style={styles.summaryValue}>
-                  {formatCurrency(invoice.totals.discount, invoice.currency)}
+                  {formatCurrency(invoice.totals.subtotal, invoice.currency)}
                 </Text>
               </View>
-            ) : null}
-            <View style={[styles.summaryRow, styles.summaryTotal]}>
-              <Text style={styles.summaryTotalLabel}>Total</Text>
-              <Text style={styles.summaryTotalValue}>
-                {formatCurrency(invoice.totals.total, invoice.currency)}
-              </Text>
-            </View>
-          </InvoiceCardSection>
+              {typeof invoice.totals.discount === "number" ? (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Discount</Text>
+                  <Text style={styles.summaryValue}>
+                    {formatCurrency(invoice.totals.discount, invoice.currency)}
+                  </Text>
+                </View>
+              ) : null}
+              <View style={[styles.summaryRow, styles.summaryTotal]}>
+                <Text style={styles.summaryTotalLabel}>Total</Text>
+                <Text style={styles.summaryTotalValue}>
+                  {formatCurrency(invoice.totals.total, invoice.currency)}
+                </Text>
+              </View>
+            </InvoiceCardSection>
 
-          <InvoiceCardSection title="IN-PERSON PAYMENT">
-            <Text style={styles.paymentDescription}>
-              To complete an in-person sale, select Tap to Pay for contactless or
-              Pay by Card for other methods.
-            </Text>
-            <View style={styles.paymentRow}>
-              <Pressable style={styles.paymentButton} onPress={() => {}}>
-                <Text style={styles.paymentButtonText}>Tap to Pay</Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.paymentButton,
-                  (isPaid || paying) && styles.paymentButtonDisabled,
-                ]}
-                onPress={handlePayWithCard}
-                disabled={isPaid || paying}
-              >
-                {paying ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.paymentButtonText}>Pay with Card</Text>
-                )}
-              </Pressable>
-            </View>
-          </InvoiceCardSection>
+            <InvoiceCardSection title="IN-PERSON PAYMENT">
+              <Text style={styles.paymentDescription}>
+                To complete an in-person sale, select Tap to Pay for contactless or
+                Pay by Card for other methods.
+              </Text>
+              <View style={styles.paymentRow}>
+                <Pressable
+                  style={[styles.paymentButton, styles.paymentButtonDisabled]}
+                  disabled
+                >
+                  <Text style={styles.paymentButtonText}>Tap to Pay</Text>
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.paymentButton,
+                    (isPaid || paying) && styles.paymentButtonDisabled,
+                  ]}
+                  onPress={handlePayWithCard}
+                  disabled={isPaid || paying}
+                >
+                  {paying ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.paymentButtonText}>Pay with Card</Text>
+                  )}
+                </Pressable>
+              </View>
+            </InvoiceCardSection>
 
-          <View style={styles.trustCard}>
-            <View style={styles.trustIcon}>
-              <Ionicons name="lock-closed-outline" size={18} color="#0B73FF" />
+            <View style={styles.trustCard}>
+              <View style={styles.trustIcon}>
+                <Ionicons name="lock-closed-outline" size={18} color="#0B73FF" />
+              </View>
+              <View style={styles.trustCopy}>
+                <Text style={styles.trustTitle}>
+                  Your Trust is Our Priority
+                </Text>
+                <Text style={styles.trustText}>
+                  Orders shipped with Artium are eligible for 100% money-back
+                  guarantee, easy returns within a 48 hour window. Learn more in our{" "}
+                  <Text style={styles.trustLink}>terms of service</Text>.
+                </Text>
+              </View>
             </View>
-            <View style={styles.trustCopy}>
-              <Text style={styles.trustTitle}>
-                Your Trust is Our Priority
-              </Text>
-              <Text style={styles.trustText}>
-                Orders shipped with Artium are eligible for 100% money-back
-                guarantee, easy returns within a 48 hour window. Learn more in our{" "}
-                <Text style={styles.trustLink}>terms of service</Text>.
-              </Text>
-            </View>
-          </View>
 
-          <View style={styles.powered}>
-            <Text style={styles.poweredLabel}>Powered by</Text>
-            <Text style={styles.poweredBrand}>ARTIUM</Text>
-          </View>
-        </ScrollView>
-        {redirecting ? (
-          <View style={styles.redirectOverlay}>
-            <View style={styles.redirectCard}>
-              <ActivityIndicator color="#0B73FF" />
-              <Text style={styles.redirectTitle}>Updating payment...</Text>
-              <Text style={styles.redirectSubtitle}>
-                Please wait while we refresh your invoice.
-              </Text>
+            <View style={styles.powered}>
+              <Text style={styles.poweredLabel}>Powered by</Text>
+              <Text style={styles.poweredBrand}>ARTIUM</Text>
             </View>
-          </View>
-        ) : null}
+          </ScrollView>
+          {redirecting ? (
+            <View style={styles.redirectOverlay}>
+              <View style={styles.redirectCard}>
+                <ActivityIndicator color="#0B73FF" />
+                <Text style={styles.redirectTitle}>Updating payment...</Text>
+                <Text style={styles.redirectSubtitle}>
+                  Please wait while we refresh your invoice.
+                </Text>
+              </View>
+            </View>
+          ) : null}
         </ImageBackground>
 
         <AddressSheet

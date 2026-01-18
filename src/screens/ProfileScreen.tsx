@@ -189,26 +189,26 @@ export default function ProfileScreen() {
     }
 
     if (key === "home") {
-      if (navigation.popToTop) {
-        navigation.popToTop();
-      } else {
-        navigation.navigate("HomeMain");
-      }
+      // Navigate to Home tab, then to HomeMain
+      rootNavigate("Home", { screen: "HomeMain" });
       return;
     }
 
     if (key === "inventory") {
-      navigation.navigate("Inventory");
+      // Inventory is in HomeStack
+      rootNavigate("Home", { screen: "Inventory" });
       return;
     }
 
     if (key === "events") {
-      navigation.navigate("Events");
+      // Events is in HomeStack
+      rootNavigate("Home", { screen: "Events" });
       return;
     }
 
     if (key === "notifications") {
-      navigation.navigate("Notifications" as never);
+      // Notifications is in HomeStack
+      rootNavigate("Home", { screen: "Notifications" });
       return;
     }
 
@@ -218,7 +218,8 @@ export default function ProfileScreen() {
     }
 
     if (key === "invoices") {
-      navigation.navigate("Invoices");
+      // Invoices is in HomeStack
+      rootNavigate("Home", { screen: "Invoices" });
       return;
     }
 

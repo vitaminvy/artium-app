@@ -15,6 +15,7 @@ import { doSignInWithEmailAndPassword } from "@/domains/auth/services/firebaseAu
 import { useGoogleAuth } from "@/domains/auth/hooks/useGoogleAuth";
 import AuthScreenLayout from "@/shared/components/auth/AuthScreenLayout";
 import AuthGoogleButton from "@/shared/components/auth/AuthGoogleButton";
+import AuthAppleButton from "@/shared/components/auth/AuthAppleButton";
 import AuthDivider from "@/shared/components/auth/AuthDivider";
 import AuthTextField from "@/shared/components/auth/AuthTextField";
 import AuthPasswordField from "@/shared/components/auth/AuthPasswordField";
@@ -95,18 +96,26 @@ export default function LoginScreen({ navigation }: Props) {
     });
   };
 
+  // TODO: Implement Apple Sign In
+  const handleAppleSignIn = () => {
+    setErrorMsg("Apple Sign In is coming soon!");
+  };
+
   return (
     <AuthScreenLayout title="Welcome Back!">
       {/* Social Sign-In Section */}
-      <View>
-        <View className="flex-row justify-center">
-          <AuthGoogleButton
-            label="Sign in with Google"
-            onPress={() => signInWithGoogle()}
-            loading={googleLoading}
-            disabled={isBusy}
-          />
-        </View>
+      <View className="flex-row gap-3">
+        <AuthGoogleButton
+          label="Google"
+          onPress={() => signInWithGoogle()}
+          loading={googleLoading}
+          disabled={isBusy}
+        />
+        <AuthAppleButton
+          label="Apple"
+          onPress={handleAppleSignIn}
+          disabled={isBusy}
+        />
       </View>
 
       <AuthDivider />

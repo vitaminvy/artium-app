@@ -21,13 +21,13 @@ export default function AuthGoogleButton({
     <Pressable
       onPress={onPress}
       disabled={isDisabled}
-      className="flex-1 max-w-[280px] h-[58px] border border-gray-200 rounded-full bg-white shadow-sm items-center justify-center active:bg-gray-50"
+      className="flex-1 h-[46px] border border-gray-200 rounded-full bg-white shadow-sm items-center justify-center active:bg-gray-50"
     >
       {loading ? (
         <ActivityIndicator />
       ) : (
         <View className="flex-row items-center justify-center gap-2">
-          <Ionicons name="logo-google" size={26} color="#DB4437" />
+          <Ionicons name="logo-google" size={22} color="#DB4437" />
           <Text className="text-base font-semibold text-gray-900">{label}</Text>
         </View>
       )}
