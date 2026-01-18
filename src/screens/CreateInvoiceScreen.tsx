@@ -177,6 +177,16 @@ export default function CreateInvoiceScreen() {
       return;
     }
 
+    if (key === "notifications") {
+      navigation.navigate("Notifications" as never);
+      return;
+    }
+
+    if (key === "messages") {
+      navigation.navigate("Inbox" as never);
+      return;
+    }
+
     if (key === "invoices") {
       navigation.navigate("Invoices");
       return;

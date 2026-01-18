@@ -46,6 +46,7 @@ import ArtworkDetails from "../domains/artwork/components/ArtworkDetails";
 import ArtworkActionBar from "../domains/artwork/components/ArtworkActionBar";
 import { useAuth } from "../domains/auth/contexts/AuthContext";
 import { createPost } from "../domains/feed/services/feedService";
+import ImageViewing from "react-native-image-viewing";
 
 export default function ArtworkDetailScreen() {
   const navigation = useNavigation<any>();
@@ -72,6 +73,20 @@ export default function ArtworkDetailScreen() {
   const [isResharing, setIsResharing] = useState(false);
   const [heroImageLoaded, setHeroImageLoaded] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(initialHeaderHeight);
+
+  // Image viewer state
+  const viewerKeyRef = useRef(0);
+  const [viewerState, setViewerState] = useState<{
+    visible: boolean;
+    images: { uri: string }[];
+    initialIndex: number;
+    key: string;
+  }>({
+    visible: false,
+    images: [],
+    initialIndex: 0,
+    key: "viewer-0",
+  });
 
   // Bottom Sheet Refs
   const optionsSheetRef = useRef<BottomSheetModal>(null);
@@ -145,10 +160,10 @@ export default function ArtworkDetailScreen() {
     const quoteMedia =
       artwork.images?.length > 0
         ? {
-            url: artwork.images[0],
-            placeholderColor: "#CBD5E1",
-            aspectRatio: 3 / 3,
-          }
+          url: artwork.images[0],
+          placeholderColor: "#CBD5E1",
+          aspectRatio: 3 / 3,
+        }
         : undefined;
     return {
       id: artwork.id,
@@ -229,7 +244,7 @@ export default function ArtworkDetailScreen() {
     }
     scrollY.current = y;
   };
-  
+
   // --- LIKE HANDLER ---
   const handleLike = async () => {
     if (!artwork) return;
@@ -237,7 +252,7 @@ export default function ArtworkDetailScreen() {
       Alert.alert("Sign in required", "Please sign in to like this artwork.");
       return;
     }
-    
+
     // Immediately update UI for better UX
     const newLikedState = !liked;
     setLiked(newLikedState);
@@ -280,6 +295,23 @@ export default function ArtworkDetailScreen() {
   const handleCloseSheet = useCallback(() => {
     setHidden(false);
   }, [setHidden]);
+
+  // Image viewer handlers
+  const handleOpenImageViewer = useCallback(
+    (images: { uri: string }[], index: number) => {
+      viewerKeyRef.current += 1;
+      const key = `viewer-${viewerKeyRef.current}-${images.length}-${index}`;
+      setViewerState({ visible: false, images, initialIndex: index, key });
+      requestAnimationFrame(() => {
+        setViewerState((prev) => ({ ...prev, visible: true }));
+      });
+    },
+    []
+  );
+
+  const handleCloseImageViewer = useCallback(() => {
+    setViewerState((prev) => ({ ...prev, visible: false }));
+  }, []);
 
   const handleShare = useCallback(async () => {
     if (!artwork) return;
@@ -331,7 +363,7 @@ export default function ArtworkDetailScreen() {
       );
     }, 300);
   }, [artwork, currentUser, navigation]);
-  
+
   // Conditional Rendering
   if (loading) {
     return (
@@ -372,7 +404,7 @@ export default function ArtworkDetailScreen() {
     return (
       <View className="flex-1 justify-center items-center bg-white">
         <Text className="text-lg text-slate-500">Artwork not found.</Text>
-         <Pressable onPress={() => navigation.goBack()} className="mt-4">
+        <Pressable onPress={() => navigation.goBack()} className="mt-4">
           <Text className="text-blue-500">Go Back</Text>
         </Pressable>
       </View>
@@ -420,6 +452,7 @@ export default function ArtworkDetailScreen() {
             <ArtworkCarousel
               images={artwork.images}
               onImageLoad={() => setHeroImageLoaded(true)}
+              onPressImage={handleOpenImageViewer}
             />
           </View>
 
@@ -626,6 +659,19 @@ export default function ArtworkDetailScreen() {
             <ArtworkDetailSkeleton />
           </View>
         ) : null}
+
+        {/* Image Viewer Modal */}
+        <ImageViewing
+          key={viewerState.key}
+          images={viewerState.images}
+          imageIndex={viewerState.initialIndex}
+          visible={viewerState.visible}
+          onRequestClose={handleCloseImageViewer}
+          swipeToCloseEnabled
+          doubleTapToZoomEnabled
+          backgroundColor="black"
+          animationType="none"
+        />
       </View>
     </BottomSheetModalProvider>
   );

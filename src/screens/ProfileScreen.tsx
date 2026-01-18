@@ -42,7 +42,7 @@ const ProfileSkeleton = () => (
       <View className="h-[88px] w-[88px] rounded-full bg-slate-200 mb-4" />
       <View className="h-6 w-40 rounded bg-slate-200 mb-2" />
       <View className="h-4 w-24 rounded bg-slate-200 mb-6" />
-      
+
       {/* Stats */}
       <View className="flex-row items-center gap-8 mb-6">
         <View className="items-center gap-1">
@@ -212,13 +212,18 @@ export default function ProfileScreen() {
       return;
     }
 
+    if (key === "messages") {
+      navigation.navigate("Inbox" as never);
+      return;
+    }
+
     if (key === "invoices") {
       navigation.navigate("Invoices");
       return;
     }
 
     if (key === "profile") return;
-    
+
     // console.log("Sidebar selected:", key);
   };
 
