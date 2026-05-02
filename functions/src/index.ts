@@ -15,7 +15,7 @@ const db = admin.firestore();
 const FieldValue = admin.firestore.FieldValue;
 
 type NotificationPayload = {
-  type: "like" | "comment" | "reshare";
+  type: "like" | "comment" | "reshare" | "auction_outbid";
   actorId: string;
   actorName: string;
   postId: string;
@@ -167,6 +167,316 @@ const buildOrderCode = () => {
   const random = Math.floor(Math.random() * 90) + 10;
   return Number(`${now}${random}`.slice(0, 15));
 };
+
+type AuctionStage = "sketch" | "color" | "final";
+type AuctionStatus =
+  | "scheduled"
+  | "live"
+  | "ended"
+  | "settled"
+  | "cancelled";
+
+const AUCTION_STAGES: AuctionStage[] = ["sketch", "color", "final"];
+const AUCTION_CURRENCIES = ["VND", "USD"];
+
+const isAuctionStage = (value: unknown): value is AuctionStage => {
+  return typeof value === "string" &&
+    AUCTION_STAGES.includes(value as AuctionStage);
+};
+
+const readRequiredString = (value: unknown, fieldName: string) => {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new HttpsError(
+      "invalid-argument",
+      `${fieldName} is required.`
+    );
+  }
+  return value.trim();
+};
+
+const readPositiveNumber = (value: unknown, fieldName: string) => {
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue) || numberValue <= 0) {
+    throw new HttpsError(
+      "invalid-argument",
+      `${fieldName} must be a positive number.`
+    );
+  }
+  return numberValue;
+};
+
+const getRecordNumber = (
+  value: Record<string, unknown>,
+  keys: string[]
+) => {
+  for (const key of keys) {
+    const candidate = Number(value[key]);
+    if (Number.isFinite(candidate)) return candidate;
+  }
+  return null;
+};
+
+const readAuctionDate = (value: unknown, fieldName: string) => {
+  let date: Date | null = null;
+
+  if (value instanceof admin.firestore.Timestamp) {
+    date = value.toDate();
+  } else if (value instanceof Date) {
+    date = value;
+  } else if (typeof value === "number" || typeof value === "string") {
+    date = new Date(value);
+  } else if (value && typeof value === "object") {
+    const recordValue = value as Record<string, unknown>;
+    const seconds = getRecordNumber(recordValue, ["seconds", "_seconds"]);
+    if (seconds !== null) {
+      date = new Date(seconds * 1000);
+    }
+  }
+
+  if (!date || Number.isNaN(date.getTime())) {
+    throw new HttpsError(
+      "invalid-argument",
+      `${fieldName} must be a valid date.`
+    );
+  }
+
+  return date;
+};
+
+const resolveAuctionStatus = (
+  now: Date,
+  startsAt: Date,
+  endsAt: Date
+): AuctionStatus => {
+  if (now < startsAt) return "scheduled";
+  if (now >= endsAt) return "ended";
+  return "live";
+};
+
+export const createAuction = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Please sign in first.");
+  }
+
+  const artworkId = readRequiredString(request.data?.artworkId, "artworkId");
+  const startsAt = readAuctionDate(request.data?.startsAt, "startsAt");
+  const endsAt = readAuctionDate(request.data?.endsAt, "endsAt");
+  const startingPrice = readPositiveNumber(
+    request.data?.startingPrice,
+    "startingPrice"
+  );
+  const minIncrement = readPositiveNumber(
+    request.data?.minIncrement,
+    "minIncrement"
+  );
+  const currency =
+    typeof request.data?.currency === "string" &&
+    AUCTION_CURRENCIES.includes(request.data.currency) ?
+      request.data.currency :
+      "USD";
+  const stage = isAuctionStage(request.data?.stage) ?
+    request.data.stage :
+    "sketch";
+  const now = new Date();
+
+  if (startsAt >= endsAt) {
+    throw new HttpsError(
+      "invalid-argument",
+      "startsAt must be before endsAt."
+    );
+  }
+
+  if (endsAt <= now) {
+    throw new HttpsError(
+      "invalid-argument",
+      "endsAt must be in the future."
+    );
+  }
+
+  const artworkRef = db.collection("artworks").doc(artworkId);
+  const auctionRef = db.collection("auctions").doc();
+  const status = resolveAuctionStatus(now, startsAt, endsAt);
+
+  await db.runTransaction(async (tx) => {
+    const artworkSnap = await tx.get(artworkRef);
+    if (!artworkSnap.exists) {
+      throw new HttpsError("not-found", "Artwork not found.");
+    }
+
+    const artwork = artworkSnap.data() || {};
+    const artistId = artwork.artistId || artwork.authorId;
+    if (artistId !== uid) {
+      throw new HttpsError(
+        "permission-denied",
+        "Only the artwork owner can create an auction."
+      );
+    }
+
+    if (artwork.status === "sold" || artwork.isActive === false) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Sold artworks cannot be auctioned."
+      );
+    }
+
+    if (artwork.saleMode === "auction" && artwork.auctionId) {
+      throw new HttpsError(
+        "failed-precondition",
+        "This artwork already has an auction."
+      );
+    }
+
+    // Tao auction va khoa artwork sang trang thai on_auction trong cung
+    // transaction de tranh 1 artwork bi mo nhieu phien cung luc.
+    tx.set(auctionRef, {
+      artworkId,
+      artistId: uid,
+      status,
+      stage,
+      startsAt: admin.firestore.Timestamp.fromDate(startsAt),
+      endsAt: admin.firestore.Timestamp.fromDate(endsAt),
+      startingPrice,
+      currentBid: startingPrice,
+      minIncrement,
+      topBidderId: null,
+      bidCount: 0,
+      currency,
+      winnerInvoiceId: null,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    tx.update(artworkRef, {
+      saleMode: "auction",
+      auctionId: auctionRef.id,
+      status: "on_auction",
+      isActive: true,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+
+  return {
+    auctionId: auctionRef.id,
+    status,
+  };
+});
+
+export const placeBid = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Please sign in first.");
+  }
+
+  const auctionId = readRequiredString(request.data?.auctionId, "auctionId");
+  const amount = readPositiveNumber(request.data?.amount, "amount");
+  const auctionRef = db.collection("auctions").doc(auctionId);
+  const bidRef = auctionRef.collection("bids").doc();
+  let result: {
+    auctionId: string;
+    currentBid: number;
+    topBidderId: string;
+    bidCount: number;
+  } | null = null;
+  let previousTopBidderId: string | null = null;
+
+  await db.runTransaction(async (tx) => {
+    const auctionSnap = await tx.get(auctionRef);
+    if (!auctionSnap.exists) {
+      throw new HttpsError("not-found", "Auction not found.");
+    }
+
+    const auction = auctionSnap.data() || {};
+    if (auction.artistId === uid) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Artists cannot bid on their own auction."
+      );
+    }
+
+    if (["ended", "settled", "cancelled"].includes(auction.status)) {
+      throw new HttpsError(
+        "failed-precondition",
+        "This auction is no longer accepting bids."
+      );
+    }
+
+    const now = new Date();
+    const startsAt = readAuctionDate(auction.startsAt, "startsAt");
+    const endsAt = readAuctionDate(auction.endsAt, "endsAt");
+
+    if (now < startsAt) {
+      throw new HttpsError(
+        "failed-precondition",
+        "This auction has not started yet."
+      );
+    }
+
+    if (now >= endsAt) {
+      throw new HttpsError(
+        "failed-precondition",
+        "This auction has already ended."
+      );
+    }
+
+    const currentBid = Number(auction.currentBid ?? auction.startingPrice ?? 0);
+    const minIncrement = Number(auction.minIncrement ?? 0);
+    const minimumBid = currentBid + minIncrement;
+
+    if (amount < minimumBid) {
+      throw new HttpsError(
+        "invalid-argument",
+        `Bid must be at least ${minimumBid}.`
+      );
+    }
+
+    previousTopBidderId =
+      typeof auction.topBidderId === "string" ? auction.topBidderId : null;
+    const nextBidCount = Number(auction.bidCount ?? 0) + 1;
+
+    // Ghi bid va cap nhat currentBid/topBidder trong 1 transaction.
+    // Neu co 2 nguoi dat cung luc, Firestore se retry voi currentBid moi.
+    tx.set(bidRef, {
+      auctionId,
+      bidderId: uid,
+      amount,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+    tx.update(auctionRef, {
+      status: "live",
+      currentBid: amount,
+      topBidderId: uid,
+      bidCount: nextBidCount,
+      lastBidAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    result = {
+      auctionId,
+      currentBid: amount,
+      topBidderId: uid,
+      bidCount: nextBidCount,
+    };
+  });
+
+  if (!result) {
+    throw new HttpsError("internal", "Bid transaction did not finish.");
+  }
+
+  if (previousTopBidderId && previousTopBidderId !== uid) {
+    const actorName = await getUserName(uid);
+    await createNotification(previousTopBidderId, {
+      type: "auction_outbid",
+      actorId: uid,
+      actorName,
+      postId: auctionId,
+      message: `${actorName} placed a higher bid on an auction.`,
+    });
+  }
+
+  return result;
+});
 
 // Scheduled function to recalc popularity scores every hour
 export const calculatePopularityScores = functions.pubsub
