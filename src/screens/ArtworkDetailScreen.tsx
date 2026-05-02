@@ -327,6 +327,21 @@ export default function ArtworkDetailScreen() {
     }
   }, [artwork]);
 
+  const handleOpenArtViewAR = useCallback(() => {
+    if (!artwork) return;
+    if (!artwork.images?.[0]) {
+      Alert.alert("Thiếu ảnh tranh", "Không có ảnh để thử treo tường.");
+      return;
+    }
+
+    navigation.navigate("ArtViewAR", {
+      artworkId: artwork.id,
+      title: artwork.title,
+      imageUrl: artwork.images[0],
+      dimension: artwork.dimension,
+    });
+  }, [artwork, navigation]);
+
   const handleEditArtwork = useCallback(() => {
     if (!artwork) return;
     optionsSheetRef.current?.dismiss();
@@ -463,6 +478,23 @@ export default function ArtworkDetailScreen() {
         </ScrollView>
 
         {/* Action Bar */}
+        <RNAnimated.View
+          className="absolute right-3"
+          style={{
+            bottom: RNAnimated.add(actionBottom, 72),
+            zIndex: 2,
+          }}
+          pointerEvents="box-none"
+        >
+          <Pressable
+            onPress={handleOpenArtViewAR}
+            className="rounded-full bg-slate-900 px-4 py-3 border border-slate-700 flex-row items-center gap-2 active:opacity-90"
+          >
+            <Ionicons name="cube-outline" size={16} color="#ffffff" />
+            <Text className="text-white font-semibold">Thử treo tường</Text>
+          </Pressable>
+        </RNAnimated.View>
+
         <ArtworkActionBar
           liked={liked}
           saved={saved}
