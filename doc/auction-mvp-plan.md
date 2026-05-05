@@ -98,3 +98,168 @@ Auction can dung `endsAt` tu server Firestore, client chi hien thi countdown. Qu
 - File `doc/art-step-project.md` dang du artifact `</content>` va `<parameter ...>` o cuoi file, nen xoa cho sach.
 - Stack hien tai du lam realtime auction. Thu can them la auction domain rieng + transaction backend + rules + UI flow.
 - MVP dep nhat cho do an: live timed bidding + 3-stage timeline + winner invoice PayOS.
+
+## 7. Tinh Trang Hien Tai
+
+Da lam:
+
+- Da co domain auction rieng trong `src/domains/auction`.
+- Da co type `Auction`, `AuctionBid`, `AuctionStatus`, `AuctionStage`.
+- Da co client service realtime:
+  - Subscribe auction theo `auctionId`.
+  - Subscribe auction theo `artworkId`.
+  - Subscribe bid history.
+  - Goi Cloud Function `createAuction`.
+  - Goi Cloud Function `placeBid`.
+- Da co Cloud Functions:
+  - `createAuction`: artist tao auction, khoa artwork sang `saleMode: "auction"` va `status: "on_auction"`.
+  - `placeBid`: dat gia bang Firestore transaction, cap nhat `currentBid`, `topBidderId`, `bidCount`.
+- Da co Firestore rules cho `auctions/{auctionId}` va `auctions/{auctionId}/bids/{bidId}`:
+  - Public read.
+  - Client khong duoc create/update/delete truc tiep.
+- `ArtworkDetailScreen` da co:
+  - Nut `Start auction` cho chu artwork.
+  - Countdown realtime.
+  - Current bid.
+  - Bid modal.
+  - Bid history.
+  - Disable bid khi chua start/da end/owner tu bid artwork cua minh.
+- Artwork model da co them:
+  - `saleMode?: "fixed" | "auction"`
+  - `auctionId?: string`
+  - `status?: "for_sale" | "on_auction" | "sold"`
+
+Chua lam:
+
+- Chua co scheduled function chot auction het gio.
+- Chua tao invoice PayOS cho winner sau khi auction ket thuc.
+- Chua co flow winner thanh toan auction.
+- Chua co UI artist chuyen stage `sketch -> color -> final`.
+- Chua co upload milestone media cho tung stage.
+- Upload/Edit artwork van la fixed-price flow cu, chua chon auction luc dang bai.
+- Discover/Home chua co badge/filter `Live Auction`.
+- Chua co notification thang phien, sap het gio, winner can thanh toan.
+
+## 8. Ke Hoach Tiep Theo
+
+### Buoc 1: Chot auction het gio
+
+Them scheduled Cloud Function `closeExpiredAuctions`.
+
+Logic can co:
+
+- Chay moi 1-5 phut.
+- Query `auctions` co `status in ["scheduled", "live"]` va `endsAt <= now`.
+- Neu auction co `topBidderId`:
+  - Set `status: "ended"`.
+  - Ghi `endedAt`.
+  - Giu artwork o `status: "on_auction"` cho den khi winner thanh toan.
+- Neu auction khong co bid:
+  - Set `status: "ended"`.
+  - Tra artwork ve `saleMode: "fixed"` va `status: "for_sale"` neu van muon ban tiep.
+  - Hoac giu `on_auction` de artist tu quyet dinh relist. MVP nen tra ve `for_sale` cho de demo.
+
+### Buoc 2: Tao invoice cho winner
+
+Them helper/function `createWinnerInvoice`.
+
+Logic can co:
+
+- Lay `auction.artworkId`, `auction.artistId`, `auction.topBidderId`, `auction.currentBid`, `auction.currency`.
+- Tao document `invoices/{invoiceId}` voi:
+  - `sellerId = artistId`
+  - `buyerId = topBidderId`
+  - artwork snapshot
+  - amount = `currentBid`
+  - status = `sent` hoac `pending_payment`
+  - source/type = `auction`
+  - `auctionId`
+- Ghi `winnerInvoiceId` vao auction.
+- Gui notification cho winner: ban da thang phien, vui long thanh toan.
+- Gui notification cho artist: auction da ket thuc va da co winner.
+
+Ghi chu: artwork chi nen `sold` sau khi invoice PayOS thanh toan thanh cong. Khong danh dau sold ngay khi auction het gio.
+
+### Buoc 3: Noi PayOS voi auction invoice
+
+Tai su dung flow PayOS hien co trong `functions/src/index.ts`.
+
+Can dam bao:
+
+- Invoice auction co the tao payment link.
+- Webhook PayOS khi paid se:
+  - Set invoice `status: "paid"`.
+  - Set auction `status: "settled"`.
+  - Set artwork `status: "sold"`, `isActive: false`, `soldByInvoiceId`.
+
+### Buoc 4: UI cho winner va ended auction
+
+Cap nhat `ArtworkDetailScreen`:
+
+- Neu auction `ended/settled`:
+  - Hien trang thai `Ended` hoac `Settled`.
+- Neu current user la winner va co `winnerInvoiceId`:
+  - Hien nut `Pay invoice` hoac `View invoice`.
+- Neu auction ended ma khong co bid:
+  - Hien `Auction ended without bids`.
+- Neu user khong phai winner:
+  - Khong hien bid button.
+
+### Buoc 5: Artist quan ly stage
+
+Them Cloud Function `updateAuctionStage`.
+
+Logic:
+
+- Chi `auction.artistId` moi duoc update.
+- Stage chi duoc tien len:
+  - `sketch -> color`
+  - `color -> final`
+- Cap nhat `updatedAt`.
+
+UI:
+
+- Trong `ArtworkDetailScreen`, neu current user la artist:
+  - Hien nut `Advance stage`.
+  - Hoac action trong options sheet.
+- Timeline stage dang co san trong `AuctionPanel`, chi can noi action.
+
+### Buoc 6: Badge va discover
+
+Them badge cho artwork card:
+
+- Neu `saleMode === "auction"` hoac `status === "on_auction"` thi hien `Live Auction`.
+- Detail/Home/Discover nen uu tien hien current bid neu co auction.
+
+Sau do moi them filter:
+
+- Discover tab filter `Live Auction`.
+- Home section `Live Auctions`.
+
+### Buoc 7: Upload/Edit flow
+
+MVP co the de sau vi hien tai da co cach:
+
+1. Artist upload artwork nhu binh thuong.
+2. Vao detail.
+3. Bam `Start auction`.
+
+Neu muon dep hon thi them:
+
+- Toggle `Fixed price / Auction` trong upload.
+- Neu chon auction thi nhap:
+  - Starting price.
+  - Min increment.
+  - Duration.
+  - Currency.
+- Sau khi tao artwork xong thi goi `createAuction`.
+
+### Thu Tu Nen Lam
+
+1. `closeExpiredAuctions`.
+2. `createWinnerInvoice`.
+3. Noi PayOS paid -> auction `settled` -> artwork `sold`.
+4. UI winner xem/thanh toan invoice.
+5. `updateAuctionStage`.
+6. Badge/filter `Live Auction`.
+7. Upload/Edit auction option.

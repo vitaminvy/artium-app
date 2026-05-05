@@ -15,10 +15,17 @@ const db = admin.firestore();
 const FieldValue = admin.firestore.FieldValue;
 
 type NotificationPayload = {
-  type: "like" | "comment" | "reshare" | "auction_outbid";
+  type:
+    | "like"
+    | "comment"
+    | "reshare"
+    | "auction_outbid"
+    | "auction_ended";
   actorId: string;
   actorName: string;
-  postId: string;
+  postId?: string;
+  auctionId?: string;
+  artworkId?: string;
   message: string;
 };
 
@@ -175,6 +182,22 @@ type AuctionStatus =
   | "ended"
   | "settled"
   | "cancelled";
+
+type PlaceBidTransactionResult = {
+  auctionId: string;
+  artworkId?: string;
+  currentBid: number;
+  topBidderId: string;
+  bidCount: number;
+};
+
+type CloseAuctionResult = {
+  hasWinner: boolean;
+  shouldNotifyArtist: boolean;
+  artistId?: string;
+  topBidderId?: string;
+  artworkId?: string;
+};
 
 const AUCTION_STAGES: AuctionStage[] = ["sketch", "color", "final"];
 const AUCTION_CURRENCIES = ["VND", "USD"];
@@ -372,12 +395,7 @@ export const placeBid = onCall(async (request) => {
   const amount = readPositiveNumber(request.data?.amount, "amount");
   const auctionRef = db.collection("auctions").doc(auctionId);
   const bidRef = auctionRef.collection("bids").doc();
-  let result: {
-    auctionId: string;
-    currentBid: number;
-    topBidderId: string;
-    bidCount: number;
-  } | null = null;
+  let result: PlaceBidTransactionResult | null = null;
   let previousTopBidderId: string | null = null;
 
   await db.runTransaction(async (tx) => {
@@ -454,13 +472,17 @@ export const placeBid = onCall(async (request) => {
 
     result = {
       auctionId,
+      artworkId: typeof auction.artworkId === "string" ?
+        auction.artworkId :
+        undefined,
       currentBid: amount,
       topBidderId: uid,
       bidCount: nextBidCount,
     };
   });
 
-  if (!result) {
+  const bidResult = result as PlaceBidTransactionResult | null;
+  if (!bidResult) {
     throw new HttpsError("internal", "Bid transaction did not finish.");
   }
 
@@ -470,13 +492,143 @@ export const placeBid = onCall(async (request) => {
       type: "auction_outbid",
       actorId: uid,
       actorName,
-      postId: auctionId,
+      auctionId,
+      artworkId: bidResult.artworkId,
       message: `${actorName} placed a higher bid on an auction.`,
     });
   }
 
-  return result;
+  return bidResult;
 });
+
+// Scheduled function chot cac phien dau gia het gio.
+// Chay moi 5 phut de kiem tra cac auction da het han.
+export const closeExpiredAuctions = functions.pubsub
+  .schedule("every 5 minutes")
+  .onRun(async () => {
+    const now = admin.firestore.Timestamp.now();
+    const snapshot = await db.collection("auctions")
+      .where("status", "in", ["scheduled", "live"])
+      .where("endsAt", "<=", now)
+      .get();
+
+    if (snapshot.empty) {
+      console.log("No expired auctions to close.");
+      return null;
+    }
+
+    let closedWithWinner = 0;
+    let closedWithoutBids = 0;
+
+    for (const docSnap of snapshot.docs) {
+      const auction = docSnap.data();
+      const auctionId = docSnap.id;
+      const auctionRef = docSnap.ref;
+      const artworkId = auction.artworkId;
+
+      if (typeof artworkId !== "string" || !artworkId) {
+        console.warn(`Auction ${auctionId} missing artworkId, skipping.`);
+        continue;
+      }
+
+      try {
+        const closeResult = await db.runTransaction(async (tx) => {
+          const latestSnap = await tx.get(auctionRef);
+          if (!latestSnap.exists) return null;
+          const latest = latestSnap.data() || {};
+          const currentStatus = latest.status as AuctionStatus;
+
+          if (["ended", "settled", "cancelled"].includes(currentStatus)) {
+            return null;
+          }
+
+          const topBidderId = typeof latest.topBidderId === "string" ?
+            latest.topBidderId :
+            null;
+          const hasBids = Number(latest.bidCount ?? 0) > 0;
+          const hasWinner = !!topBidderId && hasBids;
+          const artistId = typeof latest.artistId === "string" ?
+            latest.artistId :
+            undefined;
+          const artworkRef = db.collection("artworks").doc(artworkId);
+          const artworkSnap = hasBids ? null : await tx.get(artworkRef);
+
+          if (hasWinner) {
+            tx.update(auctionRef, {
+              status: "ended",
+              endedAt: FieldValue.serverTimestamp(),
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+
+            return {
+              hasWinner: true,
+              shouldNotifyArtist: true,
+              artistId,
+              topBidderId,
+              artworkId,
+            } satisfies CloseAuctionResult;
+          } else {
+            tx.update(auctionRef, {
+              status: "ended",
+              endedAt: FieldValue.serverTimestamp(),
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+
+            if (artworkSnap?.exists) {
+              tx.update(artworkRef, {
+                saleMode: "fixed",
+                status: "for_sale",
+                auctionId: FieldValue.delete(),
+                updatedAt: FieldValue.serverTimestamp(),
+              });
+            }
+
+            if (hasBids) {
+              console.warn(
+                `Auction ${auctionId} has bids but no topBidderId.`
+              );
+            }
+
+            return {
+              hasWinner: false,
+              shouldNotifyArtist: false,
+            } satisfies CloseAuctionResult;
+          }
+        });
+
+        if (!closeResult) continue;
+
+        if (closeResult.hasWinner) {
+          closedWithWinner++;
+          if (
+            closeResult.shouldNotifyArtist &&
+            closeResult.artistId &&
+            closeResult.topBidderId
+          ) {
+            await createNotification(closeResult.artistId, {
+              type: "auction_ended",
+              actorId: closeResult.topBidderId,
+              actorName: "Artium",
+              auctionId,
+              artworkId: closeResult.artworkId,
+              message: "Your auction ended. You have a winner!",
+            });
+          }
+        } else {
+          closedWithoutBids++;
+        }
+      } catch (err) {
+        console.error(`Failed to close auction ${auctionId}:`, err);
+      }
+    }
+
+    console.log(
+      "closeExpiredAuctions done. " +
+      `Closed: ${closedWithWinner} with winner, ` +
+      `${closedWithoutBids} without bids.`
+    );
+    return null;
+  });
 
 // Scheduled function to recalc popularity scores every hour
 export const calculatePopularityScores = functions.pubsub
