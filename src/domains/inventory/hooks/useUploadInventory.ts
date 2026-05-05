@@ -301,7 +301,11 @@ export function useUploadInventory() {
       resetForm();
     } catch (error) {
       console.error("Failed to upload artwork:", error);
-      Alert.alert("Upload failed", "Could not upload artwork. Please try again.");
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Could not upload artwork. Please try again.";
+      Alert.alert("Upload failed", message);
     } finally {
       setSubmitting(false);
     }
@@ -342,5 +346,6 @@ export function useUploadInventory() {
     setScrollToError,
     selectedTags,
     handleToggleTag,
+    submitting,
   };
 }
