@@ -52,7 +52,9 @@ import { createPost } from "../domains/feed/services/feedService";
 import ImageViewing from "react-native-image-viewing";
 import type { Auction, AuctionBid } from "../domains/auction/type";
 import {
+  advanceAuctionStage,
   createAuction,
+  createWinnerInvoice,
   placeBid,
   subscribeToArtworkAuction,
   subscribeToAuctionBids,
@@ -95,6 +97,8 @@ export default function ArtworkDetailScreen() {
   const [startAuctionDurationHours, setStartAuctionDurationHours] = useState("24");
   const [startAuctionCurrency, setStartAuctionCurrency] = useState<"VND" | "USD">("USD");
   const [isCreatingAuction, setIsCreatingAuction] = useState(false);
+  const [isAdvancingStage, setIsAdvancingStage] = useState(false);
+  const [isPreparingWinnerInvoice, setIsPreparingWinnerInvoice] = useState(false);
 
   // Image viewer state
   const viewerKeyRef = useRef(0);
@@ -266,6 +270,23 @@ export default function ArtworkDetailScreen() {
     (auctionNow >= auctionEndsAt ||
       ["ended", "settled", "cancelled"].includes(auction.status));
   const isAuctionOwner = !!auction && auction.artistId === currentUser?.uid;
+  const isAuctionWinner =
+    !!auction?.topBidderId && auction.topBidderId === currentUser?.uid;
+  const canOpenWinnerInvoice =
+    !!auction?.winnerInvoiceId &&
+    isAuctionWinner &&
+    ["ended", "settled"].includes(auction.status);
+  const canPrepareWinnerInvoice =
+    !!auction &&
+    !auction.winnerInvoiceId &&
+    isAuctionWinner &&
+    isAuctionEnded &&
+    auction.bidCount > 0;
+  const canAdvanceAuctionStage =
+    !!auction &&
+    isAuctionOwner &&
+    auction.status !== "cancelled" &&
+    auction.stage !== "final";
   const canPlaceBid =
     !!auction &&
     !isSold &&
@@ -278,12 +299,24 @@ export default function ArtworkDetailScreen() {
     : 0;
   const auctionPrimaryLabel = useMemo(() => {
     if (!auction) return undefined;
+    if (canOpenWinnerInvoice) {
+      return auction.status === "settled" ? "View invoice" : "Pay invoice";
+    }
+    if (canPrepareWinnerInvoice) return "Prepare invoice";
     if (isSold) return "Sold";
     if (isAuctionOwner) return "Your auction";
     if (!isAuctionStarted) return "Scheduled";
     if (isAuctionEnded) return "Ended";
     return "Place bid";
-  }, [auction, isAuctionEnded, isAuctionOwner, isAuctionStarted, isSold]);
+  }, [
+    auction,
+    canOpenWinnerInvoice,
+    canPrepareWinnerInvoice,
+    isAuctionEnded,
+    isAuctionOwner,
+    isAuctionStarted,
+    isSold,
+  ]);
   const primaryActionLabel = canStartAuction
     ? "Start auction"
     : auctionPrimaryLabel;
@@ -548,6 +581,63 @@ export default function ArtworkDetailScreen() {
     startAuctionPrice,
   ]);
 
+  const handleOpenWinnerInvoice = useCallback(() => {
+    if (!auction?.winnerInvoiceId) return;
+
+    navigation.navigate("Tabs", {
+      screen: "Home",
+      params: {
+        screen: "InvoiceDetail",
+        params: { invoiceId: auction.winnerInvoiceId },
+      },
+    });
+  }, [auction?.winnerInvoiceId, navigation]);
+
+  const handlePrepareWinnerInvoice = useCallback(async () => {
+    if (!auction || isPreparingWinnerInvoice) return;
+
+    try {
+      setIsPreparingWinnerInvoice(true);
+      const result = await createWinnerInvoice({ auctionId: auction.id });
+      navigation.navigate("Tabs", {
+        screen: "Home",
+        params: {
+          screen: "InvoiceDetail",
+          params: { invoiceId: result.invoiceId },
+        },
+      });
+    } catch (err: any) {
+      console.error("Failed to prepare winner invoice:", err);
+      Alert.alert(
+        "Invoice not ready",
+        err?.message || "Please wait a moment and try again."
+      );
+    } finally {
+      setIsPreparingWinnerInvoice(false);
+    }
+  }, [auction, isPreparingWinnerInvoice, navigation]);
+
+  const handleAdvanceAuctionStage = useCallback(async () => {
+    if (!auction || isAdvancingStage) return;
+    if (!canAdvanceAuctionStage) {
+      Alert.alert("Stage locked", "This auction cannot move to another stage.");
+      return;
+    }
+
+    try {
+      setIsAdvancingStage(true);
+      await advanceAuctionStage({ auctionId: auction.id });
+    } catch (err: any) {
+      console.error("Failed to advance auction stage:", err);
+      Alert.alert(
+        "Could not update stage",
+        err?.message || "Please refresh and try again."
+      );
+    } finally {
+      setIsAdvancingStage(false);
+    }
+  }, [auction, canAdvanceAuctionStage, isAdvancingStage]);
+
   const handleOpenBidModal = useCallback(() => {
     if (!auction) return;
     if (!currentUser) {
@@ -690,8 +780,16 @@ export default function ArtworkDetailScreen() {
               now={auctionNow}
               currentUserId={currentUser?.uid}
               canPlaceBid={canPlaceBid}
+              canOpenWinnerInvoice={canOpenWinnerInvoice}
+              canPrepareWinnerInvoice={canPrepareWinnerInvoice}
+              canAdvanceStage={canAdvanceAuctionStage}
               nextBidAmount={nextBidAmount}
+              advancingStage={isAdvancingStage}
+              preparingWinnerInvoice={isPreparingWinnerInvoice}
               onPlaceBid={handleOpenBidModal}
+              onOpenWinnerInvoice={handleOpenWinnerInvoice}
+              onPrepareWinnerInvoice={handlePrepareWinnerInvoice}
+              onAdvanceStage={handleAdvanceAuctionStage}
             />
           ) : null}
           <ArtworkDetails detail={artwork} />
@@ -729,10 +827,18 @@ export default function ArtworkDetailScreen() {
             canStartAuction
               ? handleOpenStartAuctionModal
               : auction
-                ? handleOpenBidModal
+                ? canOpenWinnerInvoice
+                  ? handleOpenWinnerInvoice
+                  : canPrepareWinnerInvoice
+                    ? handlePrepareWinnerInvoice
+                    : handleOpenBidModal
                 : () => navigation.navigate("Checkout", { artwork })
           }
-          buyDisabled={auction ? !canPlaceBid : isSold && !canStartAuction}
+          buyDisabled={
+            auction
+              ? !(canPlaceBid || canOpenWinnerInvoice || canPrepareWinnerInvoice)
+              : isSold && !canStartAuction
+          }
           primaryLabel={primaryActionLabel}
           primaryIcon={primaryActionIcon}
         />
@@ -985,16 +1091,32 @@ function AuctionPanel({
   now,
   currentUserId,
   canPlaceBid,
+  canOpenWinnerInvoice,
+  canPrepareWinnerInvoice,
+  canAdvanceStage,
   nextBidAmount,
+  advancingStage,
+  preparingWinnerInvoice,
   onPlaceBid,
+  onOpenWinnerInvoice,
+  onPrepareWinnerInvoice,
+  onAdvanceStage,
 }: {
   auction: Auction;
   bids: AuctionBid[];
   now: number;
   currentUserId?: string;
   canPlaceBid: boolean;
+  canOpenWinnerInvoice: boolean;
+  canPrepareWinnerInvoice: boolean;
+  canAdvanceStage: boolean;
   nextBidAmount: number;
+  advancingStage: boolean;
+  preparingWinnerInvoice: boolean;
   onPlaceBid: () => void;
+  onOpenWinnerInvoice: () => void;
+  onPrepareWinnerInvoice: () => void;
+  onAdvanceStage: () => void;
 }) {
   const startsAt = new Date(auction.startsAt).getTime();
   const endsAt = new Date(auction.endsAt).getTime();
@@ -1003,11 +1125,16 @@ function AuctionPanel({
     now >= endsAt || ["ended", "settled", "cancelled"].includes(auction.status);
   const countdownTarget = isBeforeStart ? startsAt : endsAt;
   const countdownLabel = isBeforeStart ? "Starts in" : "Ends in";
-  const statusLabel = isEnded
-    ? "Ended"
-    : isBeforeStart
-      ? "Scheduled"
-      : "Live";
+  const statusLabel =
+    auction.status === "settled"
+      ? "Settled"
+      : isEnded && auction.bidCount === 0
+        ? "No bids"
+        : isEnded
+          ? "Ended"
+          : isBeforeStart
+            ? "Scheduled"
+            : "Live";
 
   return (
     <View className="mx-4 mb-4 rounded-3xl border border-slate-200 bg-white p-4">
@@ -1015,7 +1142,9 @@ function AuctionPanel({
         <View className="flex-row items-center gap-2">
           <View
             className={`h-2.5 w-2.5 rounded-full ${
-              statusLabel === "Live" ? "bg-emerald-500" : "bg-slate-400"
+              statusLabel === "Live" || statusLabel === "Settled"
+                ? "bg-emerald-500"
+                : "bg-slate-400"
             }`}
           />
           <Text className="text-xs font-bold uppercase tracking-[1px] text-slate-500">
@@ -1030,7 +1159,7 @@ function AuctionPanel({
       <View className="mt-4 flex-row gap-3">
         <View className="flex-1 rounded-2xl bg-slate-50 p-3">
           <Text className="text-xs font-semibold uppercase text-slate-500">
-            Current bid
+            {isEnded && auction.bidCount > 0 ? "Winning bid" : "Current bid"}
           </Text>
           <Text className="mt-1 text-xl font-bold text-slate-950">
             {formatAuctionCurrency(auction.currentBid, auction.currency)}
@@ -1044,7 +1173,11 @@ function AuctionPanel({
             {isEnded ? "Status" : countdownLabel}
           </Text>
           <Text className="mt-1 text-xl font-bold text-slate-950">
-            {isEnded ? "Closed" : formatCountdown(countdownTarget - now)}
+            {auction.status === "settled"
+              ? "Paid"
+              : isEnded
+                ? "Closed"
+                : formatCountdown(countdownTarget - now)}
           </Text>
           <Text className="mt-1 text-xs text-slate-500">
             Step {formatAuctionCurrency(auction.minIncrement, auction.currency)}
@@ -1075,20 +1208,74 @@ function AuctionPanel({
         })}
       </View>
 
-      <Pressable
-        onPress={onPlaceBid}
-        disabled={!canPlaceBid}
-        className={`mt-4 flex-row items-center justify-center gap-2 rounded-2xl px-4 py-3 ${
-          canPlaceBid ? "bg-[#0B73FF]" : "bg-slate-300"
-        }`}
-      >
-        <Ionicons name="pricetag-outline" size={18} color="#ffffff" />
-        <Text className="font-bold text-white">
-          {canPlaceBid
-            ? `Place ${formatAuctionCurrency(nextBidAmount, auction.currency)}`
-            : "Bidding unavailable"}
-        </Text>
-      </Pressable>
+      {canOpenWinnerInvoice || canPrepareWinnerInvoice ? (
+        <Pressable
+          onPress={
+            canOpenWinnerInvoice ? onOpenWinnerInvoice : onPrepareWinnerInvoice
+          }
+          disabled={preparingWinnerInvoice}
+          className={`mt-4 flex-row items-center justify-center gap-2 rounded-2xl px-4 py-3 ${
+            preparingWinnerInvoice ? "bg-slate-300" : "bg-[#0B73FF]"
+          }`}
+        >
+          {preparingWinnerInvoice ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <Ionicons name="receipt-outline" size={18} color="#ffffff" />
+          )}
+          <Text className="font-bold text-white">
+            {preparingWinnerInvoice
+              ? "Preparing..."
+              : canOpenWinnerInvoice
+                ? auction.status === "settled"
+                  ? "View invoice"
+                  : "Pay invoice"
+                : "Prepare invoice"}
+          </Text>
+        </Pressable>
+      ) : (
+        <Pressable
+          onPress={onPlaceBid}
+          disabled={!canPlaceBid}
+          className={`mt-4 flex-row items-center justify-center gap-2 rounded-2xl px-4 py-3 ${
+            canPlaceBid ? "bg-[#0B73FF]" : "bg-slate-300"
+          }`}
+        >
+          <Ionicons name="pricetag-outline" size={18} color="#ffffff" />
+          <Text className="font-bold text-white">
+            {canPlaceBid
+              ? `Place ${formatAuctionCurrency(nextBidAmount, auction.currency)}`
+              : "Bidding unavailable"}
+          </Text>
+        </Pressable>
+      )}
+
+      {canAdvanceStage ? (
+        <Pressable
+          onPress={onAdvanceStage}
+          disabled={advancingStage}
+          className={`mt-3 flex-row items-center justify-center gap-2 rounded-2xl px-4 py-3 ${
+            advancingStage ? "bg-slate-200" : "bg-slate-900"
+          }`}
+        >
+          {advancingStage ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <Ionicons name="arrow-forward-circle-outline" size={18} color="#ffffff" />
+          )}
+          <Text className="font-bold text-white">
+            {advancingStage ? "Updating..." : `Advance to ${formatAuctionStage(nextAuctionStage(auction.stage))}`}
+          </Text>
+        </Pressable>
+      ) : null}
+
+      {isEnded && auction.bidCount === 0 ? (
+        <View className="mt-3 rounded-2xl bg-slate-50 px-3 py-4">
+          <Text className="text-sm text-slate-500">
+            This auction ended without bids.
+          </Text>
+        </View>
+      ) : null}
 
       <View className="mt-5">
         <Text className="text-sm font-bold text-slate-900">Bid history</Text>
@@ -1390,6 +1577,12 @@ function stageOrder(stage: Auction["stage"]) {
   if (stage === "sketch") return 0;
   if (stage === "color") return 1;
   return 2;
+}
+
+function nextAuctionStage(stage: Auction["stage"]): Auction["stage"] {
+  if (stage === "sketch") return "color";
+  if (stage === "color") return "final";
+  return "final";
 }
 
 function shortUserId(userId: string) {

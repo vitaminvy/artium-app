@@ -20,7 +20,8 @@ type NotificationPayload = {
     | "comment"
     | "reshare"
     | "auction_outbid"
-    | "auction_ended";
+    | "auction_ended"
+    | "auction_won";
   actorId: string;
   actorName: string;
   postId?: string;
@@ -175,6 +176,12 @@ const buildOrderCode = () => {
   return Number(`${now}${random}`.slice(0, 15));
 };
 
+const buildInvoiceNumber = (id: string) => {
+  const prefix = id.slice(0, 4).toUpperCase();
+  const suffix = id.slice(-8).toUpperCase();
+  return `IV-${prefix}-${suffix}`;
+};
+
 type AuctionStage = "sketch" | "color" | "final";
 type AuctionStatus =
   | "scheduled"
@@ -199,6 +206,21 @@ type CloseAuctionResult = {
   artworkId?: string;
 };
 
+type UserSnapshot = {
+  uid: string;
+  displayName?: string;
+  email?: string;
+  photoURL?: string;
+};
+
+type WinnerInvoiceResult = {
+  invoiceId: string;
+  created: boolean;
+  artworkId?: string;
+  artistId?: string;
+  topBidderId?: string;
+};
+
 const AUCTION_STAGES: AuctionStage[] = ["sketch", "color", "final"];
 const AUCTION_CURRENCIES = ["VND", "USD"];
 
@@ -215,6 +237,10 @@ const readRequiredString = (value: unknown, fieldName: string) => {
     );
   }
   return value.trim();
+};
+
+const readOptionalString = (value: unknown) => {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
 };
 
 const readPositiveNumber = (value: unknown, fieldName: string) => {
@@ -266,6 +292,129 @@ const readAuctionDate = (value: unknown, fieldName: string) => {
   return date;
 };
 
+const getUserSnapshot = async (uid: string): Promise<UserSnapshot> => {
+  let data: admin.firestore.DocumentData = {};
+  try {
+    const snap = await db.collection("users").doc(uid).get();
+    data = snap.data() || {};
+  } catch (err) {
+    console.warn("Failed to fetch user document", err);
+  }
+
+  try {
+    const authUser = await admin.auth().getUser(uid);
+    return {
+      uid,
+      displayName:
+        readOptionalString(data.displayName) ||
+        readOptionalString(data.name) ||
+        readOptionalString(data.username) ||
+        readOptionalString(authUser.displayName),
+      email: readOptionalString(data.email) || authUser.email || undefined,
+      photoURL:
+        readOptionalString(data.photoURL) ||
+        readOptionalString(data.avatar) ||
+        readOptionalString(data.avatarUrl) ||
+        authUser.photoURL ||
+        undefined,
+    };
+  } catch {
+    return {
+      uid,
+      displayName:
+        readOptionalString(data.displayName) ||
+        readOptionalString(data.name) ||
+        readOptionalString(data.username),
+      email: readOptionalString(data.email),
+      photoURL:
+        readOptionalString(data.photoURL) ||
+        readOptionalString(data.avatar) ||
+        readOptionalString(data.avatarUrl),
+    };
+  }
+};
+
+const resolveFirstArtworkImage = (
+  images: unknown
+): string | undefined => {
+  if (!Array.isArray(images)) return undefined;
+  for (const item of images) {
+    if (typeof item === "string" && item.trim()) return item.trim();
+    if (item && typeof item === "object") {
+      const record = item as Record<string, unknown>;
+      const value =
+        readOptionalString(record.uri) ||
+        readOptionalString(record.url) ||
+        readOptionalString(record.image) ||
+        readOptionalString(record.imageUrl);
+      if (value) return value;
+    }
+  }
+  return undefined;
+};
+
+const getInvoiceAuctionId = (
+  invoiceData: admin.firestore.DocumentData
+) => {
+  const source = readOptionalString(invoiceData.source) ||
+    readOptionalString(invoiceData.type);
+  const auctionId = readOptionalString(invoiceData.auctionId);
+  return source === "auction" && auctionId ? auctionId : null;
+};
+
+const collectInvoiceArtworkIds = (
+  invoiceData: admin.firestore.DocumentData
+) => {
+  const artworkIds = new Set<string>();
+  const directArtworkId = readOptionalString(invoiceData.artworkId);
+  if (directArtworkId) {
+    artworkIds.add(directArtworkId);
+  }
+  if (Array.isArray(invoiceData.items)) {
+    invoiceData.items.forEach((item: {artworkId?: string}) => {
+      if (item?.artworkId) {
+        artworkIds.add(String(item.artworkId));
+      }
+    });
+  }
+  return artworkIds;
+};
+
+const addPaidInvoiceSettlement = (
+  batch: FirebaseFirestore.WriteBatch,
+  invoiceRef: FirebaseFirestore.DocumentReference,
+  invoiceData: admin.firestore.DocumentData,
+  invoiceUpdate: Record<string, unknown> = {}
+) => {
+  batch.update(invoiceRef, {
+    ...invoiceUpdate,
+    "payment.status": "paid",
+    "payment.paidAt": admin.firestore.FieldValue.serverTimestamp(),
+    "status": "paid",
+    "isActive": false,
+    "paidAt": admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  const auctionId = getInvoiceAuctionId(invoiceData);
+  if (auctionId) {
+    batch.update(db.collection("auctions").doc(auctionId), {
+      status: "settled",
+      settledAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+
+  collectInvoiceArtworkIds(invoiceData).forEach((artworkId) => {
+    batch.update(db.collection("artworks").doc(artworkId), {
+      status: "sold",
+      isActive: false,
+      soldAt: admin.firestore.FieldValue.serverTimestamp(),
+      soldByInvoiceId: invoiceRef.id,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+};
+
 const resolveAuctionStatus = (
   now: Date,
   startsAt: Date,
@@ -274,6 +423,134 @@ const resolveAuctionStatus = (
   if (now < startsAt) return "scheduled";
   if (now >= endsAt) return "ended";
   return "live";
+};
+
+const createWinnerInvoiceForAuction = async (
+  auctionId: string
+): Promise<WinnerInvoiceResult> => {
+  const auctionRef = db.collection("auctions").doc(auctionId);
+  const auctionSnap = await auctionRef.get();
+  if (!auctionSnap.exists) {
+    throw new HttpsError("not-found", "Auction not found.");
+  }
+
+  const auction = auctionSnap.data() || {};
+  const artworkId = readOptionalString(auction.artworkId);
+  const artistId = readOptionalString(auction.artistId);
+  const topBidderId = readOptionalString(auction.topBidderId);
+  const amount = Number(auction.currentBid ?? 0);
+  const currency = readOptionalString(auction.currency) || "USD";
+
+  if (!artworkId || !artistId || !topBidderId) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Auction does not have a winner."
+    );
+  }
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Auction winning amount is invalid."
+    );
+  }
+
+  const [artworkSnap, seller, buyer] = await Promise.all([
+    db.collection("artworks").doc(artworkId).get(),
+    getUserSnapshot(artistId),
+    getUserSnapshot(topBidderId),
+  ]);
+  const artwork = artworkSnap.data() || {};
+  const title = readOptionalString(artwork.title) || "Auction artwork";
+  const image = resolveFirstArtworkImage(artwork.images);
+  const invoiceRef = db.collection("invoices").doc();
+  const invoiceNumber = buildInvoiceNumber(invoiceRef.id);
+  const invoiceItem: Record<string, unknown> = {
+    type: "artwork",
+    title,
+    quantity: 1,
+    unitPrice: amount,
+    artworkId,
+  };
+  if (image) {
+    invoiceItem.image = image;
+  }
+
+  const txResult = await db.runTransaction(async (tx) => {
+    const latestSnap = await tx.get(auctionRef);
+    if (!latestSnap.exists) {
+      throw new HttpsError("not-found", "Auction not found.");
+    }
+    const latest = latestSnap.data() || {};
+    const existingInvoiceId = readOptionalString(latest.winnerInvoiceId);
+    if (existingInvoiceId) {
+      return {
+        invoiceId: existingInvoiceId,
+        created: false,
+      };
+    }
+
+    tx.set(invoiceRef, {
+      status: "sent",
+      source: "auction",
+      type: "auction",
+      auctionId,
+      artworkId,
+      invoiceNumber,
+      isActive: true,
+      sellerId: artistId,
+      buyerId: topBidderId,
+      sellerSnapshot: {
+        uid: artistId,
+        displayName: seller.displayName || "Artist",
+        photoURL: seller.photoURL || "",
+      },
+      buyer: {
+        name: buyer.displayName || buyer.email || "Auction winner",
+        email: buyer.email || "",
+        message: "Auction winner invoice",
+      },
+      items: [invoiceItem],
+      currency,
+      totals: {
+        subtotal: amount,
+        total: amount,
+      },
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+      lastSentAt: FieldValue.serverTimestamp(),
+      sentCount: 1,
+    });
+
+    tx.update(auctionRef, {
+      status: "ended",
+      winnerInvoiceId: invoiceRef.id,
+      endedAt: latest.endedAt || FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    return {
+      invoiceId: invoiceRef.id,
+      created: true,
+    };
+  });
+
+  if (txResult.created) {
+    await createNotification(topBidderId, {
+      type: "auction_won",
+      actorId: artistId,
+      actorName: seller.displayName || "Artium",
+      auctionId,
+      artworkId,
+      message: "You won the auction. Please complete your invoice.",
+    });
+  }
+
+  return {
+    ...txResult,
+    artworkId,
+    artistId,
+    topBidderId,
+  };
 };
 
 export const createAuction = onCall(async (request) => {
@@ -501,6 +778,93 @@ export const placeBid = onCall(async (request) => {
   return bidResult;
 });
 
+export const createWinnerInvoice = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Please sign in first.");
+  }
+
+  const auctionId = readRequiredString(request.data?.auctionId, "auctionId");
+  const auctionSnap = await db.collection("auctions").doc(auctionId).get();
+  if (!auctionSnap.exists) {
+    throw new HttpsError("not-found", "Auction not found.");
+  }
+
+  const auction = auctionSnap.data() || {};
+  const artistId = readOptionalString(auction.artistId);
+  const topBidderId = readOptionalString(auction.topBidderId);
+  const status = readOptionalString(auction.status);
+  const endsAt = readAuctionDate(auction.endsAt, "endsAt");
+  if (!["ended", "settled"].includes(status || "") &&
+      Date.now() < endsAt.getTime()) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Winner invoice can only be created after the auction ends."
+    );
+  }
+  if (uid !== artistId && uid !== topBidderId) {
+    throw new HttpsError(
+      "permission-denied",
+      "Only the artist or winner can create the winner invoice."
+    );
+  }
+
+  return createWinnerInvoiceForAuction(auctionId);
+});
+
+export const advanceAuctionStage = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Please sign in first.");
+  }
+
+  const auctionId = readRequiredString(request.data?.auctionId, "auctionId");
+  const auctionRef = db.collection("auctions").doc(auctionId);
+
+  return db.runTransaction(async (tx) => {
+    const auctionSnap = await tx.get(auctionRef);
+    if (!auctionSnap.exists) {
+      throw new HttpsError("not-found", "Auction not found.");
+    }
+
+    const auction = auctionSnap.data() || {};
+    if (auction.artistId !== uid) {
+      throw new HttpsError(
+        "permission-denied",
+        "Only the artist can update auction stage."
+      );
+    }
+    if (auction.status === "cancelled") {
+      throw new HttpsError(
+        "failed-precondition",
+        "Cancelled auctions cannot change stage."
+      );
+    }
+
+    const currentStage = isAuctionStage(auction.stage) ?
+      auction.stage :
+      "sketch";
+    const currentIndex = AUCTION_STAGES.indexOf(currentStage);
+    const nextStage = AUCTION_STAGES[currentIndex + 1];
+    if (!nextStage) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Auction is already at final stage."
+      );
+    }
+
+    tx.update(auctionRef, {
+      stage: nextStage,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    return {
+      auctionId,
+      stage: nextStage,
+    };
+  });
+});
+
 // Scheduled function chot cac phien dau gia het gio.
 // Chay moi 5 phut de kiem tra cac auction da het han.
 export const closeExpiredAuctions = functions.pubsub
@@ -600,6 +964,7 @@ export const closeExpiredAuctions = functions.pubsub
 
         if (closeResult.hasWinner) {
           closedWithWinner++;
+          const invoiceResult = await createWinnerInvoiceForAuction(auctionId);
           if (
             closeResult.shouldNotifyArtist &&
             closeResult.artistId &&
@@ -611,7 +976,9 @@ export const closeExpiredAuctions = functions.pubsub
               actorName: "Artium",
               auctionId,
               artworkId: closeResult.artworkId,
-              message: "Your auction ended. You have a winner!",
+              message: invoiceResult.created ?
+                "Your auction ended. Winner invoice is ready." :
+                "Your auction ended. You have a winner!",
             });
           }
         } else {
@@ -968,36 +1335,7 @@ export const finalizePayosPayment = onCall(async (request) => {
   }
 
   const batch = db.batch();
-  batch.update(invoiceRef, {
-    "payment.status": "paid",
-    "payment.paidAt": admin.firestore.FieldValue.serverTimestamp(),
-    "status": "paid",
-    "isActive": false,
-    "paidAt": admin.firestore.FieldValue.serverTimestamp(),
-  });
-
-  const artworkIds = new Set<string>();
-  if (invoiceData?.artworkId) {
-    artworkIds.add(String(invoiceData.artworkId));
-  }
-  if (Array.isArray(invoiceData?.items)) {
-    invoiceData.items.forEach((item: { artworkId?: string }) => {
-      if (item?.artworkId) {
-        artworkIds.add(String(item.artworkId));
-      }
-    });
-  }
-
-  artworkIds.forEach((artworkId) => {
-    const artworkRef = db.collection("artworks").doc(artworkId);
-    batch.update(artworkRef, {
-      status: "sold",
-      isActive: false,
-      soldAt: admin.firestore.FieldValue.serverTimestamp(),
-      soldByInvoiceId: invoiceRef.id,
-    });
-  });
-
+  addPaidInvoiceSettlement(batch, invoiceRef, invoiceData);
   await batch.commit();
   return {status: "paid"};
 });
@@ -1097,37 +1435,11 @@ export const payosWebhook = onRequest(
     if (data?.transactionId) {
       update["payment.transactionId"] = data.transactionId;
     }
-    if (status === "paid") {
-      update["payment.paidAt"] = admin.firestore.FieldValue.serverTimestamp();
-      update["status"] = "paid";
-      update["isActive"] = false;
-      update["paidAt"] = admin.firestore.FieldValue.serverTimestamp();
-    }
     const batch = db.batch();
-    batch.update(invoiceDoc.ref, update);
-
     if (status === "paid") {
-      const artworkIds = new Set<string>();
-      if (invoiceData?.artworkId) {
-        artworkIds.add(String(invoiceData.artworkId));
-      }
-      if (Array.isArray(invoiceData?.items)) {
-        invoiceData.items.forEach((item: { artworkId?: string }) => {
-          if (item?.artworkId) {
-            artworkIds.add(String(item.artworkId));
-          }
-        });
-      }
-
-      artworkIds.forEach((artworkId) => {
-        const artworkRef = db.collection("artworks").doc(artworkId);
-        batch.update(artworkRef, {
-          status: "sold",
-          isActive: false,
-          soldAt: admin.firestore.FieldValue.serverTimestamp(),
-          soldByInvoiceId: invoiceDoc.id,
-        });
-      });
+      addPaidInvoiceSettlement(batch, invoiceDoc.ref, invoiceData, update);
+    } else {
+      batch.update(invoiceDoc.ref, update);
     }
 
     await batch.commit();

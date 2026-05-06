@@ -75,6 +75,7 @@ export default function ArtworkCard({
           style={{ aspectRatio: 3 / 4, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
           contentFit="cover"
           cachePolicy="memory-disk"
+          priority="high"
           transition={0}
         />
         {item.isTrending ? (
@@ -109,6 +110,7 @@ export default function ArtworkCard({
                   style={{ width: "100%", height: "100%" }}
                   contentFit="cover"
                   cachePolicy="memory-disk"
+                  priority="normal"
                   transition={0}
                 />
               </View>

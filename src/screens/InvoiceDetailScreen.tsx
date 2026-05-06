@@ -359,7 +359,11 @@ export default function InvoiceDetailScreen() {
     const timer = setTimeout(() => {
       setRedirecting(false);
       paidHandledRef.current = true;
-      navigation.navigate("Invoices");
+      if (invoice.source === "auction" && invoice.artworkId) {
+        navigation.navigate("ArtworkDetail", { id: invoice.artworkId });
+      } else {
+        navigation.navigate("Invoices");
+      }
     }, 1200);
     return () => clearTimeout(timer);
   }, [invoice, isPaid, navigation, redirecting]);

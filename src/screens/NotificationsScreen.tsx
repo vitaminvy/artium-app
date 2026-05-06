@@ -47,6 +47,7 @@ const typeIcon: Record<string, keyof typeof Ionicons.glyphMap> = {
   reshare: "repeat-outline",
   auction_outbid: "pricetag-outline",
   auction_ended: "trophy-outline",
+  auction_won: "receipt-outline",
 };
 
 export default function NotificationsScreen() {
@@ -132,6 +133,10 @@ export default function NotificationsScreen() {
         (item.type === "auction_outbid" || item.type === "auction_ended") &&
         item.artworkId
       ) {
+        rootNavigate("ArtworkDetail", { id: item.artworkId });
+        return;
+      }
+      if (item.type === "auction_won" && item.artworkId) {
         rootNavigate("ArtworkDetail", { id: item.artworkId });
         return;
       }

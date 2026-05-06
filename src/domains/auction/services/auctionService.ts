@@ -45,6 +45,27 @@ export type PlaceBidResult = {
   bidCount: number;
 };
 
+export type AdvanceAuctionStageInput = {
+  auctionId: string;
+};
+
+export type AdvanceAuctionStageResult = {
+  auctionId: string;
+  stage: AuctionStage;
+};
+
+export type CreateWinnerInvoiceInput = {
+  auctionId: string;
+};
+
+export type CreateWinnerInvoiceResult = {
+  invoiceId: string;
+  created: boolean;
+  artworkId?: string;
+  artistId?: string;
+  topBidderId?: string;
+};
+
 // Chuyen cac kieu thoi gian Firestore/JS ve ISO string de UI hien countdown de hon.
 const toIsoString = (value: unknown): string => {
   if (value instanceof Timestamp) return value.toDate().toISOString();
@@ -204,5 +225,29 @@ export const placeBid = async (
   const placeBidFn =
     httpsCallable<PlaceBidInput, PlaceBidResult>(functions, "placeBid");
   const result = await placeBidFn(input);
+  return result.data;
+};
+
+export const advanceAuctionStage = async (
+  input: AdvanceAuctionStageInput
+): Promise<AdvanceAuctionStageResult> => {
+  const advanceStageFn =
+    httpsCallable<AdvanceAuctionStageInput, AdvanceAuctionStageResult>(
+      functions,
+      "advanceAuctionStage"
+    );
+  const result = await advanceStageFn(input);
+  return result.data;
+};
+
+export const createWinnerInvoice = async (
+  input: CreateWinnerInvoiceInput
+): Promise<CreateWinnerInvoiceResult> => {
+  const createWinnerInvoiceFn =
+    httpsCallable<CreateWinnerInvoiceInput, CreateWinnerInvoiceResult>(
+      functions,
+      "createWinnerInvoice"
+    );
+  const result = await createWinnerInvoiceFn(input);
   return result.data;
 };

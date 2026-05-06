@@ -49,6 +49,7 @@ export default function UploadInventoryScreen() {
     selectedTags,
     handleToggleTag,
     submitting,
+    submitMessage,
   } = useUploadInventory();
 
   // Separate refs for different scroll views
@@ -249,7 +250,7 @@ export default function UploadInventoryScreen() {
                 <View className="flex-row items-center gap-2">
                   <ActivityIndicator size="small" color="#64748B" />
                   <Text className="text-sm font-semibold text-slate-500">
-                    Submitting...
+                    {submitMessage}
                   </Text>
                 </View>
               ) : (
