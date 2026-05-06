@@ -224,6 +224,20 @@ type WinnerInvoiceResult = {
 const AUCTION_STAGES: AuctionStage[] = ["sketch", "color", "final"];
 const AUCTION_CURRENCIES = ["VND", "USD"];
 
+const isDemoModeEnabled = () => {
+  return process.env.FUNCTIONS_EMULATOR === "true" ||
+    process.env.ARTIUM_DEMO_MODE === "true";
+};
+
+const assertDemoMode = () => {
+  if (!isDemoModeEnabled()) {
+    throw new HttpsError(
+      "permission-denied",
+      "Demo actions are only available in emulator/dev mode."
+    );
+  }
+};
+
 const isAuctionStage = (value: unknown): value is AuctionStage => {
   return typeof value === "string" &&
     AUCTION_STAGES.includes(value as AuctionStage);
@@ -415,6 +429,48 @@ const addPaidInvoiceSettlement = (
   });
 };
 
+const getVerifiedPayosStatus = async (
+  invoiceData: admin.firestore.DocumentData
+) => {
+  const orderCode = invoiceData?.payment?.orderCode;
+  if (orderCode === undefined || orderCode === null || orderCode === "") {
+    throw new HttpsError(
+      "failed-precondition",
+      "Invoice does not have a PayOS order code."
+    );
+  }
+
+  const response = await fetch(`${PAYOS_ENDPOINT}/${orderCode}`, {
+    method: "GET",
+    headers: {
+      "x-client-id": PAYOS_CLIENT_ID.value(),
+      "x-api-key": PAYOS_API_KEY.value(),
+    },
+  });
+  const json = (await response.json()) as {
+    data?: {
+      status?: string | number;
+      paymentLinkId?: string;
+      transactions?: Array<{ reference?: string; transactionId?: string }>;
+    };
+  };
+
+  if (!response.ok) {
+    console.error("PayOS status error:", json);
+    throw new HttpsError("internal", "Failed to verify PayOS payment.");
+  }
+
+  const status = mapPayosStatus(json.data?.status);
+  return {
+    status,
+    rawPayload: json,
+    paymentLinkId: json.data?.paymentLinkId,
+    transactionId:
+      json.data?.transactions?.[0]?.transactionId ||
+      json.data?.transactions?.[0]?.reference,
+  };
+};
+
 const resolveAuctionStatus = (
   now: Date,
   startsAt: Date,
@@ -550,6 +606,88 @@ const createWinnerInvoiceForAuction = async (
     artworkId,
     artistId,
     topBidderId,
+  };
+};
+
+const closeAuctionNow = async (
+  auctionId: string
+): Promise<{
+  auctionId: string;
+  status: AuctionStatus;
+  invoiceId?: string;
+  invoiceCreated?: boolean;
+  hasWinner: boolean;
+}> => {
+  const auctionRef = db.collection("auctions").doc(auctionId);
+  const closeResult = await db.runTransaction(async (tx) => {
+    const auctionSnap = await tx.get(auctionRef);
+    if (!auctionSnap.exists) {
+      throw new HttpsError("not-found", "Auction not found.");
+    }
+
+    const auction = auctionSnap.data() || {};
+    const currentStatus = auction.status as AuctionStatus;
+    if (currentStatus === "settled") {
+      return {
+        status: currentStatus,
+        hasWinner: !!auction.topBidderId && Number(auction.bidCount ?? 0) > 0,
+      };
+    }
+    if (currentStatus === "cancelled") {
+      throw new HttpsError(
+        "failed-precondition",
+        "Cancelled auctions cannot be closed for demo."
+      );
+    }
+
+    const artworkId = readOptionalString(auction.artworkId);
+    if (!artworkId) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Auction is missing artworkId."
+      );
+    }
+
+    const hasWinner =
+      !!readOptionalString(auction.topBidderId) &&
+      Number(auction.bidCount ?? 0) > 0;
+
+    tx.update(auctionRef, {
+      status: "ended",
+      endedAt: auction.endedAt || FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    if (!hasWinner) {
+      tx.update(db.collection("artworks").doc(artworkId), {
+        saleMode: "fixed",
+        status: "for_sale",
+        auctionId: FieldValue.delete(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+
+    return {
+      status: "ended" as AuctionStatus,
+      hasWinner,
+    };
+  });
+
+  if (!closeResult.hasWinner) {
+    return {
+      auctionId,
+      status: closeResult.status,
+      hasWinner: false,
+    };
+  }
+
+  const invoiceResult = await createWinnerInvoiceForAuction(auctionId);
+  return {
+    auctionId,
+    status: "ended",
+    invoiceId: invoiceResult.invoiceId,
+    invoiceCreated: invoiceResult.created,
+    hasWinner: true,
   };
 };
 
@@ -795,8 +933,16 @@ export const createWinnerInvoice = onCall(async (request) => {
   const topBidderId = readOptionalString(auction.topBidderId);
   const status = readOptionalString(auction.status);
   const endsAt = readAuctionDate(auction.endsAt, "endsAt");
-  if (!["ended", "settled"].includes(status || "") &&
-      Date.now() < endsAt.getTime()) {
+  if (status === "cancelled") {
+    throw new HttpsError(
+      "failed-precondition",
+      "Cancelled auctions cannot create winner invoices."
+    );
+  }
+  const canCreateAfterExpiry =
+    ["scheduled", "live"].includes(status || "") &&
+    Date.now() >= endsAt.getTime();
+  if (!["ended", "settled"].includes(status || "") && !canCreateAfterExpiry) {
     throw new HttpsError(
       "failed-precondition",
       "Winner invoice can only be created after the auction ends."
@@ -810,6 +956,29 @@ export const createWinnerInvoice = onCall(async (request) => {
   }
 
   return createWinnerInvoiceForAuction(auctionId);
+});
+
+export const demoCloseAuction = onCall(async (request) => {
+  assertDemoMode();
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Please sign in first.");
+  }
+
+  const auctionId = readRequiredString(request.data?.auctionId, "auctionId");
+  const auctionSnap = await db.collection("auctions").doc(auctionId).get();
+  if (!auctionSnap.exists) {
+    throw new HttpsError("not-found", "Auction not found.");
+  }
+  const auction = auctionSnap.data() || {};
+  if (auction.artistId !== uid) {
+    throw new HttpsError(
+      "permission-denied",
+      "Only the artist can close this auction for demo."
+    );
+  }
+
+  return closeAuctionNow(auctionId);
 });
 
 export const advanceAuctionStage = onCall(async (request) => {
@@ -1315,12 +1484,60 @@ export const createPayosPaymentLink = onCall(
   }
 );
 
-export const finalizePayosPayment = onCall(async (request) => {
-  const invoiceId = request.data?.invoiceId as string | undefined;
-  if (!invoiceId) {
-    throw new HttpsError("invalid-argument", "invoiceId is required.");
+export const finalizePayosPayment = onCall(
+  {
+    secrets: [PAYOS_CLIENT_ID, PAYOS_API_KEY],
+  },
+  async (request) => {
+    const invoiceId = request.data?.invoiceId as string | undefined;
+    if (!invoiceId) {
+      throw new HttpsError("invalid-argument", "invoiceId is required.");
+    }
+
+    const invoiceRef = db.collection("invoices").doc(invoiceId);
+    const invoiceSnap = await invoiceRef.get();
+    if (!invoiceSnap.exists) {
+      throw new HttpsError("not-found", "Invoice not found.");
+    }
+
+    const invoiceData = invoiceSnap.data() as admin.firestore.DocumentData;
+    const isAlreadyPaid =
+      invoiceData?.payment?.status === "paid" || invoiceData?.status === "paid";
+    if (isAlreadyPaid) {
+      return {status: "paid"};
+    }
+
+    const verified = await getVerifiedPayosStatus(invoiceData);
+    const update: Record<string, unknown> = {
+      "payment.status": verified.status ?? "pending",
+      "payment.rawPayload": verified.rawPayload,
+    };
+    if (verified.paymentLinkId) {
+      update["payment.paymentLinkId"] = verified.paymentLinkId;
+    }
+    if (verified.transactionId) {
+      update["payment.transactionId"] = verified.transactionId;
+    }
+
+    const batch = db.batch();
+    if (verified.status === "paid") {
+      addPaidInvoiceSettlement(batch, invoiceRef, invoiceData, update);
+    } else {
+      batch.update(invoiceRef, update);
+    }
+    await batch.commit();
+    return {status: verified.status ?? "pending"};
+  }
+);
+
+export const demoMarkAuctionInvoicePaid = onCall(async (request) => {
+  assertDemoMode();
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Please sign in first.");
   }
 
+  const invoiceId = readRequiredString(request.data?.invoiceId, "invoiceId");
   const invoiceRef = db.collection("invoices").doc(invoiceId);
   const invoiceSnap = await invoiceRef.get();
   if (!invoiceSnap.exists) {
@@ -1328,16 +1545,36 @@ export const finalizePayosPayment = onCall(async (request) => {
   }
 
   const invoiceData = invoiceSnap.data() as admin.firestore.DocumentData;
+  const auctionId = getInvoiceAuctionId(invoiceData);
+  if (!auctionId) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Demo payment is only available for auction invoices."
+    );
+  }
+  if (invoiceData.buyerId !== uid && invoiceData.sellerId !== uid) {
+    throw new HttpsError(
+      "permission-denied",
+      "Only the invoice buyer or seller can mark this demo invoice paid."
+    );
+  }
+
   const isAlreadyPaid =
     invoiceData?.payment?.status === "paid" || invoiceData?.status === "paid";
   if (isAlreadyPaid) {
-    return {status: "paid"};
+    return {status: "paid", invoiceId};
   }
 
   const batch = db.batch();
-  addPaidInvoiceSettlement(batch, invoiceRef, invoiceData);
+  addPaidInvoiceSettlement(batch, invoiceRef, invoiceData, {
+    "payment.provider": invoiceData.payment?.provider || "payos",
+    "payment.rawPayload": {
+      source: "demoMarkAuctionInvoicePaid",
+      markedBy: uid,
+    },
+  });
   await batch.commit();
-  return {status: "paid"};
+  return {status: "paid", invoiceId};
 });
 
 export const payosWebhook = onRequest(

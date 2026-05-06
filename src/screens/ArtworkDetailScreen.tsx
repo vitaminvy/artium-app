@@ -55,6 +55,7 @@ import {
   advanceAuctionStage,
   createAuction,
   createWinnerInvoice,
+  demoCloseAuction,
   placeBid,
   subscribeToArtworkAuction,
   subscribeToAuctionBids,
@@ -99,6 +100,7 @@ export default function ArtworkDetailScreen() {
   const [isCreatingAuction, setIsCreatingAuction] = useState(false);
   const [isAdvancingStage, setIsAdvancingStage] = useState(false);
   const [isPreparingWinnerInvoice, setIsPreparingWinnerInvoice] = useState(false);
+  const [isDemoClosingAuction, setIsDemoClosingAuction] = useState(false);
 
   // Image viewer state
   const viewerKeyRef = useRef(0);
@@ -287,6 +289,11 @@ export default function ArtworkDetailScreen() {
     isAuctionOwner &&
     auction.status !== "cancelled" &&
     auction.stage !== "final";
+  const canDemoCloseAuction =
+    __DEV__ &&
+    !!auction &&
+    isAuctionOwner &&
+    ["scheduled", "live"].includes(auction.status);
   const canPlaceBid =
     !!auction &&
     !isSold &&
@@ -638,6 +645,34 @@ export default function ArtworkDetailScreen() {
     }
   }, [auction, canAdvanceAuctionStage, isAdvancingStage]);
 
+  const handleDemoCloseAuction = useCallback(async () => {
+    if (!auction || isDemoClosingAuction) return;
+    if (!canDemoCloseAuction) {
+      Alert.alert("Demo close unavailable", "Only the artist can close an active demo auction.");
+      return;
+    }
+
+    try {
+      setIsDemoClosingAuction(true);
+      const result = await demoCloseAuction({ auctionId: auction.id });
+      await fetchArtwork(false);
+      Alert.alert(
+        "Auction closed",
+        result.hasWinner
+          ? "Winner invoice is ready for the buyer."
+          : "Auction closed without bids."
+      );
+    } catch (err: any) {
+      console.error("Failed to close demo auction:", err);
+      Alert.alert(
+        "Demo close unavailable",
+        err?.message || "Run this action against the Functions emulator/dev mode."
+      );
+    } finally {
+      setIsDemoClosingAuction(false);
+    }
+  }, [auction, canDemoCloseAuction, fetchArtwork, isDemoClosingAuction]);
+
   const handleOpenBidModal = useCallback(() => {
     if (!auction) return;
     if (!currentUser) {
@@ -783,13 +818,16 @@ export default function ArtworkDetailScreen() {
               canOpenWinnerInvoice={canOpenWinnerInvoice}
               canPrepareWinnerInvoice={canPrepareWinnerInvoice}
               canAdvanceStage={canAdvanceAuctionStage}
+              canDemoClose={canDemoCloseAuction}
               nextBidAmount={nextBidAmount}
               advancingStage={isAdvancingStage}
               preparingWinnerInvoice={isPreparingWinnerInvoice}
+              demoClosing={isDemoClosingAuction}
               onPlaceBid={handleOpenBidModal}
               onOpenWinnerInvoice={handleOpenWinnerInvoice}
               onPrepareWinnerInvoice={handlePrepareWinnerInvoice}
               onAdvanceStage={handleAdvanceAuctionStage}
+              onDemoClose={handleDemoCloseAuction}
             />
           ) : null}
           <ArtworkDetails detail={artwork} />
@@ -1094,13 +1132,16 @@ function AuctionPanel({
   canOpenWinnerInvoice,
   canPrepareWinnerInvoice,
   canAdvanceStage,
+  canDemoClose,
   nextBidAmount,
   advancingStage,
   preparingWinnerInvoice,
+  demoClosing,
   onPlaceBid,
   onOpenWinnerInvoice,
   onPrepareWinnerInvoice,
   onAdvanceStage,
+  onDemoClose,
 }: {
   auction: Auction;
   bids: AuctionBid[];
@@ -1110,13 +1151,16 @@ function AuctionPanel({
   canOpenWinnerInvoice: boolean;
   canPrepareWinnerInvoice: boolean;
   canAdvanceStage: boolean;
+  canDemoClose: boolean;
   nextBidAmount: number;
   advancingStage: boolean;
   preparingWinnerInvoice: boolean;
+  demoClosing: boolean;
   onPlaceBid: () => void;
   onOpenWinnerInvoice: () => void;
   onPrepareWinnerInvoice: () => void;
   onAdvanceStage: () => void;
+  onDemoClose: () => void;
 }) {
   const startsAt = new Date(auction.startsAt).getTime();
   const endsAt = new Date(auction.endsAt).getTime();
@@ -1265,6 +1309,25 @@ function AuctionPanel({
           )}
           <Text className="font-bold text-white">
             {advancingStage ? "Updating..." : `Advance to ${formatAuctionStage(nextAuctionStage(auction.stage))}`}
+          </Text>
+        </Pressable>
+      ) : null}
+
+      {canDemoClose ? (
+        <Pressable
+          onPress={onDemoClose}
+          disabled={demoClosing}
+          className={`mt-3 flex-row items-center justify-center gap-2 rounded-2xl px-4 py-3 ${
+            demoClosing ? "bg-slate-200" : "bg-amber-500"
+          }`}
+        >
+          {demoClosing ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <Ionicons name="flash-outline" size={18} color="#ffffff" />
+          )}
+          <Text className="font-bold text-white">
+            {demoClosing ? "Closing..." : "Close now (demo)"}
           </Text>
         </Pressable>
       ) : null}
