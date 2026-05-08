@@ -204,6 +204,7 @@ type PlaceBidTransactionResult = {
   auctionId: string;
   bidId: string;
   artworkId?: string;
+  stage: AuctionStage;
   currentBid: number;
   topBidderId: string;
   bidCount: number;
@@ -240,6 +241,23 @@ type PayosLinkResult = {
   paymentLinkId?: string;
   returnUrl: string;
   cancelUrl: string;
+};
+
+type TrustScoreEventReason =
+  | "auction_winner_paid"
+  | "auction_winner_unpaid"
+  | "artist_stage_proof_submitted"
+  | "artist_completed_all_stage_proofs"
+  | "buyer_continued_stage_participation";
+
+type AdjustTrustScoreInput = {
+  userId: string;
+  auctionId?: string;
+  invoiceId?: string;
+  delta: number;
+  reason: TrustScoreEventReason;
+  uniqueKey: string;
+  metadata?: Record<string, unknown>;
 };
 
 const AUCTION_STAGES: AuctionStage[] = ["sketch", "color", "final"];
@@ -296,6 +314,49 @@ const normalizeTrustScore = (value: unknown) => {
   const score = Number(value);
   if (!Number.isFinite(score)) return 100;
   return Math.max(0, Math.min(100, score));
+};
+
+const buildSafeDocId = (value: string) => {
+  return value.replace(/[^A-Za-z0-9_-]/g, "_");
+};
+
+const adjustTrustScoreOnce = async ({
+  userId,
+  auctionId,
+  invoiceId,
+  delta,
+  reason,
+  uniqueKey,
+  metadata,
+}: AdjustTrustScoreInput) => {
+  const eventRef = db.collection("trustScoreEvents")
+    .doc(buildSafeDocId(uniqueKey));
+  const userRef = db.collection("users").doc(userId);
+
+  return db.runTransaction(async (tx) => {
+    const eventSnap = await tx.get(eventRef);
+    if (eventSnap.exists) return false;
+
+    const userSnap = await tx.get(userRef);
+    const currentTrust = normalizeTrustScore(userSnap.data()?.trustScore);
+    const nextTrust = normalizeTrustScore(currentTrust + delta);
+    tx.set(eventRef, {
+      userId,
+      auctionId,
+      invoiceId,
+      delta,
+      reason,
+      metadata: metadata || {},
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    tx.set(userRef, {
+      "trustScore": nextTrust,
+      "auctionStats.trustScoreEvents": FieldValue.increment(1),
+      "auctionStats.trustScoreDelta": FieldValue.increment(delta),
+      "updatedAt": FieldValue.serverTimestamp(),
+    }, {merge: true});
+    return true;
+  });
 };
 
 const getAuctionStageProofRef = (auctionId: string, stage: AuctionStage) => {
@@ -847,6 +908,70 @@ const validatePaidDepositForBid = async (
   };
 };
 
+const awardBuyerParticipationRewards = async (
+  auctionId: string,
+  userId: string
+) => {
+  const participantRef = db.collection("auctions")
+    .doc(auctionId)
+    .collection("participants")
+    .doc(userId);
+  const participantSnap = await participantRef.get();
+  if (!participantSnap.exists) return;
+
+  const participant = participantSnap.data() || {};
+  const joinedStages = participant.joinedStages || {};
+  const awardedPatch: Record<string, unknown> = {
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+
+  if (joinedStages.sketch && joinedStages.color) {
+    const applied = await adjustTrustScoreOnce({
+      userId,
+      auctionId,
+      delta: 1,
+      reason: "buyer_continued_stage_participation",
+      uniqueKey: `trust_${auctionId}_${userId}_buyer_sketch_to_color`,
+      metadata: {transition: "sketchToColor"},
+    });
+    if (applied) {
+      awardedPatch["trustAwarded.sketchToColor"] = true;
+    }
+  }
+
+  if (joinedStages.color && joinedStages.final) {
+    const applied = await adjustTrustScoreOnce({
+      userId,
+      auctionId,
+      delta: 1,
+      reason: "buyer_continued_stage_participation",
+      uniqueKey: `trust_${auctionId}_${userId}_buyer_color_to_final`,
+      metadata: {transition: "colorToFinal"},
+    });
+    if (applied) {
+      awardedPatch["trustAwarded.colorToFinal"] = true;
+    }
+  }
+
+  if (joinedStages.sketch && joinedStages.color && joinedStages.final) {
+    const applied = await adjustTrustScoreOnce({
+      userId,
+      auctionId,
+      delta: 2,
+      reason: "buyer_continued_stage_participation",
+      uniqueKey: `trust_${auctionId}_${userId}_buyer_all_stages`,
+      metadata: {transition: "allStages"},
+    });
+    if (applied) {
+      awardedPatch["trustAwarded.allStages"] = true;
+    }
+  }
+
+  if (Object.keys(awardedPatch).length > 1) {
+    await participantRef.set(awardedPatch, {merge: true});
+  }
+};
+
 const placeBidForUser = async ({
   uid,
   auctionId,
@@ -873,9 +998,14 @@ const placeBidForUser = async ({
     if (!auctionSnap.exists) {
       throw new HttpsError("not-found", "Auction not found.");
     }
+    const participantRef = auctionRef.collection("participants").doc(uid);
+    const participantSnap = await tx.get(participantRef);
 
     const auction = auctionSnap.data() || {};
     assertAuctionAcceptsBid(auction, uid, amount);
+    const currentStage = isAuctionStage(auction.stage) ?
+      auction.stage :
+      "sketch";
     if (deposit) {
       const latestDepositSnap = await tx.get(deposit.ref);
       const latestDeposit = latestDepositSnap.data() || {};
@@ -910,6 +1040,15 @@ const placeBidForUser = async ({
     }
 
     tx.set(bidRef, bidData);
+    const participantData: Record<string, unknown> = {
+      userId: uid,
+      [`joinedStages.${currentStage}`]: true,
+      lastBidAt: FieldValue.serverTimestamp(),
+    };
+    if (!participantSnap.exists) {
+      participantData.firstBidAt = FieldValue.serverTimestamp();
+    }
+    tx.set(participantRef, participantData, {merge: true});
 
     tx.update(auctionRef, {
       status: "live",
@@ -938,6 +1077,7 @@ const placeBidForUser = async ({
       artworkId: typeof auction.artworkId === "string" ?
         auction.artworkId :
         undefined,
+      stage: currentStage,
       currentBid: amount,
       topBidderId: uid,
       bidCount: nextBidCount,
@@ -960,6 +1100,8 @@ const placeBidForUser = async ({
       message: `${actorName} placed a higher bid on an auction.`,
     });
   }
+
+  await awardBuyerParticipationRewards(auctionId, uid);
 
   return bidResult;
 };
@@ -1085,21 +1227,38 @@ const finalizePaidInvoice = async (
   const winnerId = readOptionalString(invoiceData.buyerId);
   if (auctionId && winnerId) {
     await markLosingDepositsRefundPending(auctionId, winnerId);
+    await adjustTrustScoreOnce({
+      userId: winnerId,
+      auctionId,
+      invoiceId: invoiceRef.id,
+      delta: 5,
+      reason: "auction_winner_paid",
+      uniqueKey: `trust_${auctionId}_${winnerId}_winner_paid`,
+      metadata: {invoiceId: invoiceRef.id},
+    });
   }
 };
 
-const penalizeUnpaidWinner = async (uid: string) => {
-  const userRef = db.collection("users").doc(uid);
-  await db.runTransaction(async (tx) => {
-    const userSnap = await tx.get(userRef);
-    const currentTrust = normalizeTrustScore(userSnap.data()?.trustScore);
-    tx.set(userRef, {
-      "trustScore": Math.max(0, currentTrust - 15),
-      "auctionStats.unpaidWins": FieldValue.increment(1),
-      "auctionStats.depositForfeitedCount": FieldValue.increment(1),
-      "updatedAt": FieldValue.serverTimestamp(),
-    }, {merge: true});
+const penalizeUnpaidWinner = async (
+  uid: string,
+  auctionId: string,
+  invoiceId?: string
+) => {
+  const applied = await adjustTrustScoreOnce({
+    userId: uid,
+    auctionId,
+    invoiceId,
+    delta: -15,
+    reason: "auction_winner_unpaid",
+    uniqueKey: `trust_${auctionId}_${uid}_winner_unpaid`,
+    metadata: {invoiceId},
   });
+  if (!applied) return;
+  await db.collection("users").doc(uid).set({
+    "auctionStats.unpaidWins": FieldValue.increment(1),
+    "auctionStats.depositForfeitedCount": FieldValue.increment(1),
+    "updatedAt": FieldValue.serverTimestamp(),
+  }, {merge: true});
 };
 
 const chooseNextEligibleBid = async (
@@ -1562,6 +1721,31 @@ export const submitAuctionStageProof = onCall(async (request) => {
       status,
     };
   });
+
+  await adjustTrustScoreOnce({
+    userId: uid,
+    auctionId,
+    delta: 1,
+    reason: "artist_stage_proof_submitted",
+    uniqueKey: `trust_${auctionId}_${uid}_artist_proof_${stage}`,
+    metadata: {stage},
+  });
+
+  const proofSnaps = await Promise.all(
+    AUCTION_STAGES.map((proofStage) =>
+      getAuctionStageProofRef(auctionId, proofStage).get()
+    )
+  );
+  if (proofSnaps.every((snap) => snap.exists)) {
+    await adjustTrustScoreOnce({
+      userId: uid,
+      auctionId,
+      delta: 3,
+      reason: "artist_completed_all_stage_proofs",
+      uniqueKey: `trust_${auctionId}_${uid}_artist_all_proofs`,
+      metadata: {stages: AUCTION_STAGES},
+    });
+  }
 
   return proof;
 });
@@ -2064,7 +2248,11 @@ export const handleOverdueAuctionPayments = functions.pubsub
         tx.update(auctionRef, auctionUpdate);
       });
 
-      await penalizeUnpaidWinner(currentWinnerId);
+      await penalizeUnpaidWinner(
+        currentWinnerId,
+        auctionId,
+        currentInvoiceId
+      );
 
       if (nextBid) {
         await createWinnerInvoiceForAuction(auctionId);
