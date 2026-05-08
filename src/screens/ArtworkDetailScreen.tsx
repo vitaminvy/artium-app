@@ -6,6 +6,7 @@ import {
   Alert,
   Animated as RNAnimated,
   FlatList,
+  Image,
   Modal,
   Pressable,
   RefreshControl,
@@ -52,7 +53,7 @@ import ArtworkActionBar from "../domains/artwork/components/ArtworkActionBar";
 import { useAuth } from "../domains/auth/contexts/AuthContext";
 import { createPost } from "../domains/feed/services/feedService";
 import ImageViewing from "react-native-image-viewing";
-import type { Auction, AuctionBid } from "../domains/auction/type";
+import type { Auction, AuctionBid, AuctionStageProof } from "../domains/auction/type";
 import {
   advanceAuctionStage,
   createAuction,
@@ -60,10 +61,14 @@ import {
   demoCloseAuction,
   placeBid,
   prepareBid,
+  submitAuctionStageProof,
   subscribeToArtworkAuction,
   subscribeToAuctionBids,
+  subscribeToAuctionStageProofs,
 } from "../domains/auction/services/auctionService";
 import { functions } from "../configs/firebase";
+import { pickImageFromLibrary } from "../shared/utils/media";
+import { uploadMedia } from "../shared/services/uploadService";
 
 const PAYOS_RETURN_URL_BASE = "artium://payos/return";
 const PAYOS_CANCEL_URL_BASE = "artium://payos/cancel";
@@ -95,6 +100,7 @@ export default function ArtworkDetailScreen() {
   const [headerHeight, setHeaderHeight] = useState(initialHeaderHeight);
   const [auction, setAuction] = useState<Auction | null>(null);
   const [auctionBids, setAuctionBids] = useState<AuctionBid[]>([]);
+  const [auctionProofs, setAuctionProofs] = useState<AuctionStageProof[]>([]);
   const [auctionNow, setAuctionNow] = useState(Date.now());
   const [showBidModal, setShowBidModal] = useState(false);
   const [bidAmount, setBidAmount] = useState("");
@@ -106,6 +112,9 @@ export default function ArtworkDetailScreen() {
   const [startAuctionCurrency, setStartAuctionCurrency] = useState<"VND" | "USD">("USD");
   const [isCreatingAuction, setIsCreatingAuction] = useState(false);
   const [isAdvancingStage, setIsAdvancingStage] = useState(false);
+  const [proofImageUri, setProofImageUri] = useState<string | null>(null);
+  const [proofNote, setProofNote] = useState("");
+  const [isSubmittingProof, setIsSubmittingProof] = useState(false);
   const [isPreparingWinnerInvoice, setIsPreparingWinnerInvoice] = useState(false);
   const [isDemoClosingAuction, setIsDemoClosingAuction] = useState(false);
   const [depositPrompt, setDepositPrompt] = useState<{
@@ -228,6 +237,19 @@ export default function ArtworkDetailScreen() {
   }, [auction?.id]);
 
   useEffect(() => {
+    if (!auction?.id) {
+      setAuctionProofs([]);
+      return;
+    }
+
+    return subscribeToAuctionStageProofs(
+      auction.id,
+      setAuctionProofs,
+      (err) => console.warn("Failed to load stage proofs:", err)
+    );
+  }, [auction?.id]);
+
+  useEffect(() => {
     if (!auction) return;
 
     const timerId = setInterval(() => {
@@ -301,6 +323,9 @@ export default function ArtworkDetailScreen() {
     isAuctionWinner &&
     isAuctionEnded &&
     auction.bidCount > 0;
+  const currentStageProof = auction
+    ? auctionProofs.find((proof) => proof.stage === auction.stage)
+    : undefined;
   const canAdvanceAuctionStage =
     !!auction &&
     isAuctionOwner &&
@@ -643,6 +668,13 @@ export default function ArtworkDetailScreen() {
 
   const handleAdvanceAuctionStage = useCallback(async () => {
     if (!auction || isAdvancingStage) return;
+    if (!currentStageProof) {
+      Alert.alert(
+        "Stage proof required",
+        "Stage proof required before moving to the next stage."
+      );
+      return;
+    }
     if (!canAdvanceAuctionStage) {
       Alert.alert("Stage locked", "This auction cannot move to another stage.");
       return;
@@ -660,7 +692,48 @@ export default function ArtworkDetailScreen() {
     } finally {
       setIsAdvancingStage(false);
     }
-  }, [auction, canAdvanceAuctionStage, isAdvancingStage]);
+  }, [auction, canAdvanceAuctionStage, currentStageProof, isAdvancingStage]);
+
+  const handlePickProofImage = useCallback(async () => {
+    const uri = await pickImageFromLibrary();
+    if (uri) setProofImageUri(uri);
+  }, []);
+
+  const handleSubmitStageProof = useCallback(async () => {
+    if (!auction || isSubmittingProof) return;
+    if (!proofImageUri) {
+      Alert.alert("Proof image required", "Please choose an image first.");
+      return;
+    }
+
+    try {
+      setIsSubmittingProof(true);
+      const imageUrl = await uploadMedia(
+        proofImageUri,
+        `auction-stage-proofs/${auction.id}/${auction.stage}`
+      );
+      await submitAuctionStageProof({
+        auctionId: auction.id,
+        stage: auction.stage,
+        imageUrl,
+        note: proofNote.trim() || undefined,
+      });
+      setProofImageUri(null);
+      setProofNote("");
+      Alert.alert(
+        "Proof submitted",
+        `Proof submitted for ${formatAuctionStage(auction.stage)}.`
+      );
+    } catch (err: any) {
+      console.error("Failed to submit stage proof:", err);
+      Alert.alert(
+        "Could not submit proof",
+        err?.message || "Please refresh and try again."
+      );
+    } finally {
+      setIsSubmittingProof(false);
+    }
+  }, [auction, isSubmittingProof, proofImageUri, proofNote]);
 
   const handleDemoCloseAuction = useCallback(async () => {
     if (!auction || isDemoClosingAuction) return;
@@ -894,6 +967,7 @@ export default function ArtworkDetailScreen() {
             <AuctionPanel
               auction={auction}
               bids={auctionBids}
+              proofs={auctionProofs}
               now={auctionNow}
               currentUserId={currentUser?.uid}
               canPlaceBid={canPlaceBid}
@@ -903,8 +977,14 @@ export default function ArtworkDetailScreen() {
               canDemoClose={canDemoCloseAuction}
               nextBidAmount={nextBidAmount}
               advancingStage={isAdvancingStage}
+              submittingProof={isSubmittingProof}
               preparingWinnerInvoice={isPreparingWinnerInvoice}
               demoClosing={isDemoClosingAuction}
+              proofImageUri={proofImageUri}
+              proofNote={proofNote}
+              onPickProofImage={handlePickProofImage}
+              onChangeProofNote={setProofNote}
+              onSubmitProof={handleSubmitStageProof}
               onPlaceBid={handleOpenBidModal}
               onOpenWinnerInvoice={handleOpenWinnerInvoice}
               onPrepareWinnerInvoice={handlePrepareWinnerInvoice}
@@ -1219,6 +1299,7 @@ export default function ArtworkDetailScreen() {
 function AuctionPanel({
   auction,
   bids,
+  proofs,
   now,
   currentUserId,
   canPlaceBid,
@@ -1228,8 +1309,14 @@ function AuctionPanel({
   canDemoClose,
   nextBidAmount,
   advancingStage,
+  submittingProof,
   preparingWinnerInvoice,
   demoClosing,
+  proofImageUri,
+  proofNote,
+  onPickProofImage,
+  onChangeProofNote,
+  onSubmitProof,
   onPlaceBid,
   onOpenWinnerInvoice,
   onPrepareWinnerInvoice,
@@ -1238,6 +1325,7 @@ function AuctionPanel({
 }: {
   auction: Auction;
   bids: AuctionBid[];
+  proofs: AuctionStageProof[];
   now: number;
   currentUserId?: string;
   canPlaceBid: boolean;
@@ -1247,8 +1335,14 @@ function AuctionPanel({
   canDemoClose: boolean;
   nextBidAmount: number;
   advancingStage: boolean;
+  submittingProof: boolean;
   preparingWinnerInvoice: boolean;
   demoClosing: boolean;
+  proofImageUri: string | null;
+  proofNote: string;
+  onPickProofImage: () => void;
+  onChangeProofNote: (value: string) => void;
+  onSubmitProof: () => void;
   onPlaceBid: () => void;
   onOpenWinnerInvoice: () => void;
   onPrepareWinnerInvoice: () => void;
@@ -1272,6 +1366,9 @@ function AuctionPanel({
           : isBeforeStart
             ? "Scheduled"
             : "Live";
+  const isArtist = auction.artistId === currentUserId;
+  const currentProof = proofs.find((proof) => proof.stage === auction.stage);
+  const canSubmitCurrentProof = isArtist && !["settled", "cancelled"].includes(auction.status);
 
   return (
     <View className="mx-4 mb-4 rounded-3xl border border-slate-200 bg-white p-4">
@@ -1345,6 +1442,96 @@ function AuctionPanel({
         })}
       </View>
 
+      <View className="mt-5 rounded-2xl bg-slate-50 p-3">
+        <Text className="text-sm font-bold text-slate-900">Stage proof</Text>
+        <Text className="mt-1 text-xs text-slate-500">
+          Stage proof required before moving to the next stage.
+        </Text>
+
+        <View className="mt-3 gap-3">
+          {(["sketch", "color", "final"] as const).map((stage) => {
+            const proof = proofs.find((item) => item.stage === stage);
+            return (
+              <View key={stage} className="rounded-2xl bg-white p-3">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-sm font-semibold text-slate-900">
+                    {formatAuctionStage(stage)}
+                  </Text>
+                  <Text className="text-xs font-semibold text-slate-500">
+                    {proof ? `Proof submitted for ${stage}.` : "Pending"}
+                  </Text>
+                </View>
+                {proof?.imageUrl ? (
+                  <Image
+                    source={{ uri: proof.imageUrl }}
+                    className="mt-3 h-36 w-full rounded-2xl bg-slate-100"
+                    resizeMode="cover"
+                  />
+                ) : null}
+                {proof?.note ? (
+                  <Text className="mt-2 text-xs text-slate-600">{proof.note}</Text>
+                ) : null}
+              </View>
+            );
+          })}
+        </View>
+
+        {canSubmitCurrentProof ? (
+          <View className="mt-3 rounded-2xl border border-dashed border-slate-300 bg-white p-3">
+            <Text className="text-sm font-semibold text-slate-900">
+              Current stage: {formatAuctionStage(auction.stage)}
+            </Text>
+            {proofImageUri ? (
+              <Image
+                source={{ uri: proofImageUri }}
+                className="mt-3 h-40 w-full rounded-2xl bg-slate-100"
+                resizeMode="cover"
+              />
+            ) : null}
+            <Pressable
+              onPress={onPickProofImage}
+              disabled={submittingProof}
+              className="mt-3 flex-row items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3"
+            >
+              <Ionicons name="image-outline" size={18} color="#ffffff" />
+              <Text className="font-bold text-white">
+                {proofImageUri ? "Change proof image" : "Choose proof image"}
+              </Text>
+            </Pressable>
+            <TextInput
+              value={proofNote}
+              onChangeText={onChangeProofNote}
+              placeholder="Optional note"
+              placeholderTextColor="#94A3B8"
+              multiline
+              editable={!submittingProof}
+              className="mt-3 min-h-[72px] rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-900"
+            />
+            <Pressable
+              onPress={onSubmitProof}
+              disabled={submittingProof || !proofImageUri}
+              className={`mt-3 flex-row items-center justify-center gap-2 rounded-2xl px-4 py-3 ${
+                submittingProof || !proofImageUri ? "bg-slate-300" : "bg-[#0B73FF]"
+              }`}
+            >
+              {submittingProof ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Ionicons name="cloud-upload-outline" size={18} color="#ffffff" />
+              )}
+              <Text className="font-bold text-white">
+                {submittingProof ? "Submitting..." : "Submit proof"}
+              </Text>
+            </Pressable>
+            {currentProof ? (
+              <Text className="mt-2 text-xs font-semibold text-emerald-600">
+                Proof submitted for {auction.stage}.
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
+
       {canOpenWinnerInvoice || canPrepareWinnerInvoice ? (
         <Pressable
           onPress={
@@ -1390,9 +1577,9 @@ function AuctionPanel({
       {canAdvanceStage ? (
         <Pressable
           onPress={onAdvanceStage}
-          disabled={advancingStage}
+          disabled={advancingStage || !currentProof}
           className={`mt-3 flex-row items-center justify-center gap-2 rounded-2xl px-4 py-3 ${
-            advancingStage ? "bg-slate-200" : "bg-slate-900"
+            advancingStage || !currentProof ? "bg-slate-200" : "bg-slate-900"
           }`}
         >
           {advancingStage ? (
