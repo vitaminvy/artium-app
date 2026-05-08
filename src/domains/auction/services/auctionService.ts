@@ -17,6 +17,7 @@ import type {
   Auction,
   AuctionBid,
   AuctionDeposit,
+  AuctionStageProof,
   AuctionStage,
   AuctionStatus,
   DepositStatus,
@@ -24,6 +25,7 @@ import type {
 
 const AUCTIONS_COLLECTION = "auctions";
 const BIDS_COLLECTION = "bids";
+const STAGE_PROOFS_COLLECTION = "stageProofs";
 
 export type CreateAuctionInput = {
   artworkId: string;
@@ -78,6 +80,14 @@ export type AdvanceAuctionStageInput = {
 export type AdvanceAuctionStageResult = {
   auctionId: string;
   stage: AuctionStage;
+};
+
+export type SubmitAuctionStageProofInput = {
+  auctionId: string;
+  stage: AuctionStage;
+  imageUrl: string;
+  storagePath?: string;
+  note?: string;
 };
 
 export type CreateWinnerInvoiceInput = {
@@ -149,6 +159,23 @@ const mapBid = (id: string, auctionId: string, data: any): AuctionBid => ({
   depositAmount:
     typeof data.depositAmount === "number" ? data.depositAmount : undefined,
   depositStatus: data.depositStatus,
+});
+
+const mapStageProof = (
+  id: string,
+  auctionId: string,
+  data: any
+): AuctionStageProof => ({
+  id: id as AuctionStage,
+  auctionId,
+  artistId: data.artistId ?? "",
+  stage: data.stage ?? id,
+  imageUrl: data.imageUrl ?? "",
+  storagePath: data.storagePath,
+  note: data.note,
+  status: data.status ?? "submitted",
+  createdAt: toIsoString(data.createdAt),
+  updatedAt: toIsoString(data.updatedAt),
 });
 
 const isCurrentArtworkAuction = (auction: Auction) => {
@@ -263,6 +290,33 @@ export const subscribeToAuctionBids = (
   );
 };
 
+export const subscribeToAuctionStageProofs = (
+  auctionId: string,
+  onUpdate: (proofs: AuctionStageProof[]) => void,
+  onError?: (error: Error) => void
+): Unsubscribe => {
+  const proofsRef = collection(
+    firestore,
+    AUCTIONS_COLLECTION,
+    auctionId,
+    STAGE_PROOFS_COLLECTION
+  );
+
+  return onSnapshot(
+    proofsRef,
+    (snapshot) => {
+      const proofs = snapshot.docs
+        .map((proofDoc) => mapStageProof(proofDoc.id, auctionId, proofDoc.data()))
+        .sort((a, b) => stageOrder(a.stage) - stageOrder(b.stage));
+      onUpdate(proofs);
+    },
+    (error) => {
+      console.error("Failed to subscribe to auction stage proofs:", error);
+      onError?.(error);
+    }
+  );
+};
+
 // Tao auction qua Cloud Function de server kiem tra artwork co thuoc artist hay khong.
 export const createAuction = async (
   input: CreateAuctionInput
@@ -301,6 +355,18 @@ export const advanceAuctionStage = async (
       "advanceAuctionStage"
     );
   const result = await advanceStageFn(input);
+  return result.data;
+};
+
+export const submitAuctionStageProof = async (
+  input: SubmitAuctionStageProofInput
+): Promise<AuctionStageProof> => {
+  const submitProofFn =
+    httpsCallable<SubmitAuctionStageProofInput, AuctionStageProof>(
+      functions,
+      "submitAuctionStageProof"
+    );
+  const result = await submitProofFn(input);
   return result.data;
 };
 
@@ -353,3 +419,7 @@ export const demoMarkDepositRefunded = async (
 };
 
 export type { AuctionDeposit, DepositStatus };
+
+const stageOrder = (stage: AuctionStage) => {
+  return ["sketch", "color", "final"].indexOf(stage);
+};

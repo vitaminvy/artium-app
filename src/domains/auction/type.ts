@@ -54,6 +54,19 @@ export interface AuctionBid {
   depositStatus?: "paid" | "not_required";
 }
 
+export interface AuctionStageProof {
+  id: AuctionStage;
+  auctionId: string;
+  artistId: string;
+  stage: AuctionStage;
+  imageUrl: string;
+  storagePath?: string;
+  note?: string;
+  status: "submitted";
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export type DepositStatus =
   | "pending"
   | "paid"
