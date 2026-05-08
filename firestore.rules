@@ -104,6 +104,11 @@
         allow create, update, delete: if false;
       }
 
+      match /vouchers/{voucherId} {
+        allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow create, update, delete: if false;
+      }
+
       match /auctionDeposits/{depositId} {
         allow read: if isSignedIn() && (
           resource.data.bidderId == request.auth.uid ||
