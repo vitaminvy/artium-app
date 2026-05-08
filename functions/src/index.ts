@@ -232,6 +232,8 @@ type WinnerInvoiceResult = {
   topBidderId?: string;
 };
 
+type AuctionStageProofStatus = "submitted";
+
 type PayosLinkResult = {
   checkoutUrl: string;
   orderCode: number;
@@ -294,6 +296,31 @@ const normalizeTrustScore = (value: unknown) => {
   const score = Number(value);
   if (!Number.isFinite(score)) return 100;
   return Math.max(0, Math.min(100, score));
+};
+
+const getAuctionStageProofRef = (auctionId: string, stage: AuctionStage) => {
+  return db.collection("auctions")
+    .doc(auctionId)
+    .collection("stageProofs")
+    .doc(stage);
+};
+
+const requireFinalProofForAuctionClose = async (
+  auctionId: string,
+  auction: admin.firestore.DocumentData
+) => {
+  const stage = isAuctionStage(auction.stage) ? auction.stage : "sketch";
+  const hasWinner =
+    !!readOptionalString(auction.topBidderId) &&
+    Number(auction.bidCount ?? 0) > 0;
+  if (stage !== "final" || !hasWinner) return;
+  const proofSnap = await getAuctionStageProofRef(auctionId, "final").get();
+  if (!proofSnap.exists) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Please upload proof for the current stage before advancing."
+    );
+  }
 };
 
 const getUserTrustScore = async (uid: string): Promise<number> => {
@@ -1125,6 +1152,7 @@ const createWinnerInvoiceForAuction = async (
       "Auction winning amount is invalid."
     );
   }
+  await requireFinalProofForAuctionClose(auctionId, auction);
 
   const [artworkSnap, seller, buyer] = await Promise.all([
     db.collection("artworks").doc(artworkId).get(),
@@ -1283,6 +1311,21 @@ const closeAuctionNow = async (
     const hasWinner =
       !!readOptionalString(auction.topBidderId) &&
       Number(auction.bidCount ?? 0) > 0;
+    const currentStage = isAuctionStage(auction.stage) ?
+      auction.stage :
+      "sketch";
+    if (hasWinner && currentStage === "final") {
+      const proofSnap = await tx.get(getAuctionStageProofRef(
+        auctionId,
+        "final"
+      ));
+      if (!proofSnap.exists) {
+        throw new HttpsError(
+          "failed-precondition",
+          "Please upload proof for the current stage before advancing."
+        );
+      }
+    }
 
     tx.update(auctionRef, {
       status: "ended",
@@ -1434,6 +1477,93 @@ export const createAuction = onCall(async (request) => {
     auctionId: auctionRef.id,
     status,
   };
+});
+
+export const submitAuctionStageProof = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Please sign in first.");
+  }
+
+  const auctionId = readRequiredString(request.data?.auctionId, "auctionId");
+  const stage = request.data?.stage;
+  if (!isAuctionStage(stage)) {
+    throw new HttpsError(
+      "invalid-argument",
+      "stage must be sketch, color, or final."
+    );
+  }
+  const imageUrl = readRequiredString(request.data?.imageUrl, "imageUrl");
+  const storagePath = readOptionalString(request.data?.storagePath);
+  const note = readOptionalString(request.data?.note);
+  const auctionRef = db.collection("auctions").doc(auctionId);
+  const proofRef = getAuctionStageProofRef(auctionId, stage);
+
+  const proof = await db.runTransaction(async (tx) => {
+    const auctionSnap = await tx.get(auctionRef);
+    if (!auctionSnap.exists) {
+      throw new HttpsError("not-found", "Auction not found.");
+    }
+
+    const auction = auctionSnap.data() || {};
+    if (auction.artistId !== uid) {
+      throw new HttpsError(
+        "permission-denied",
+        "Only the auction artist can submit stage proof."
+      );
+    }
+    const currentStage = isAuctionStage(auction.stage) ?
+      auction.stage :
+      "sketch";
+    if (stage !== currentStage) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Proof can only be submitted for the current auction stage."
+      );
+    }
+
+    const existingProof = await tx.get(proofRef);
+    const status: AuctionStageProofStatus = "submitted";
+    const now = FieldValue.serverTimestamp();
+    const proofData: Record<string, unknown> = {
+      auctionId,
+      artistId: uid,
+      stage,
+      imageUrl,
+      status,
+      updatedAt: now,
+    };
+    if (!existingProof.exists) {
+      proofData.createdAt = now;
+    }
+    if (storagePath) proofData.storagePath = storagePath;
+    if (note) proofData.note = note;
+
+    tx.set(proofRef, proofData, {merge: true});
+    tx.set(auctionRef, {
+      stageProofs: {
+        [stage]: {
+          imageUrl,
+          status,
+          submittedAt: now,
+        },
+      },
+      updatedAt: now,
+    }, {merge: true});
+
+    return {
+      id: stage,
+      auctionId,
+      artistId: uid,
+      stage,
+      imageUrl,
+      storagePath,
+      note,
+      status,
+    };
+  });
+
+  return proof;
 });
 
 export const prepareBid = onCall(
@@ -1676,6 +1806,16 @@ export const advanceAuctionStage = onCall(async (request) => {
         "Auction is already at final stage."
       );
     }
+    const proofSnap = await tx.get(getAuctionStageProofRef(
+      auctionId,
+      currentStage
+    ));
+    if (!proofSnap.exists) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Please upload proof for the current stage before advancing."
+      );
+    }
 
     tx.update(auctionRef, {
       stage: nextStage,
@@ -1738,10 +1878,25 @@ export const closeExpiredAuctions = functions.pubsub
           const artistId = typeof latest.artistId === "string" ?
             latest.artistId :
             undefined;
+          const currentStage = isAuctionStage(latest.stage) ?
+            latest.stage :
+            "sketch";
           const artworkRef = db.collection("artworks").doc(artworkId);
           const artworkSnap = hasBids ? null : await tx.get(artworkRef);
 
           if (hasWinner) {
+            if (currentStage === "final") {
+              const proofSnap = await tx.get(getAuctionStageProofRef(
+                auctionId,
+                "final"
+              ));
+              if (!proofSnap.exists) {
+                throw new HttpsError(
+                  "failed-precondition",
+                  "Please upload proof for the current stage before advancing."
+                );
+              }
+            }
             tx.update(auctionRef, {
               status: "ended",
               endedAt: FieldValue.serverTimestamp(),
