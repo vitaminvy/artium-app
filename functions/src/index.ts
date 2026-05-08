@@ -260,6 +260,25 @@ type AdjustTrustScoreInput = {
   metadata?: Record<string, unknown>;
 };
 
+type VoucherSource =
+  | "auction_participation"
+  | "auction_winner"
+  | "manual";
+
+type VoucherType = "percentage" | "fixed";
+
+type IssueVoucherInput = {
+  ownerId: string;
+  auctionId?: string;
+  invoiceId?: string;
+  source: VoucherSource;
+  type: VoucherType;
+  value: number;
+  maxDiscountAmount?: number;
+  expiresInDays: number;
+  uniqueKey: string;
+};
+
 const AUCTION_STAGES: AuctionStage[] = ["sketch", "color", "final"];
 const AUCTION_CURRENCIES = ["VND", "USD"];
 const TRUST_SCORE_DEPOSIT_THRESHOLD = 80;
@@ -355,6 +374,59 @@ const adjustTrustScoreOnce = async ({
       "auctionStats.trustScoreDelta": FieldValue.increment(delta),
       "updatedAt": FieldValue.serverTimestamp(),
     }, {merge: true});
+    return true;
+  });
+};
+
+const buildVoucherCode = (source: VoucherSource, uniqueKey: string) => {
+  const prefix = source === "auction_winner" ?
+    "AUCT-WINNER" :
+    source === "auction_participation" ?
+      "AUCT-THANKS" :
+      "AUCT-MANUAL";
+  const suffix = buildSafeDocId(uniqueKey)
+    .slice(-4)
+    .toUpperCase()
+    .padStart(4, "X");
+  return `${prefix}-${suffix}`;
+};
+
+const issueVoucherOnce = async ({
+  ownerId,
+  auctionId,
+  invoiceId,
+  source,
+  type,
+  value,
+  maxDiscountAmount,
+  expiresInDays,
+  uniqueKey,
+}: IssueVoucherInput) => {
+  const voucherRef = db.collection("vouchers").doc(buildSafeDocId(uniqueKey));
+  const expiresAt = admin.firestore.Timestamp.fromDate(
+    new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000)
+  );
+
+  return db.runTransaction(async (tx) => {
+    const voucherSnap = await tx.get(voucherRef);
+    if (voucherSnap.exists) return false;
+
+    const voucherData: Record<string, unknown> = {
+      code: buildVoucherCode(source, uniqueKey),
+      type,
+      value,
+      ownerId,
+      source,
+      status: "active",
+      auctionId,
+      invoiceId,
+      issuedAt: FieldValue.serverTimestamp(),
+      expiresAt,
+    };
+    if (maxDiscountAmount !== undefined) {
+      voucherData.maxDiscountAmount = maxDiscountAmount;
+    }
+    tx.set(voucherRef, voucherData);
     return true;
   });
 };
@@ -640,6 +712,63 @@ const markAllAuctionDepositsRefundPending = async (
     });
   });
   await batch.commit();
+};
+
+const issueSettledAuctionVouchers = async (
+  auctionId: string,
+  winnerId: string,
+  invoiceId: string
+) => {
+  await issueVoucherOnce({
+    ownerId: winnerId,
+    auctionId,
+    invoiceId,
+    source: "auction_winner",
+    type: "percentage",
+    value: 3,
+    expiresInDays: 30,
+    uniqueKey: `voucher_${auctionId}_${winnerId}_winner`,
+  });
+
+  const participantsSnap = await db.collection("auctions")
+    .doc(auctionId)
+    .collection("participants")
+    .get();
+  const participantIds = new Set<string>();
+  participantsSnap.docs.forEach((docSnap) => {
+    const participant = docSnap.data();
+    const userId = readOptionalString(participant.userId) || docSnap.id;
+    if (userId && userId !== winnerId) {
+      participantIds.add(userId);
+    }
+  });
+
+  if (participantIds.size === 0) {
+    const bidsSnap = await db.collection("auctions")
+      .doc(auctionId)
+      .collection("bids")
+      .get();
+    bidsSnap.docs.forEach((docSnap) => {
+      const bidderId = readOptionalString(docSnap.data().bidderId);
+      if (bidderId && bidderId !== winnerId) {
+        participantIds.add(bidderId);
+      }
+    });
+  }
+
+  await Promise.all(Array.from(participantIds).map((ownerId) =>
+    issueVoucherOnce({
+      ownerId,
+      auctionId,
+      invoiceId,
+      source: "auction_participation",
+      type: "percentage",
+      value: 5,
+      maxDiscountAmount: 50000,
+      expiresInDays: 30,
+      uniqueKey: `voucher_${auctionId}_${ownerId}_participation`,
+    })
+  ));
 };
 
 const getVerifiedPayosStatus = async (
@@ -1236,6 +1365,7 @@ const finalizePaidInvoice = async (
       uniqueKey: `trust_${auctionId}_${winnerId}_winner_paid`,
       metadata: {invoiceId: invoiceRef.id},
     });
+    await issueSettledAuctionVouchers(auctionId, winnerId, invoiceRef.id);
   }
 };
 

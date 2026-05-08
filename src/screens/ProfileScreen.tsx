@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { View, ScrollView, RefreshControl } from "react-native";
+import { View, ScrollView, RefreshControl, Text } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import ProfileHeader from "../domains/user/components/profile/ProfileHeader";
@@ -27,6 +27,9 @@ import { navigate as rootNavigate } from "../app/navigation/navigationRef";
 import { useProfileCompletion } from "../domains/user/contexts/ProfileCompletionContext";
 import { useLogout } from "../domains/auth/hooks/useLogout";
 import { LogoutConfirmModal } from "../domains/auth/components/LogoutConfirmModal";
+import { useAuth } from "../domains/auth/contexts/AuthContext";
+import { subscribeToUserVouchers } from "../domains/vouchers/services/voucherService";
+import type { Voucher } from "../domains/vouchers/types";
 
 type NavigationProp = NativeStackNavigationProp<
   HomeStackParamList,
@@ -88,8 +91,70 @@ const ProfileSkeleton = () => (
   </View>
 );
 
+const formatVoucherValue = (voucher: Voucher) => {
+  if (voucher.type === "percentage") return `${voucher.value}% off`;
+  const currency = voucher.currency || "VND";
+  return `${voucher.value.toLocaleString()} ${currency} off`;
+};
+
+const formatVoucherSource = (source: Voucher["source"]) => {
+  if (source === "auction_winner") return "Auction winner";
+  if (source === "auction_participation") return "Auction participation";
+  return "Manual";
+};
+
+const formatVoucherExpiry = (expiresAt?: number) => {
+  if (!expiresAt) return "No expiry";
+  return new Date(expiresAt).toLocaleDateString();
+};
+
+function MyVouchersSection({ vouchers }: { vouchers: Voucher[] }) {
+  return (
+    <View className="px-4 pb-6">
+      <View className="rounded-2xl border border-slate-200 bg-white p-4">
+        <View className="flex-row items-center justify-between">
+          <Text className="text-base font-bold text-slate-900">My vouchers</Text>
+          <Text className="text-xs font-semibold text-slate-500">
+            {vouchers.length} active
+          </Text>
+        </View>
+        <View className="mt-3 gap-2">
+          {vouchers.length ? (
+            vouchers.slice(0, 3).map((voucher) => (
+              <View
+                key={voucher.id}
+                className="rounded-2xl bg-slate-50 px-3 py-3"
+              >
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-sm font-bold text-slate-900">
+                    {voucher.code}
+                  </Text>
+                  <Text className="text-xs font-bold uppercase text-emerald-600">
+                    {voucher.status}
+                  </Text>
+                </View>
+                <Text className="mt-1 text-sm font-semibold text-[#0B73FF]">
+                  {formatVoucherValue(voucher)}
+                </Text>
+                <Text className="mt-1 text-xs text-slate-500">
+                  {formatVoucherSource(voucher.source)} · Expires {formatVoucherExpiry(voucher.expiresAt)}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <Text className="rounded-2xl bg-slate-50 px-3 py-4 text-sm text-slate-500">
+              No active vouchers yet.
+            </Text>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function ProfileScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const { currentUser } = useAuth();
   const { profile, tab, setTab, isLoading, refreshProfile } = useProfile();
   const { loading: profileStatusLoading, profileCompleted, promptDismissed } =
     useProfileCompletion();
@@ -105,6 +170,7 @@ export default function ProfileScreen() {
     onCancelLogout,
   } = useLogout();
   const [avatarLoaded, setAvatarLoaded] = React.useState(false);
+  const [vouchers, setVouchers] = React.useState<Voucher[]>([]);
 
   // Fetch owner data for navigation and display
   const { moments, refresh: refreshMoments } = useOwnerMoments();
@@ -257,6 +323,18 @@ export default function ProfileScreen() {
     setAvatarLoaded(false);
   }, [isLoading, profile.user.avatarUri]);
 
+  React.useEffect(() => {
+    if (!currentUser?.uid) {
+      setVouchers([]);
+      return;
+    }
+    return subscribeToUserVouchers(
+      currentUser.uid,
+      setVouchers,
+      (err) => console.warn("Failed to load vouchers", err)
+    );
+  }, [currentUser?.uid]);
+
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -299,6 +377,7 @@ export default function ProfileScreen() {
               onPressEdit={openEditProfile}
               onPressShare={handleShare}
             />
+            <MyVouchersSection vouchers={vouchers} />
             <ProfileTabBar tab={tab} onChange={setTab} />
 
             <View className="px-1 pb-4">
