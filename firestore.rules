@@ -84,6 +84,11 @@
           allow read: if true;
           allow create, update, delete: if false;
         }
+
+        match /stageProofs/{proofId} {
+          allow read: if true;
+          allow create, update, delete: if false;
+        }
       }
 
       match /auctionDeposits/{depositId} {
