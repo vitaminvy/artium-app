@@ -19,6 +19,7 @@ import { functions } from "../../configs/firebase";
 
 import InboxScreen from "../../screens/InboxScreen";
 import ChatScreen from "../../screens/ChatScreen";
+import ChatWithAIScreen from "../../screens/ChatWithAIScreen";
 import ArtViewARScreen from "../../screens/ArtViewARScreen";
 
 type AppStackParamList = {
@@ -28,7 +29,8 @@ type AppStackParamList = {
   Upload: undefined;
   Notifications: undefined;
   Inbox: undefined;
-  Chat: { chatId: string; otherUserName?: string };
+  Chat: { chatId: string; otherUserName?: string; otherUserAvatar?: string };
+  ChatWithAI: undefined;
   ArtViewAR: {
     artworkId: string;
     title: string;
@@ -85,6 +87,11 @@ function AppStack() {
       <Stack.Screen
         name="Chat"
         component={ChatScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ChatWithAI"
+        component={ChatWithAIScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

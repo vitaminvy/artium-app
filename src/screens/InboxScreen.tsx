@@ -38,6 +38,7 @@ interface SearchUser {
 
 type InboxNavigationProp = NativeStackNavigationProp<{
   Chat: { chatId: string; otherUserName?: string; otherUserAvatar?: string };
+  ChatWithAI: undefined;
 }>;
 
 export default function InboxScreen() {
@@ -349,6 +350,26 @@ export default function InboxScreen() {
           ) : (
             // Inbox & Following
             <>
+              <View className="px-4 pb-3">
+                <Pressable
+                  onPress={() => navigation.navigate("ChatWithAI")}
+                  className="flex-row items-center rounded-3xl border border-lime-200 bg-lime-50 px-4 py-3 active:bg-lime-100"
+                >
+                  <View className="h-12 w-12 items-center justify-center rounded-full bg-lime-200">
+                    <Ionicons name="sparkles" size={22} color="#0F172A" />
+                  </View>
+                  <View className="ml-3 flex-1">
+                    <Text className="text-base font-extrabold text-slate-900">
+                      Artium AI
+                    </Text>
+                    <Text className="mt-1 text-sm font-medium text-slate-600">
+                      Chat with AI
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#0F172A" />
+                </Pressable>
+              </View>
+
               <View className="border-b border-slate-100">
                 <View className="px-4 pt-2 pb-1">
                   <Text className="text-[11px] font-semibold uppercase tracking-[1px] text-slate-400">

@@ -20,6 +20,8 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera to take photos and videos for your posts.",
+        "NSLocalNetworkUsageDescription": "Allow $(PRODUCT_NAME) to discover the local development server while debugging.",
+        "NSBonjourServices": ["_expo._tcp", "_react-native-metro._tcp"],
         "NSPhotoLibraryUsageDescription": "The app accesses your photos to let you share them with your friends and upload artwork."
       }
     },
@@ -46,6 +48,15 @@
       "expo-secure-store",
       "expo-video",
       "expo-camera",
+      [
+        "@reactvision/react-viro",
+        {
+          "android": {
+            "xRMode": ["AR"]
+          },
+          "provider": "none"
+        }
+      ],
       [
         "expo-image-picker",
         {
