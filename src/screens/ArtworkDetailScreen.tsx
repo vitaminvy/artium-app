@@ -73,6 +73,16 @@ import { uploadMedia } from "../shared/services/uploadService";
 const PAYOS_RETURN_URL_BASE = "artium://payos/return";
 const PAYOS_CANCEL_URL_BASE = "artium://payos/cancel";
 
+type BidDepositPrompt = {
+  depositId: string;
+  paymentInvoiceId: string;
+  checkoutUrl: string;
+  amount: number;
+  depositAmount: number;
+  trustScore: number;
+  threshold: number;
+};
+
 export default function ArtworkDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -117,15 +127,7 @@ export default function ArtworkDetailScreen() {
   const [isSubmittingProof, setIsSubmittingProof] = useState(false);
   const [isPreparingWinnerInvoice, setIsPreparingWinnerInvoice] = useState(false);
   const [isDemoClosingAuction, setIsDemoClosingAuction] = useState(false);
-  const [depositPrompt, setDepositPrompt] = useState<{
-    depositId: string;
-    paymentInvoiceId: string;
-    checkoutUrl: string;
-    amount: number;
-    depositAmount: number;
-    trustScore: number;
-    threshold: number;
-  } | null>(null);
+  const [depositPrompt, setDepositPrompt] = useState<BidDepositPrompt | null>(null);
   const [isPayingDeposit, setIsPayingDeposit] = useState(false);
 
   // Image viewer state
@@ -778,6 +780,47 @@ export default function ArtworkDetailScreen() {
     setShowBidModal(true);
   }, [auction, canPlaceBid, currentUser, nextBidAmount]);
 
+  const openDepositCheckout = useCallback(async (prompt: BidDepositPrompt) => {
+    try {
+      setIsPayingDeposit(true);
+      const authResult = await WebBrowser.openAuthSessionAsync(
+        prompt.checkoutUrl,
+        PAYOS_RETURN_URL_BASE
+      );
+      if (authResult.type === "success") {
+        const returnedUrl = authResult.url || "";
+        if (returnedUrl.includes("payos/cancel")) {
+          setDepositPrompt(prompt);
+          return;
+        }
+        const finalizePayosPayment = httpsCallable(
+          functions,
+          "finalizePayosPayment"
+        );
+        await finalizePayosPayment({
+          invoiceId: prompt.paymentInvoiceId,
+        });
+        setDepositPrompt(null);
+        Alert.alert(
+          "Deposit paid",
+          "Your bid will appear once the payment is verified."
+        );
+        return;
+      }
+
+      setDepositPrompt(prompt);
+    } catch (err: any) {
+      console.error("Failed to pay bid deposit:", err);
+      setDepositPrompt(prompt);
+      Alert.alert(
+        "Deposit payment failed",
+        err?.message || "Please try again."
+      );
+    } finally {
+      setIsPayingDeposit(false);
+    }
+  }, []);
+
   const handleSubmitBid = useCallback(async () => {
     if (!auction || isPlacingBid) return;
     const amount = Number(bidAmount.replace(/[^0-9.]/g, ""));
@@ -807,7 +850,7 @@ export default function ArtworkDetailScreen() {
         ) {
           throw new Error("Missing deposit checkout details.");
         }
-        setDepositPrompt({
+        const prompt: BidDepositPrompt = {
           depositId: bidPreparation.depositId,
           paymentInvoiceId: bidPreparation.paymentInvoiceId,
           checkoutUrl: bidPreparation.checkoutUrl,
@@ -815,8 +858,10 @@ export default function ArtworkDetailScreen() {
           depositAmount: bidPreparation.depositAmount,
           trustScore: bidPreparation.trustScore,
           threshold: bidPreparation.threshold,
-        });
+        };
+        setDepositPrompt(prompt);
         setShowBidModal(false);
+        await openDepositCheckout(prompt);
       } else {
         await placeBid({ auctionId: auction.id, amount });
         setShowBidModal(false);
@@ -830,45 +875,12 @@ export default function ArtworkDetailScreen() {
     } finally {
       setIsPlacingBid(false);
     }
-  }, [auction, bidAmount, isPlacingBid, nextBidAmount]);
+  }, [auction, bidAmount, isPlacingBid, nextBidAmount, openDepositCheckout]);
 
   const handlePayDeposit = useCallback(async () => {
     if (!depositPrompt || isPayingDeposit) return;
-
-    try {
-      setIsPayingDeposit(true);
-      const authResult = await WebBrowser.openAuthSessionAsync(
-        depositPrompt.checkoutUrl,
-        PAYOS_RETURN_URL_BASE
-      );
-      if (authResult.type === "success") {
-        const returnedUrl = authResult.url || "";
-        if (returnedUrl.includes("payos/cancel")) {
-          return;
-        }
-        const finalizePayosPayment = httpsCallable(
-          functions,
-          "finalizePayosPayment"
-        );
-        await finalizePayosPayment({
-          invoiceId: depositPrompt.paymentInvoiceId,
-        });
-        setDepositPrompt(null);
-        Alert.alert(
-          "Deposit paid",
-          "Your bid will appear once the payment is verified."
-        );
-      }
-    } catch (err: any) {
-      console.error("Failed to pay bid deposit:", err);
-      Alert.alert(
-        "Deposit payment failed",
-        err?.message || "Please try again."
-      );
-    } finally {
-      setIsPayingDeposit(false);
-    }
-  }, [depositPrompt, isPayingDeposit]);
+    await openDepositCheckout(depositPrompt);
+  }, [depositPrompt, isPayingDeposit, openDepositCheckout]);
 
   // Conditional Rendering
   if (loading) {

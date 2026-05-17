@@ -1186,6 +1186,42 @@ const createWinnerInvoiceForAuction = async (
   if (image) {
     invoiceItem.image = image;
   }
+  const invoiceData: admin.firestore.DocumentData = {
+    status: "sent",
+    source: "auction",
+    type: "auction",
+    auctionId,
+    artworkId,
+    invoiceNumber,
+    isActive: true,
+    sellerId: artistId,
+    buyerId: topBidderId,
+    sellerSnapshot: {
+      uid: artistId,
+      displayName: seller.displayName || "Artist",
+      photoURL: seller.photoURL || "",
+    },
+    buyer: {
+      name: buyer.displayName || buyer.email || "Auction winner",
+      email: buyer.email || "",
+      message: "Auction winner invoice",
+    },
+    items: [invoiceItem],
+    currency,
+    totals: {
+      subtotal: amount,
+      depositApplied,
+      total: remainingAmount,
+    },
+    depositApplied,
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+    lastSentAt: FieldValue.serverTimestamp(),
+    sentCount: 1,
+  };
+  if (paidDeposit?.id) {
+    invoiceData.depositId = paidDeposit.id;
+  }
 
   const txResult = await db.runTransaction(async (tx) => {
     const latestSnap = await tx.get(auctionRef);
@@ -1201,40 +1237,7 @@ const createWinnerInvoiceForAuction = async (
       };
     }
 
-    tx.set(invoiceRef, {
-      status: "sent",
-      source: "auction",
-      type: "auction",
-      auctionId,
-      artworkId,
-      invoiceNumber,
-      isActive: true,
-      sellerId: artistId,
-      buyerId: topBidderId,
-      sellerSnapshot: {
-        uid: artistId,
-        displayName: seller.displayName || "Artist",
-        photoURL: seller.photoURL || "",
-      },
-      buyer: {
-        name: buyer.displayName || buyer.email || "Auction winner",
-        email: buyer.email || "",
-        message: "Auction winner invoice",
-      },
-      items: [invoiceItem],
-      currency,
-      totals: {
-        subtotal: amount,
-        depositApplied,
-        total: remainingAmount,
-      },
-      depositId: paidDeposit?.id,
-      depositApplied,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-      lastSentAt: FieldValue.serverTimestamp(),
-      sentCount: 1,
-    });
+    tx.set(invoiceRef, invoiceData);
 
     tx.update(auctionRef, {
       status: "awaiting_payment",
